@@ -8,7 +8,7 @@ struct JuicdApp: App {
     init() {
         let tab = UITabBarAppearance()
         tab.configureWithOpaqueBackground()
-        tab.backgroundColor = UIColor(red: 0.19, green: 0.22, blue: 0.27, alpha: 1)
+        tab.backgroundColor = UIColor(red: 0.10, green: 0.12, blue: 0.17, alpha: 1)
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
         UITabBar.appearance().isTranslucent = false

@@ -3,28 +3,35 @@ import SwiftUI
 struct ProfileView: View {
     @ObservedObject var viewModel: ProfileViewModel
 
-    private let columns = [GridItem(.adaptive(minimum: 88), spacing: 12)]
+    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 14)]
 
     var body: some View {
         ScrollView {
-            SectionColumn {
+            SectionColumn(spacing: 22) {
                 BrandHeader(
                     title: "Profile",
-                    subtitle: "Season stats & badge gallery.",
-                    centered: true
+                    subtitle: "Your season footprint and badge shelf.",
+                    centered: true,
+                    kicker: "You"
                 )
 
                 if let profile = viewModel.profile {
-                    Card(title: profile.displayName, systemImage: "person.crop.circle.fill") {
-                        VStack(spacing: 8) {
+                    Card(title: profile.displayName, systemImage: "person.crop.circle.fill", style: .hero) {
+                        VStack(spacing: 12) {
                             Text(profile.currentTier.displayName)
-                                .font(.title2.bold())
-                                .foregroundStyle(JuicdTheme.brand)
-                            Text("Season pts won: \(profile.seasonPointsWon)")
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                            Text("All-time pts won: \(profile.allTimePointsWon)")
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                                .font(.caption)
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [JuicdTheme.brand, JuicdTheme.brand2],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                            VStack(spacing: 6) {
+                                statRow(label: "Season pts won", value: "\(profile.seasonPointsWon)")
+                                statRow(label: "All-time pts won", value: "\(profile.allTimePointsWon)")
+                            }
+                            .padding(.top, 4)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -33,39 +40,58 @@ struct ProfileView: View {
                         if viewModel.badges.isEmpty {
                             Text("Win tourneys and seasons to earn badges.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
-                                .font(.subheadline)
+                                .font(.system(size: 15, weight: .medium))
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
-                            LazyVGrid(columns: columns, spacing: 12) {
+                            LazyVGrid(columns: columns, spacing: 14) {
                                 ForEach(viewModel.badges, id: \.id) { badge in
-                                    VStack(spacing: 8) {
-                                        Image(systemName: badge.imageSystemName)
-                                            .font(.system(size: 32))
-                                            .foregroundStyle(JuicdTheme.brand)
+                                    VStack(spacing: 10) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                .fill(JuicdTheme.card)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                                )
+                                            Image(systemName: badge.imageSystemName)
+                                                .font(.system(size: 28, weight: .semibold))
+                                                .foregroundStyle(JuicdTheme.brand)
+                                        }
+                                        .frame(height: 72)
                                         Text(badge.title)
-                                            .font(.caption2.weight(.semibold))
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundStyle(JuicdTheme.textPrimary)
                                             .multilineTextAlignment(.center)
+                                            .lineLimit(2)
                                     }
-                                    .frame(maxWidth: .infinity)
                                     .padding(12)
-                                    .background(JuicdTheme.slateBackground.opacity(0.5))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .frame(maxWidth: .infinity)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(JuicdTheme.canvasDeep.opacity(0.6))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                            )
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Card(title: "Dev tools", systemImage: "hammer.fill") {
-                        VStack(spacing: 10) {
+                    Card(title: "Prototype tools", systemImage: "hammer.fill") {
+                        VStack(spacing: 12) {
                             Button("Simulate season-end badge") {
                                 viewModel.simulateSeasonEndAward()
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(JuicdTheme.brand)
+                            .frame(maxWidth: .infinity)
 
-                            Button("Reset season (prototype)", role: .destructive) {
+                            Button("Reset season", role: .destructive) {
                                 viewModel.resetSeason()
                             }
+                            .font(.system(size: 15, weight: .semibold))
                         }
                     }
                 } else {
@@ -76,8 +102,21 @@ struct ProfileView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
         }
-        .background(JuicdTheme.slateBackground.ignoresSafeArea())
+        .scrollIndicators(.hidden)
+        .background(JuicdScreenBackground())
+    }
+
+    private func statRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
+        }
     }
 }

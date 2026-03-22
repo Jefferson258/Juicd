@@ -5,34 +5,45 @@ struct GroupsView: View {
 
     var body: some View {
         ScrollView {
-            SectionColumn {
+            SectionColumn(spacing: 22) {
                 BrandHeader(
                     title: "Groups",
-                    subtitle: "Create squads, invite friends, and track weekly standings.",
-                    centered: true
+                    subtitle: "Squads, invite codes, and a simple weekly scoreboard.",
+                    centered: true,
+                    kicker: "Together"
                 )
 
                 Card(title: "Your groups", systemImage: "person.3.fill") {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 0) {
                         if viewModel.myGroups.isEmpty {
-                            Text("You’re not in a group yet.")
+                            Text("No groups yet — create one or join with a code below.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 15, weight: .medium))
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
                         } else {
-                            ForEach(viewModel.myGroups) { group in
+                            ForEach(Array(viewModel.myGroups.enumerated()), id: \.element.id) { index, group in
+                                if index > 0 {
+                                    Divider().overlay(JuicdTheme.strokeSubtle)
+                                }
                                 HStack {
                                     Text(group.name)
-                                        .font(.system(size: 16, weight: .bold))
+                                        .font(.system(size: 17, weight: .bold, design: .rounded))
                                         .foregroundStyle(JuicdTheme.textPrimary)
                                     Spacer()
                                     if viewModel.selectedGroupId == group.id {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundStyle(JuicdTheme.brand)
+                                            .font(.system(size: 20))
                                     }
                                 }
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 12)
+                                .background(
+                                    viewModel.selectedGroupId == group.id
+                                        ? JuicdTheme.brand.opacity(0.06)
+                                        : Color.clear
+                                )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     viewModel.selectedGroupId = group.id
@@ -43,65 +54,63 @@ struct GroupsView: View {
                     }
                 }
 
-                Card(title: "Create a group", systemImage: "plus.circle.fill") {
-                    VStack(spacing: 12) {
-                        TextField("Group name", text: $viewModel.newGroupName)
-                            .textInputAutocapitalization(.words)
-                            .disableAutocorrection(true)
-                            .padding(12)
-                            .foregroundStyle(JuicdTheme.textPrimary)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-                            )
+                Card(title: "Create", systemImage: "plus.circle.fill") {
+                    VStack(spacing: 14) {
+                        JuicdInputField {
+                            TextField("Group name", text: $viewModel.newGroupName)
+                                .textInputAutocapitalization(.words)
+                                .disableAutocorrection(true)
+                        }
 
                         Button {
                             viewModel.createGroup()
                         } label: {
-                            Text("Create")
+                            Text("Create group")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(JuicdTheme.brand)
+                        .controlSize(.large)
                         .disabled(viewModel.newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
-                Card(title: "Join by invite", systemImage: "qrcode") {
-                    VStack(spacing: 12) {
-                        TextField("Invite code", text: $viewModel.joinInviteCode)
-                            .textInputAutocapitalization(.characters)
-                            .disableAutocorrection(true)
-                            .padding(12)
-                            .foregroundStyle(JuicdTheme.textPrimary)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-                            )
+                Card(title: "Join", systemImage: "qrcode") {
+                    VStack(spacing: 14) {
+                        JuicdInputField {
+                            TextField("Invite code", text: $viewModel.joinInviteCode)
+                                .textInputAutocapitalization(.characters)
+                                .disableAutocorrection(true)
+                        }
 
                         Button {
                             viewModel.joinGroup()
                         } label: {
-                            Text("Join")
+                            Text("Join with code")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(JuicdTheme.brand)
+                        .controlSize(.large)
                         .disabled(viewModel.joinInviteCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
-                Card(title: "Group standings (prototype)", systemImage: "calendar") {
-                    VStack(spacing: 12) {
+                Card(title: "Weekly board", systemImage: "calendar") {
+                    VStack(spacing: 16) {
                         if viewModel.selectedGroupId == nil {
-                            Text("Select a group above.")
+                            Text("Select a group above to load scores.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
-                                .font(.subheadline)
+                                .font(.system(size: 15, weight: .medium))
                                 .frame(maxWidth: .infinity)
                         } else {
                             HStack {
                                 Text("Week \(viewModel.weekIndex)")
-                                    .font(.headline)
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
                                     .foregroundStyle(JuicdTheme.textPrimary)
                                 Spacer()
                             }
@@ -110,7 +119,9 @@ struct GroupsView: View {
                                 viewModel.submitWeeklyPicks()
                             } label: {
                                 Text("Submit weekly picks")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 4)
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(JuicdTheme.brand)
@@ -120,33 +131,39 @@ struct GroupsView: View {
                                 set: { viewModel.weekIndex = Int($0.rounded()) }
                             ), in: 1...18, step: 1)
                             .tint(JuicdTheme.brand)
-                            .onChange(of: viewModel.weekIndex) { _, _ in
-                                viewModel.refreshWeeklyScoreboard()
-                            }
 
                             if let my = viewModel.myWeeklyPoints {
                                 Text("Your week: \(my) pts")
-                                    .font(.subheadline.weight(.bold))
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundStyle(JuicdTheme.brand)
                             }
 
-                            Divider().overlay(Color.white.opacity(0.1))
+                            Divider().overlay(JuicdTheme.strokeSubtle)
 
                             if viewModel.weeklyScoreboard.isEmpty {
                                 Text("No scores yet.")
                                     .foregroundStyle(JuicdTheme.textSecondary)
+                                    .font(.system(size: 14, weight: .medium))
                             } else {
-                                ForEach(Array(viewModel.weeklyScoreboard.enumerated()), id: \.offset) { index, row in
-                                    HStack {
-                                        Text("#\(index + 1)")
-                                            .foregroundStyle(JuicdTheme.textSecondary)
-                                            .font(.caption.weight(.bold))
-                                        Text(row.userName)
-                                            .foregroundStyle(JuicdTheme.textPrimary)
-                                        Spacer()
-                                        Text("\(row.points) pts")
-                                            .fontWeight(.bold)
-                                            .foregroundStyle(JuicdTheme.brand)
+                                VStack(spacing: 0) {
+                                    ForEach(Array(viewModel.weeklyScoreboard.enumerated()), id: \.offset) { index, row in
+                                        if index > 0 {
+                                            Divider().overlay(JuicdTheme.strokeSubtle)
+                                        }
+                                        HStack {
+                                            Text("#\(index + 1)")
+                                                .foregroundStyle(JuicdTheme.textTertiary)
+                                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                .frame(width: 36, alignment: .leading)
+                                            Text(row.userName)
+                                                .foregroundStyle(JuicdTheme.textPrimary)
+                                                .font(.system(size: 15, weight: .semibold))
+                                            Spacer()
+                                            Text("\(row.points) pts")
+                                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                                .foregroundStyle(JuicdTheme.brand)
+                                        }
+                                        .padding(.vertical, 10)
                                     }
                                 }
                             }
@@ -155,8 +172,9 @@ struct GroupsView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
         }
-        .background(JuicdTheme.slateBackground.ignoresSafeArea())
+        .scrollIndicators(.hidden)
+        .background(JuicdScreenBackground())
     }
 }

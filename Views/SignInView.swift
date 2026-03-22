@@ -6,69 +6,98 @@ struct SignInView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                SectionColumn {
-                    BrandHeader(
-                        title: "Juicd",
-                        subtitle: "Ranked sports picks with daily points.",
-                        centered: true
-                    )
+            ZStack {
+                JuicdScreenBackground()
 
-                    Card(title: "Get 10 points today", systemImage: "bolt.fill") {
-                        VStack(spacing: 16) {
-                            Text("You get 10 daily points to place picks. Parlays and tournaments earn season rank points.")
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                                .font(.system(size: 14, weight: .semibold))
-                                .multilineTextAlignment(.center)
+                ScrollView {
+                    SectionColumn(spacing: 28) {
+                        ZStack {
+                            Circle()
+                                .fill(JuicdTheme.brand.opacity(0.2))
+                                .frame(width: 200, height: 200)
+                                .blur(radius: 50)
+                                .offset(x: -80, y: -40)
+                            Circle()
+                                .fill(Color.purple.opacity(0.15))
+                                .frame(width: 160, height: 160)
+                                .blur(radius: 40)
+                                .offset(x: 100, y: 20)
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Display name")
-                                    .font(.system(size: 13, weight: .bold))
+                            BrandHeader(
+                                title: "Juicd",
+                                subtitle: "Ranked picks, daily points, and season ladders — built for quick sessions.",
+                                centered: true,
+                                kicker: "Sports picks"
+                            )
+                        }
+                        .padding(.top, 8)
+
+                        Card(title: "Start with 10 points", systemImage: "bolt.fill", style: .hero) {
+                            VStack(spacing: 20) {
+                                Text("Every day you get fresh points to play the board, join tourneys, and climb tiers.")
                                     .foregroundStyle(JuicdTheme.textSecondary)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(4)
 
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(Color.white.opacity(0.08))
-                                    TextField("e.g. Ace", text: $viewModel.displayName)
-                                        .textInputAutocapitalization(.words)
-                                        .disableAutocorrection(true)
-                                        .focused($isNameFocused)
-                                        .submitLabel(.done)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 14)
-                                        .foregroundStyle(JuicdTheme.textPrimary)
-                                }
-                                .frame(minHeight: 48)
-                                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .onTapGesture {
-                                    isNameFocused = true
-                                }
-                            }
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("Display name")
+                                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.textTertiary)
+                                        .textCase(.uppercase)
+                                        .tracking(0.6)
 
-                            if let error = viewModel.authError {
-                                Text(error)
-                                    .foregroundStyle(.red)
-                                    .font(.system(size: 13, weight: .semibold))
-                            }
-
-                            Button {
-                                withAnimation(.spring) {
-                                    viewModel.signIn()
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .fill(JuicdTheme.card)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                            )
+                                        TextField("Pick a name", text: $viewModel.displayName)
+                                            .textInputAutocapitalization(.words)
+                                            .disableAutocorrection(true)
+                                            .focused($isNameFocused)
+                                            .submitLabel(.done)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 14)
+                                            .foregroundStyle(JuicdTheme.textPrimary)
+                                    }
+                                    .frame(minHeight: 50)
+                                    .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .onTapGesture {
+                                        isNameFocused = true
+                                    }
                                 }
-                            } label: {
-                                Text("Continue")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .frame(maxWidth: .infinity)
+
+                                if let error = viewModel.authError {
+                                    Text(error)
+                                        .foregroundStyle(Color(red: 1, green: 0.45, blue: 0.45))
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+                                }
+
+                                Button {
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                                        viewModel.signIn()
+                                    }
+                                } label: {
+                                    Text("Continue")
+                                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 4)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(JuicdTheme.brand)
+                                .controlSize(.large)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(JuicdTheme.brand)
                         }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 24)
             }
-            .background(JuicdTheme.slateBackground.ignoresSafeArea())
         }
     }
 }
