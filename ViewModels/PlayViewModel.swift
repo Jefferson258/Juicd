@@ -21,16 +21,17 @@ final class PlayViewModel: ObservableObject {
     func configure(userId: UUID?) {
         self.userId = userId
         guard let userId else { return }
+        repository.resolveDailyRankOutcomes(userId: userId, now: .now)
         _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         profile = repository.profile(userId: userId)
-        ribbons = Self.ribbonsWithLiveLine(nil, base: PlayBoardStubData.allRibbons)
+        ribbons = JuicdOddsNightly.applyBoosts(to: Self.ribbonsWithLiveLine(nil, base: PlayBoardStubData.allRibbons), date: .now)
     }
 
     func refreshLiveOddsLine() async {
         guard OddsAPIConfig.isConfigured else {
             oddsStatus = "Add ODDS_API_KEY in Xcode target Info to load a live line."
             liveLine = nil
-            ribbons = Self.ribbonsWithLiveLine(nil, base: PlayBoardStubData.allRibbons)
+            ribbons = JuicdOddsNightly.applyBoosts(to: Self.ribbonsWithLiveLine(nil, base: PlayBoardStubData.allRibbons), date: .now)
             return
         }
         isLoadingOdds = true
@@ -38,7 +39,7 @@ final class PlayViewModel: ObservableObject {
         let line = await TheOddsAPIService.fetchOneCachedLine()
         liveLine = line
         isLoadingOdds = false
-        ribbons = Self.ribbonsWithLiveLine(line, base: PlayBoardStubData.allRibbons)
+        ribbons = JuicdOddsNightly.applyBoosts(to: Self.ribbonsWithLiveLine(line, base: PlayBoardStubData.allRibbons), date: .now)
         if let line {
             oddsStatus = "Live (cached up to 1h) · \(line.sportKey)"
         } else {
@@ -69,7 +70,8 @@ final class PlayViewModel: ObservableObject {
             propDescription: "Moneyline (head-to-head)",
             lineText: "H2H",
             pickLabel: line.pickLabel,
-            oddsDecimal: line.oddsDecimal
+            oddsDecimal: line.oddsDecimal,
+            juicdMultiplier: nil
         )
     }
 

@@ -32,9 +32,9 @@ struct SignInView: View {
                         }
                         .padding(.top, 8)
 
-                        Card(title: "Start with 10 points", systemImage: "bolt.fill", style: .hero) {
+                        Card(title: "Start with \(InMemoryJuicdRepository.dailyPlayAllowancePoints) points / day", systemImage: "bolt.fill", style: .hero) {
                             VStack(spacing: 20) {
-                                Text("Every day you get fresh points to play the board, join tourneys, and climb tiers.")
+                                Text("Each day you get a balance to bet with. Rank tier moves when you play ranked days — skipping days does not drop your tier.")
                                     .foregroundStyle(JuicdTheme.textSecondary)
                                     .font(.system(size: 15, weight: .medium))
                                     .multilineTextAlignment(.center)

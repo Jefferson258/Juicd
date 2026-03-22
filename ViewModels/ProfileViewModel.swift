@@ -16,7 +16,8 @@ final class ProfileViewModel: ObservableObject {
     func configure(userId: UUID?) {
         self.userId = userId
         guard let userId else { return }
-        repository.recalculateTier(for: userId)
+        repository.resolveDailyRankOutcomes(userId: userId, now: .now)
+        _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         profile = repository.profile(userId: userId)
         badges = repository.userBadges(userId: userId)
     }

@@ -1,7 +1,14 @@
 import SwiftUI
+import UserNotifications
 
 struct ProfileView: View {
     @ObservedObject var viewModel: ProfileViewModel
+
+    @AppStorage("juicd_notify_daily_updates") private var notifyDailyUpdates = false
+    @AppStorage("juicd_notify_tournament_updates") private var notifyTournamentUpdates = false
+    @AppStorage("juicd_notify_seasonal_updates") private var notifySeasonalUpdates = false
+
+    @State private var showRankingDetails = false
 
     private let columns = [GridItem(.adaptive(minimum: 92), spacing: 14)]
 
@@ -28,12 +35,51 @@ struct ProfileView: View {
                                     )
                                 )
                             VStack(spacing: 6) {
-                                statRow(label: "Season pts won", value: "\(profile.seasonPointsWon)")
+                                statRow(label: "Season score (wins & bonuses)", value: "\(profile.seasonPointsWon)")
                                 statRow(label: "All-time pts won", value: "\(profile.allTimePointsWon)")
                             }
                             .padding(.top, 4)
+
+                            DisclosureGroup(isExpanded: $showRankingDetails) {
+                                Text("Internal skill rating used to place you in ranked pools. Your tier on Dashboard is what most players should care about.")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.top, 4)
+                                statRow(label: "MMR (internal)", value: "\(Int((profile.mmr ?? MMRLogic.startingMMR).rounded()))")
+                            } label: {
+                                Text("Ranking details (MMR)")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(JuicdTheme.brand)
+                            }
+                            .tint(JuicdTheme.brand)
                         }
                         .frame(maxWidth: .infinity)
+                    }
+
+                    Card(title: "Notifications", systemImage: "bell.badge.fill") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Choose what you’d like to hear about. Turning any option on asks for notification permission once.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Toggle("Daily updates", isOn: $notifyDailyUpdates)
+                                .tint(JuicdTheme.brand)
+                                .onChange(of: notifyDailyUpdates) { _, on in
+                                    if on { requestNotificationAuthorizationIfNeeded() }
+                                }
+                            Toggle("Tournament & bracket updates", isOn: $notifyTournamentUpdates)
+                                .tint(JuicdTheme.brand)
+                                .onChange(of: notifyTournamentUpdates) { _, on in
+                                    if on { requestNotificationAuthorizationIfNeeded() }
+                                }
+                            Toggle("Seasonal updates", isOn: $notifySeasonalUpdates)
+                                .tint(JuicdTheme.brand)
+                                .onChange(of: notifySeasonalUpdates) { _, on in
+                                    if on { requestNotificationAuthorizationIfNeeded() }
+                                }
+                        }
                     }
 
                     Card(title: "Badges", systemImage: "star.circle.fill") {
@@ -118,5 +164,9 @@ struct ProfileView: View {
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(JuicdTheme.textPrimary)
         }
+    }
+
+    private func requestNotificationAuthorizationIfNeeded() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
     }
 }

@@ -6,9 +6,13 @@ final class TourneyViewModel: ObservableObject {
     private let repository: InMemoryJuicdRepository
     private var userId: UUID?
 
-    @Published private(set) var definitions: [WeeklyBracketDefinition] = []
-    @Published private(set) var progress: UserBracketProgress?
-    @Published private(set) var lastResult: InMemoryJuicdRepository.BracketRoundResult?
+    @Published private(set) var gameOptions: [DailyGameOption] = []
+    @Published var selectedGameId: String?
+
+    @Published private(set) var dailyClosest: DailyClosestTournamentState?
+    @Published private(set) var lastDailyPickResult: DailyClosestPickResult?
+    @Published var dailyPickText: String = "52.5"
+    @Published var errorMessage: String?
 
     init(repository: InMemoryJuicdRepository) {
         self.repository = repository
@@ -16,33 +20,54 @@ final class TourneyViewModel: ObservableObject {
 
     func configure(userId: UUID?) {
         self.userId = userId
-        guard userId != nil else { return }
-        definitions = repository.bracketDefinitions()
+        guard let userId else { return }
+        repository.resolveDailyRankOutcomes(userId: userId, now: .now)
+        _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
+        refreshGameOptions()
         refresh()
+        dailyClosest = repository.dailyClosestState(userId: userId)
+        lastDailyPickResult = nil
+        errorMessage = nil
+    }
+
+    func refreshGameOptions() {
+        gameOptions = repository.dailyGameOptions(now: .now)
+        if selectedGameId == nil || !gameOptions.contains(where: { $0.id == selectedGameId }) {
+            selectedGameId = gameOptions.first?.id
+        }
     }
 
     func refresh() {
         guard let userId else { return }
-        progress = repository.bracketProgress(for: userId)
+        dailyClosest = repository.dailyClosestState(userId: userId)
+        refreshGameOptions()
     }
 
-    func join(_ def: WeeklyBracketDefinition) {
+    func enterDailyClosest() {
         guard let userId else { return }
-        repository.joinBracket(userId: userId, definitionId: def.id)
-        lastResult = nil
-        refresh()
+        guard let gid = selectedGameId else {
+            errorMessage = "Pick a game first."
+            return
+        }
+        errorMessage = nil
+        dailyClosest = repository.enterDailyClosestTournament(userId: userId, gameId: gid)
+        if dailyClosest == nil {
+            errorMessage = "Entry closed for that game or we couldn’t start the bracket."
+        }
     }
 
-    func leave() {
+    func submitDailyPick() {
         guard let userId else { return }
-        repository.leaveBracket(userId: userId)
-        lastResult = nil
+        let trimmed = dailyPickText.replacingOccurrences(of: ",", with: ".")
+        guard let v = Double(trimmed) else {
+            errorMessage = "Enter a number (e.g. 54.5)"
+            return
+        }
+        errorMessage = nil
+        lastDailyPickResult = repository.submitDailyClosestPick(userId: userId, pick: v)
         refresh()
-    }
-
-    func playNextRound() {
-        guard let userId else { return }
-        lastResult = repository.simulateNextBracketRound(userId: userId)
-        refresh()
+        if lastDailyPickResult == nil {
+            errorMessage = "Enter the tournament first, or your run may already be over."
+        }
     }
 }

@@ -8,7 +8,7 @@ struct PlayView: View {
             SectionColumn(spacing: 22) {
                 BrandHeader(
                     title: "Play",
-                    subtitle: "Browse props by league. Add ODDS_API_KEY for a live moneyline tile.",
+                    subtitle: "Browse props by league. Each UTC night, two random tiles get Juicd 1.5× payout odds (simulated). Add ODDS_API_KEY for a live moneyline tile.",
                     centered: true,
                     kicker: "Today’s board"
                 )
@@ -237,11 +237,19 @@ struct PlayView: View {
             Spacer(minLength: 10)
 
             HStack {
-                Text("Odds")
+                Text(prop.juicdMultiplier != nil ? "Juicd odds" : "Odds")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(JuicdTheme.textTertiary)
                 Spacer()
-                Text(String(format: "%.2f", prop.oddsDecimal))
+                if prop.juicdMultiplier != nil {
+                    Text("1.5×")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 1, green: 0.82, blue: 0.35))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color(red: 1, green: 0.75, blue: 0.2).opacity(0.2)))
+                }
+                Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(JuicdTheme.brand)
             }

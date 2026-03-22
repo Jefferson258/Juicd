@@ -22,6 +22,8 @@ final class GroupsViewModel: ObservableObject {
     func configure(userId: UUID?) {
         self.userId = userId
         guard let userId else { return }
+        repository.resolveDailyRankOutcomes(userId: userId, now: .now)
+        _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         myGroups = repository.groupsForUser(userId)
         selectedGroupId = myGroups.first?.id
         refreshWeeklyScoreboard()

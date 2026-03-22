@@ -31,7 +31,7 @@ struct RootView: View {
                         .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2.fill") }
 
                     TourneyView(viewModel: tourneyVM)
-                        .tabItem { Label("Tourney", systemImage: "flag.checkered") }
+                        .tabItem { Label("Tourney", systemImage: "calendar.badge.clock") }
 
                     GroupsView(viewModel: groupsVM)
                         .tabItem { Label("Groups", systemImage: "person.3.fill") }

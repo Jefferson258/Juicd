@@ -3,105 +3,24 @@ import SwiftUI
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
 
+    private static let tipTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+
     var body: some View {
         ScrollView {
             SectionColumn(spacing: 22) {
                 BrandHeader(
                     title: "Tourney",
-                    subtitle: "Weekly cups: survive each day’s cut. Bonuses when you’re out or when you win it all.",
+                    subtitle: "Daily closest-pick bracket — pick a game, enter before the lock, then one pick per quarter.",
                     centered: true,
-                    kicker: "Brackets"
+                    kicker: "Daily"
                 )
 
-                if let p = viewModel.progress, let def = viewModel.definitions.first(where: { $0.id == p.definitionId }) {
-                    activeBracketCard(def: def, p: p)
-                } else {
-                    Card(title: "Pick a cup", systemImage: "flag.checkered", style: .hero) {
-                        Text("One active weekly bracket at a time. Choose a sport — you can switch after your run ends.")
-                            .foregroundStyle(JuicdTheme.textSecondary)
-                            .font(.system(size: 15, weight: .medium))
-                            .multilineTextAlignment(.leading)
-                            .lineSpacing(3)
-                    }
-
-                    VStack(spacing: 12) {
-                        ForEach(viewModel.definitions) { def in
-                            Button {
-                                viewModel.join(def)
-                            } label: {
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [JuicdTheme.brand.opacity(0.35), JuicdTheme.brand2.opacity(0.1)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                            .frame(width: 48, height: 48)
-                                        Image(systemName: def.iconSystemName)
-                                            .font(.system(size: 22, weight: .semibold))
-                                            .foregroundStyle(JuicdTheme.brand)
-                                    }
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(def.name)
-                                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                                            .foregroundStyle(JuicdTheme.textPrimary)
-                                        Text("\(def.roundCount) rounds · \(def.sportKey.replacingOccurrences(of: "_", with: "."))")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundStyle(JuicdTheme.textTertiary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(JuicdTheme.textTertiary)
-                                }
-                                .padding(16)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [JuicdTheme.cardElevated, JuicdTheme.card],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .shadow(color: Color.black.opacity(0.3), radius: 12, y: 6)
-                                }
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                if let last = viewModel.lastResult {
-                    Card(title: "Last round", systemImage: "chart.bar.fill") {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Day \(last.roundIndex) · score \(last.userScore) · rank #\(last.rank) of 100")
-                                .foregroundStyle(JuicdTheme.textPrimary)
-                                .font(.system(size: 15, weight: .semibold))
-                            if last.bonusAwarded > 0 {
-                                Text("+\(last.bonusAwarded) season pts")
-                                    .foregroundStyle(JuicdTheme.brand)
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                            }
-                            if last.completedTournament {
-                                Text("You won the cup!")
-                                    .foregroundStyle(Color(red: 1, green: 0.85, blue: 0.35))
-                                    .fontWeight(.bold)
-                            } else if last.eliminated {
-                                Text("Eliminated — bonus applied from your run.")
-                                    .foregroundStyle(JuicdTheme.textSecondary)
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-                        }
-                    }
-                }
+                dailySection
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -110,55 +29,198 @@ struct TourneyView: View {
         .background(JuicdScreenBackground())
     }
 
-    @ViewBuilder
-    private func activeBracketCard(def: WeeklyBracketDefinition, p: UserBracketProgress) -> some View {
-        Card(title: def.name, systemImage: def.iconSystemName, style: .hero) {
-            VStack(alignment: .leading, spacing: 16) {
-                if p.completed {
-                    Text("Tournament complete. Total bonus: \(p.totalBonusAwarded) pts")
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .font(.system(size: 15, weight: .medium))
-                    Button("Leave & join another") {
-                        viewModel.leave()
+    private var dailySection: some View {
+        Card(title: "Daily closest-pick", systemImage: "calendar.badge.clock", style: .hero) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("One bracket per UTC day. Sixteen players — each round is a quarter prop: closest combined points to the result advances. One pick per round (no per-round stake).")
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineSpacing(3)
+
+                tiebreakerFootnote
+
+                if viewModel.dailyClosest == nil {
+                    gamePicker
+
+                    if let g = viewModel.gameOptions.first(where: { $0.id == viewModel.selectedGameId }) {
+                        entryDeadlineBlock(for: g)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(JuicdTheme.brand)
-                } else if p.eliminated {
-                    Text("Eliminated. Bonus earned: \(p.totalBonusAwarded) pts")
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .font(.system(size: 15, weight: .medium))
-                    Button("Leave & join another") {
-                        viewModel.leave()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(JuicdTheme.brand)
-                } else {
-                    Text("Next: day \(p.nextRoundToPlay) of \(def.roundCount)")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textPrimary)
-                    Text("Each day you’re ranked against 100 competitors. Finish in the top 50 to advance.")
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .font(.system(size: 14, weight: .medium))
-                        .lineSpacing(3)
 
                     Button {
-                        viewModel.playNextRound()
+                        viewModel.enterDailyClosest()
                     } label: {
-                        Text("Simulate today’s round")
+                        Text("Enter bracket")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(JuicdTheme.brand)
-                    .controlSize(.large)
+                } else if let st = viewModel.dailyClosest {
+                    Text(st.gameLabel)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(JuicdTheme.brand)
 
-                    Button("Leave tournament", role: .destructive) {
-                        viewModel.leave()
+                    Text("Tip \(Self.tipTimeFormatter.string(from: st.tipOffAt)) · entry locked \(Self.tipTimeFormatter.string(from: st.entryClosesAt))")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+
+                    if st.completed {
+                        Text("You cleared the daily bracket today.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    } else if st.eliminated {
+                        Text("Eliminated in Q\(st.roundsCompleted.last?.quarter ?? 0).")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    } else {
+                        Text("Quarter \(st.nextQuarter) of 4")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+
+                        TextField("Your total points pick", text: $viewModel.dailyPickText)
+                            .keyboardType(.decimalPad)
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.card))
+                            .foregroundStyle(JuicdTheme.textPrimary)
+
+                        Button {
+                            viewModel.submitDailyPick()
+                        } label: {
+                            Text("Submit pick")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(JuicdTheme.brand)
                     }
-                    .font(.system(size: 14, weight: .semibold))
+
+                    if !st.roundsCompleted.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Today’s rounds")
+                                .font(.caption.weight(.heavy))
+                                .foregroundStyle(JuicdTheme.textTertiary)
+                            ForEach(st.roundsCompleted, id: \.quarter) { r in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Q\(r.quarter) · \(r.propLabel)")
+                                        .font(.caption.weight(.bold))
+                                    Text("You \(r.userPick.formatted(.number.precision(.fractionLength(1)))) vs \(r.opponentLabel) \(r.opponentPick.formatted(.number.precision(.fractionLength(1)))) · actual \(r.actualTotalPoints.formatted(.number.precision(.fractionLength(1))))")
+                                        .font(.caption2)
+                                        .foregroundStyle(JuicdTheme.textSecondary)
+                                    Text(r.userWon ? "Won — +\(r.rewardSeasonPoints) season pts" : "Lost")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(r.userWon ? JuicdTheme.brand : JuicdTheme.textTertiary)
+                                }
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.5)))
+                            }
+                        }
+                    }
+                }
+
+                if let err = viewModel.errorMessage {
+                    Text(err)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.red.opacity(0.9))
                 }
             }
         }
+    }
+
+    private var gamePicker: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Pick a game")
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            VStack(spacing: 8) {
+                ForEach(viewModel.gameOptions) { g in
+                    let selected = viewModel.selectedGameId == g.id
+                    Button {
+                        viewModel.selectedGameId = g.id
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(g.label)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(JuicdTheme.textPrimary)
+                                Text("Tip \(Self.tipTimeFormatter.string(from: g.tipOffAt))")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                            }
+                            Spacer()
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected ? JuicdTheme.brand : JuicdTheme.textTertiary)
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(selected ? JuicdTheme.brand.opacity(0.12) : JuicdTheme.canvasDeep.opacity(0.45))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(selected ? JuicdTheme.brand.opacity(0.5) : JuicdTheme.strokeSubtle, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(Date() >= g.entryClosesAt)
+                    .opacity(Date() >= g.entryClosesAt ? 0.45 : 1)
+                }
+            }
+        }
+    }
+
+    private func entryDeadlineBlock(for g: DailyGameOption) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Time left to enter")
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            Text("Locks 1 hour before tip-off so brackets can be built on the server.")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(JuicdTheme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                let remaining = max(0, g.entryClosesAt.timeIntervalSince(Date()))
+                if remaining <= 0 {
+                    Text("Entry closed for this game")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                } else {
+                    Text(formatCountdown(remaining))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(JuicdTheme.brand)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 14).fill(JuicdTheme.canvasDeep.opacity(0.5)))
+    }
+
+    private func formatCountdown(_ t: TimeInterval) -> String {
+        let total = Int(t)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    private var tiebreakerFootnote: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tiebreakers")
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            Text("Closer to the actual total wins. If both are equally close, we compare fractional parts of each pick × 1337; if still tied, the lower submitted pick wins.")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.canvasDeep.opacity(0.4)))
     }
 }

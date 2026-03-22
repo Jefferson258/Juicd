@@ -15,6 +15,8 @@ struct DashboardView: View {
                 )
 
                 if let profile = viewModel.profile {
+                    lastRankedMatchCard(profile: profile)
+
                     Card(title: "Daily balance", systemImage: "bolt.fill", style: .hero) {
                         VStack(spacing: 16) {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -33,7 +35,7 @@ struct DashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
 
-                            Text("Resets with your daily allowance — spend them on picks in Play.")
+                            Text("You get \(InMemoryJuicdRepository.dailyPlayAllowancePoints) fresh points each day to bet with. That refill does not add to your season score — only winnings and bonuses do.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)
@@ -42,11 +44,11 @@ struct DashboardView: View {
                         }
                     }
 
-                    Card(title: "Season tier", systemImage: "trophy.fill") {
+                    Card(title: "Rank tier", systemImage: "trophy.fill") {
                         VStack(spacing: 16) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("Current rank")
+                                    Text("Current tier")
                                         .font(.system(size: 11, weight: .heavy, design: .rounded))
                                         .foregroundStyle(JuicdTheme.textTertiary)
                                         .textCase(.uppercase)
@@ -65,12 +67,28 @@ struct DashboardView: View {
                                 tierBadge(for: profile.currentTier)
                             }
 
-                            Text("Season points won: \(profile.seasonPointsWon)")
+                            Text("Your tier reflects recent ranked play. Each day you bet, you’re grouped with similar players; finishes can nudge your tier, but small swings don’t always move it.")
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .font(.system(size: 13, weight: .medium))
+                                .multilineTextAlignment(.leading)
+                                .lineSpacing(3)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Divider().overlay(JuicdTheme.strokeSubtle)
+
+                            Text("Season score")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundStyle(JuicdTheme.textTertiary)
+                                .textCase(.uppercase)
+                                .tracking(0.8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Text("\(profile.seasonPointsWon) pts from bet wins & daily tourney bonuses — not from your daily refill.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                            ProgressView(value: Double(profile.seasonPointsWon), total: 4000)
+                            ProgressView(value: Double(min(profile.seasonPointsWon, 4000)), total: 4000)
                                 .tint(JuicdTheme.brand)
                                 .scaleEffect(x: 1, y: 1.4, anchor: .center)
                         }
@@ -111,10 +129,22 @@ struct DashboardView: View {
         .sheet(isPresented: $showRankingsHelp) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("How rankings work")
+                    Text("How rank & score work")
                         .font(.title2.bold())
                         .foregroundStyle(JuicdTheme.textPrimary)
-                    Text("Tiers are based on season points won — from picks, weekly tournaments, and bonuses. Bigger parlays and deeper tournament runs earn more. In production you’d reset seasons and lock badges.")
+                    Text(
+                        """
+                        Daily balance: a fixed amount of points each day to bet with. It is not added to your season score.
+
+                        Season score: only points you win from bets and daily tourney bonuses count here — not the daily refill.
+
+                        Ranked play: each day you bet, you enter a pool of similarly skilled players (simulated). Your finish can move your visible tier; you can have a rough day and barely move, or stay in the same tier.
+
+                        If you skip a day, you don’t enter the pool — no tier change from ranked that day.
+
+                        Seasons reset tier progression and season score. A detailed skill rating (MMR) is optional on Profile.
+                        """
+                    )
                         .foregroundStyle(JuicdTheme.textSecondary)
                         .font(.body)
                         .lineSpacing(4)
@@ -132,6 +162,48 @@ struct DashboardView: View {
             }
             .presentationDetents([.medium])
         }
+    }
+
+    @ViewBuilder
+    private func lastRankedMatchCard(profile: Profile) -> some View {
+        Card(title: "Last ranked match", systemImage: "chart.line.uptrend.xyaxis", style: .hero) {
+            if let m = profile.lastDailyMatch {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(formattedRankPoolDay(m.dayISO))
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                    Text("Placement \(m.placement) / \(m.poolSize)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textPrimary)
+                    if m.tierBefore != m.tierAfter {
+                        Text("Tier \(m.tierBefore.displayName) → \(m.tierAfter.displayName)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    } else {
+                        Text("Tier unchanged at \(m.tierAfter.displayName)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    }
+                }
+            } else {
+                Text("No ranked pool result yet. When you bet on a day and the pool resolves, your placement for that day appears here.")
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineSpacing(3)
+            }
+        }
+    }
+
+    private func formattedRankPoolDay(_ iso: String) -> String {
+        let inDF = DateFormatter()
+        inDF.calendar = Calendar(identifier: .gregorian)
+        inDF.timeZone = TimeZone(secondsFromGMT: 0)
+        inDF.dateFormat = "yyyy-MM-dd"
+        guard let d = inDF.date(from: iso) else { return "Pool day \(iso)" }
+        let out = DateFormatter()
+        out.dateStyle = .medium
+        out.timeStyle = .none
+        return out.string(from: d)
     }
 
     private func tierBadge(for tier: RankTier) -> some View {
@@ -192,24 +264,24 @@ struct DashboardView: View {
             .padding(.bottom, 16)
 
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.tierRules.enumerated()), id: \.element.id) { index, rule in
-                    let isCurrent = rule.tier == profile.currentTier
+                ForEach(Array(viewModel.rankLadder.enumerated()), id: \.offset) { index, tier in
+                    let isCurrent = tier == profile.currentTier
                     if index > 0 {
                         Divider()
                             .overlay(JuicdTheme.strokeSubtle)
                     }
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(rule.tier.displayName)
+                            Text(tier.displayName)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundStyle(isCurrent ? JuicdTheme.brand : JuicdTheme.textPrimary)
-                            Text("From \(rule.minPointsWonInclusive) pts won")
+                            Text("Based on ranked performance")
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .font(.system(size: 12, weight: .medium))
                         }
                         Spacer()
-                        if rule.tier == .challenger || rule.tier == .champion {
-                            Text(rule.tier == .champion ? "Elite" : "Top")
+                        if tier == .challenger || tier == .champion {
+                            Text(tier == .champion ? "Elite" : "Top")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded))
                                 .foregroundStyle(Color(red: 1, green: 0.85, blue: 0.35))
                                 .padding(.horizontal, 8)
