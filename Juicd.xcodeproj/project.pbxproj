@@ -27,6 +27,8 @@
 		225E4B292F6F2CED002955B9 /* TourneyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B0C2F6F2CED002955B9 /* TourneyViewModel.swift */; };
 		225E4B2A2F6F2CED002955B9 /* OddsAPIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */; };
 		225E4B2C2F6F2CED002955B9 /* TheOddsAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */; };
+		225E4B352F6F2CED002955B9 /* PlayBoardStubData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B302F6F2CED002955B9 /* PlayBoardStubData.swift */; };
+		225E4B362F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +52,8 @@
 		225E4B152F6F2CED002955B9 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OddsAPIConfig.swift; sourceTree = "<group>"; };
 		225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheOddsAPIService.swift; sourceTree = "<group>"; };
+		225E4B302F6F2CED002955B9 /* PlayBoardStubData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayBoardStubData.swift; sourceTree = "<group>"; };
+		225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheOddsAPIPlayboardHook.swift; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -79,6 +83,8 @@
 				225E4B062F6F2CED002955B9 /* StubOddsProvider.swift */,
 				225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */,
 				225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */,
+				225E4B302F6F2CED002955B9 /* PlayBoardStubData.swift */,
+				225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -222,6 +228,8 @@
 				225E4B292F6F2CED002955B9 /* TourneyViewModel.swift in Sources */,
 				225E4B2A2F6F2CED002955B9 /* OddsAPIConfig.swift in Sources */,
 				225E4B2C2F6F2CED002955B9 /* TheOddsAPIService.swift in Sources */,
+				225E4B352F6F2CED002955B9 /* PlayBoardStubData.swift in Sources */,
+				225E4B362F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

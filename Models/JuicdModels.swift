@@ -136,6 +136,27 @@ struct OddsMarket: Codable, Identifiable {
     var choices: [OddsChoice]
 }
 
+// MARK: - Play tab prop board (stub + future Odds API)
+
+/// A single **prop bet** tile: a wager on a player or game stat (not only the final winner).
+struct PlayPropBet: Identifiable, Equatable {
+    var id: UUID
+    var leagueTag: String
+    var athleteOrTeam: String
+    var matchup: String
+    var propDescription: String
+    var lineText: String
+    var pickLabel: String
+    var oddsDecimal: Double
+}
+
+struct PlayPropRibbon: Identifiable, Equatable {
+    var id: String
+    var title: String
+    var subtitle: String?
+    var props: [PlayPropBet]
+}
+
 struct BetLeg: Codable, Identifiable, Hashable {
     var id: UUID
     var marketId: UUID

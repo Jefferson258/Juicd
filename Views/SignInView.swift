@@ -26,17 +26,23 @@ struct SignInView: View {
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(JuicdTheme.textSecondary)
 
-                                TextField("e.g. Ace", text: $viewModel.displayName)
-                                    .textInputAutocapitalization(.words)
-                                    .disableAutocorrection(true)
-                                    .focused($isNameFocused)
-                                    .submitLabel(.done)
-                                    .padding(12)
-                                    .foregroundStyle(JuicdTheme.textPrimary)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(Color.white.opacity(0.08))
-                                    )
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color.white.opacity(0.08))
+                                    TextField("e.g. Ace", text: $viewModel.displayName)
+                                        .textInputAutocapitalization(.words)
+                                        .disableAutocorrection(true)
+                                        .focused($isNameFocused)
+                                        .submitLabel(.done)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 14)
+                                        .foregroundStyle(JuicdTheme.textPrimary)
+                                }
+                                .frame(minHeight: 48)
+                                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .onTapGesture {
+                                    isNameFocused = true
+                                }
                             }
 
                             if let error = viewModel.authError {
