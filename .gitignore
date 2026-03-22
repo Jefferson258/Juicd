@@ -1,0 +1,71 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+**/xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcresult
+*.xcscmblueprint
+*.xccheckout
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+# Keep shared schemes if you use them; uncomment to ignore all schemes:
+# *.xcodeproj/xcshareddata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods
+Pods/
+*.podspec.lock
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+fastlane/README.md
+
+# Archives & products
+*.app
+*.zip
+
+# Secrets & local config (never commit real keys)
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+**/Local.xcconfig
+**/Secrets.xcconfig
+**/Config.local.xcconfig
+
+# Optional: if you store The Odds API key only in a local plist copy
+# (uncomment if you use that pattern)
+# Local.Info.plist
+
+# Editors / tools
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log

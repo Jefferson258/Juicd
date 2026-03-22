@@ -1,0 +1,7 @@
+// Copy this file to Local.xcconfig (same folder) and fill in values.
+// Local.xcconfig is listed in .gitignore — do not commit it.
+//
+// In Xcode: Project → Info → Configurations → set Debug/Release to use Local.xcconfig
+// if you wire build settings to $(ODDS_API_KEY) etc.
+
+// ODDS_API_KEY = your_key_here
