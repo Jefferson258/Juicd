@@ -17,7 +17,7 @@ The Swift prototype in this repo uses an **in-memory/local repository** (`UserDe
 ## 0) What you have right now
 
 1. The SwiftUI prototype lives next to `Juicd.xcodeproj` in the repo root.
-2. Tabs: **Play** (Odds API hook), **Dashboard**, **Tourney** (daily closest-pick), **Groups**, **Profile**.
+2. Tabs: **Play** (Odds API hook), **Dashboard**, **Tourney** (daily closest-pick), **Friends** (requests + MMR leaderboard), **Profile**.
 3. **Profile** includes notification preference toggles (stored locally; wire to APNs + backend for real pushes).
 
 ---

@@ -15,7 +15,7 @@ struct TourneyView: View {
             SectionColumn(spacing: 22) {
                 BrandHeader(
                     title: "Tourney",
-                    subtitle: "Daily closest-pick bracket — pick a game, enter before the lock, then one pick per quarter.",
+                    subtitle: "Daily closest-pick bracket — choose a tournament variant, preview all four rounds, enter before lock, then one numeric pick per round.",
                     centered: true,
                     kicker: "Daily"
                 )
@@ -30,9 +30,9 @@ struct TourneyView: View {
     }
 
     private var dailySection: some View {
-        Card(title: "Daily closest-pick", systemImage: "calendar.badge.clock", style: .hero) {
+        Card(title: "Daily closest-pick", systemImage: "trophy.fill", style: .hero) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("One bracket per UTC day. Sixteen players — each round is a quarter prop: closest combined points to the result advances. One pick per round (no per-round stake).")
+                Text("One bracket per UTC day. Sixteen players — each round uses the prop shown below; closest to the simulated result advances. One pick per round (no per-round stake).")
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .font(.system(size: 14, weight: .medium))
                     .lineSpacing(3)
@@ -43,6 +43,7 @@ struct TourneyView: View {
                     gamePicker
 
                     if let g = viewModel.gameOptions.first(where: { $0.id == viewModel.selectedGameId }) {
+                        roundPreviewBlock(for: g)
                         entryDeadlineBlock(for: g)
                     }
 
@@ -57,6 +58,9 @@ struct TourneyView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(JuicdTheme.brand)
                 } else if let st = viewModel.dailyClosest {
+                    Text(st.tournamentName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(JuicdTheme.textSecondary)
                     Text(st.gameLabel)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(JuicdTheme.brand)
@@ -69,16 +73,31 @@ struct TourneyView: View {
                         Text("You cleared the daily bracket today.")
                             .foregroundStyle(JuicdTheme.textSecondary)
                     } else if st.eliminated {
-                        Text("Eliminated in Q\(st.roundsCompleted.last?.quarter ?? 0).")
-                            .foregroundStyle(JuicdTheme.textSecondary)
+                        eliminatedMessage(for: st)
                     } else {
-                        Text("Quarter \(st.nextQuarter) of 4")
+                        Text("Round \(st.nextQuarter) of 4")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(JuicdTheme.textSecondary)
 
-                        TextField("Your total points pick", text: $viewModel.dailyPickText)
+                        if let spec = viewModel.currentRoundSpec {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(spec.propLabel)
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundStyle(JuicdTheme.textPrimary)
+                                Text(spec.statSummary)
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.canvasDeep.opacity(0.45)))
+                        }
+
+                        TextField(roundPlaceholder(for: viewModel.currentRoundSpec), text: $viewModel.dailyPickText)
                             .keyboardType(.decimalPad)
                             .padding(12)
+                            .frame(maxWidth: .infinity)
                             .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.card))
                             .foregroundStyle(JuicdTheme.textPrimary)
 
@@ -92,6 +111,17 @@ struct TourneyView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(JuicdTheme.brand)
+
+                        Button {
+                            viewModel.simulateFullBracketDemo()
+                        } label: {
+                            Text("Simulate full bracket (demo)")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(JuicdTheme.textTertiary)
                     }
 
                     if !st.roundsCompleted.isEmpty {
@@ -101,9 +131,9 @@ struct TourneyView: View {
                                 .foregroundStyle(JuicdTheme.textTertiary)
                             ForEach(st.roundsCompleted, id: \.quarter) { r in
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Q\(r.quarter) · \(r.propLabel)")
+                                    Text("Round \(r.quarter) · \(r.propLabel)")
                                         .font(.caption.weight(.bold))
-                                    Text("You \(r.userPick.formatted(.number.precision(.fractionLength(1)))) vs \(r.opponentLabel) \(r.opponentPick.formatted(.number.precision(.fractionLength(1)))) · actual \(r.actualTotalPoints.formatted(.number.precision(.fractionLength(1))))")
+                                    Text("You \(r.userPick.formatted(.number.precision(.fractionLength(1)))) vs \(r.opponentLabel) \(r.opponentPick.formatted(.number.precision(.fractionLength(1)))) · result \(r.actualTotalPoints.formatted(.number.precision(.fractionLength(1))))")
                                         .font(.caption2)
                                         .foregroundStyle(JuicdTheme.textSecondary)
                                     Text(r.userWon ? "Won — +\(r.rewardSeasonPoints) season pts" : "Lost")
@@ -129,7 +159,7 @@ struct TourneyView: View {
 
     private var gamePicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Pick a game")
+            Text("Pick a tournament")
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(JuicdTheme.textTertiary)
             VStack(spacing: 8) {
@@ -140,9 +170,12 @@ struct TourneyView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(g.label)
+                                Text(g.tournamentName)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundStyle(JuicdTheme.textPrimary)
+                                Text(g.label)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(JuicdTheme.textSecondary)
                                 Text("Tip \(Self.tipTimeFormatter.string(from: g.tipOffAt))")
                                     .font(.caption.weight(.medium))
                                     .foregroundStyle(JuicdTheme.textTertiary)
@@ -167,6 +200,46 @@ struct TourneyView: View {
                 }
             }
         }
+    }
+
+    private func roundPreviewBlock(for g: DailyGameOption) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your four rounds (locked at entry)")
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            ForEach(g.roundPreviews) { p in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Round \(p.round) — \(p.title)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(JuicdTheme.textPrimary)
+                    Text(p.subtitle)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.4)))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func eliminatedMessage(for st: DailyClosestTournamentState) -> some View {
+        if st.roundsCompleted.count == 4, let firstLoss = st.roundsCompleted.first(where: { !$0.userWon })?.quarter {
+            Text("Full four-round run complete. You didn’t sweep the bracket — earliest loss was round \(firstLoss). See results below.")
+                .foregroundStyle(JuicdTheme.textSecondary)
+        } else {
+            Text("Eliminated in round \(st.roundsCompleted.last?.quarter ?? 0).")
+                .foregroundStyle(JuicdTheme.textSecondary)
+        }
+    }
+
+    private func roundPlaceholder(for spec: DailyRoundPropSpec?) -> String {
+        guard let spec else { return "Your pick" }
+        let mid = (spec.simMin + spec.simMax) / 2
+        let hint = String(format: "%.1f", (mid * 10).rounded() / 10)
+        return "Pick (e.g. \(hint))"
     }
 
     private func entryDeadlineBlock(for g: DailyGameOption) -> some View {

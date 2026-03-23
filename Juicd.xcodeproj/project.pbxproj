@@ -20,10 +20,10 @@
 		225E4B222F6F2CED002955B9 /* StubOddsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B062F6F2CED002955B9 /* StubOddsProvider.swift */; };
 		225E4B232F6F2CED002955B9 /* JuicdRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B052F6F2CED002955B9 /* JuicdRepository.swift */; };
 		225E4B242F6F2CED002955B9 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B0A2F6F2CED002955B9 /* DashboardViewModel.swift */; };
-		225E4B252F6F2CED002955B9 /* GroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B112F6F2CED002955B9 /* GroupsView.swift */; };
+		225E4B252F6F2CED002955B9 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B112F6F2CED002955B9 /* FriendsView.swift */; };
 		225E4B262F6F2CED002955B9 /* PlayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B092F6F2CED002955B9 /* PlayViewModel.swift */; };
 		225E4B272F6F2CED002955B9 /* TourneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B122F6F2CED002955B9 /* TourneyView.swift */; };
-		225E4B282F6F2CED002955B9 /* GroupsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B0B2F6F2CED002955B9 /* GroupsViewModel.swift */; };
+		225E4B282F6F2CED002955B9 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B0B2F6F2CED002955B9 /* FriendsViewModel.swift */; };
 		225E4B292F6F2CED002955B9 /* TourneyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B0C2F6F2CED002955B9 /* TourneyViewModel.swift */; };
 		225E4B2A2F6F2CED002955B9 /* OddsAPIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */; };
 		225E4B2C2F6F2CED002955B9 /* TheOddsAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */; };
@@ -31,6 +31,11 @@
 		225E4B362F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */; };
 		225E4B372F6F2CED002955B9 /* MMRLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B382F6F2CED002955B9 /* MMRLogic.swift */; };
 		225E4B392F6F2CED002955B9 /* JuicdOddsNightly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B3A2F6F2CED002955B9 /* JuicdOddsNightly.swift */; };
+		225E4B3D2F6F2CED002955B9 /* ParlayBuilderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B3E2F6F2CED002955B9 /* ParlayBuilderSheet.swift */; };
+		225E4B3F2F6F2CED002955B9 /* DailySlate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B402F6F2CED002955B9 /* DailySlate.swift */; };
+		225E4B472F6F2CED002955B9 /* TutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B482F6F2CED002955B9 /* TutorialView.swift */; };
+		225E4B532F6F2CED002955B9 /* JuicdSeason.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B542F6F2CED002955B9 /* JuicdSeason.swift */; };
+		225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,12 +48,12 @@
 		225E4B082F6F2CED002955B9 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		225E4B092F6F2CED002955B9 /* PlayViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayViewModel.swift; sourceTree = "<group>"; };
 		225E4B0A2F6F2CED002955B9 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
-		225E4B0B2F6F2CED002955B9 /* GroupsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsViewModel.swift; sourceTree = "<group>"; };
+		225E4B0B2F6F2CED002955B9 /* FriendsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModel.swift; sourceTree = "<group>"; };
 		225E4B0C2F6F2CED002955B9 /* TourneyViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourneyViewModel.swift; sourceTree = "<group>"; };
 		225E4B0D2F6F2CED002955B9 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		225E4B0F2F6F2CED002955B9 /* PlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayView.swift; sourceTree = "<group>"; };
 		225E4B102F6F2CED002955B9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		225E4B112F6F2CED002955B9 /* GroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsView.swift; sourceTree = "<group>"; };
+		225E4B112F6F2CED002955B9 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		225E4B122F6F2CED002955B9 /* TourneyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourneyView.swift; sourceTree = "<group>"; };
 		225E4B142F6F2CED002955B9 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		225E4B152F6F2CED002955B9 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
@@ -58,6 +63,11 @@
 		225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheOddsAPIPlayboardHook.swift; sourceTree = "<group>"; };
 		225E4B382F6F2CED002955B9 /* MMRLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MMRLogic.swift; sourceTree = "<group>"; };
 		225E4B3A2F6F2CED002955B9 /* JuicdOddsNightly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdOddsNightly.swift; sourceTree = "<group>"; };
+		225E4B3E2F6F2CED002955B9 /* ParlayBuilderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParlayBuilderSheet.swift; sourceTree = "<group>"; };
+		225E4B402F6F2CED002955B9 /* DailySlate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySlate.swift; sourceTree = "<group>"; };
+		225E4B482F6F2CED002955B9 /* TutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialView.swift; sourceTree = "<group>"; };
+		225E4B542F6F2CED002955B9 /* JuicdSeason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdSeason.swift; sourceTree = "<group>"; };
+		225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaySportFilter.swift; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -91,6 +101,9 @@
 				225E4B342F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift */,
 				225E4B382F6F2CED002955B9 /* MMRLogic.swift */,
 				225E4B3A2F6F2CED002955B9 /* JuicdOddsNightly.swift */,
+				225E4B402F6F2CED002955B9 /* DailySlate.swift */,
+				225E4B542F6F2CED002955B9 /* JuicdSeason.swift */,
+				225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -101,7 +114,7 @@
 				225E4B082F6F2CED002955B9 /* AuthViewModel.swift */,
 				225E4B092F6F2CED002955B9 /* PlayViewModel.swift */,
 				225E4B0A2F6F2CED002955B9 /* DashboardViewModel.swift */,
-				225E4B0B2F6F2CED002955B9 /* GroupsViewModel.swift */,
+				225E4B0B2F6F2CED002955B9 /* FriendsViewModel.swift */,
 				225E4B0C2F6F2CED002955B9 /* TourneyViewModel.swift */,
 				225E4B0D2F6F2CED002955B9 /* ProfileViewModel.swift */,
 			);
@@ -112,8 +125,10 @@
 			isa = PBXGroup;
 			children = (
 				225E4B0F2F6F2CED002955B9 /* PlayView.swift */,
+				225E4B3E2F6F2CED002955B9 /* ParlayBuilderSheet.swift */,
 				225E4B102F6F2CED002955B9 /* DashboardView.swift */,
-				225E4B112F6F2CED002955B9 /* GroupsView.swift */,
+				225E4B112F6F2CED002955B9 /* FriendsView.swift */,
+				225E4B482F6F2CED002955B9 /* TutorialView.swift */,
 				225E4B122F6F2CED002955B9 /* TourneyView.swift */,
 				225E4B142F6F2CED002955B9 /* ProfileView.swift */,
 				225E4B152F6F2CED002955B9 /* SignInView.swift */,
@@ -227,10 +242,10 @@
 				225E4B222F6F2CED002955B9 /* StubOddsProvider.swift in Sources */,
 				225E4B232F6F2CED002955B9 /* JuicdRepository.swift in Sources */,
 				225E4B242F6F2CED002955B9 /* DashboardViewModel.swift in Sources */,
-				225E4B252F6F2CED002955B9 /* GroupsView.swift in Sources */,
+				225E4B252F6F2CED002955B9 /* FriendsView.swift in Sources */,
 				225E4B262F6F2CED002955B9 /* PlayViewModel.swift in Sources */,
 				225E4B272F6F2CED002955B9 /* TourneyView.swift in Sources */,
-				225E4B282F6F2CED002955B9 /* GroupsViewModel.swift in Sources */,
+				225E4B282F6F2CED002955B9 /* FriendsViewModel.swift in Sources */,
 				225E4B292F6F2CED002955B9 /* TourneyViewModel.swift in Sources */,
 				225E4B2A2F6F2CED002955B9 /* OddsAPIConfig.swift in Sources */,
 				225E4B2C2F6F2CED002955B9 /* TheOddsAPIService.swift in Sources */,
@@ -238,6 +253,11 @@
 				225E4B362F6F2CED002955B9 /* TheOddsAPIPlayboardHook.swift in Sources */,
 				225E4B372F6F2CED002955B9 /* MMRLogic.swift in Sources */,
 				225E4B392F6F2CED002955B9 /* JuicdOddsNightly.swift in Sources */,
+				225E4B3D2F6F2CED002955B9 /* ParlayBuilderSheet.swift in Sources */,
+				225E4B3F2F6F2CED002955B9 /* DailySlate.swift in Sources */,
+				225E4B472F6F2CED002955B9 /* TutorialView.swift in Sources */,
+				225E4B532F6F2CED002955B9 /* JuicdSeason.swift in Sources */,
+				225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

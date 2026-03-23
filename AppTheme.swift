@@ -23,12 +23,18 @@ enum JuicdTheme {
     static func ribbonAccent(ribbonId: String) -> Color {
         switch ribbonId {
         case "live_api": return Color(red: 0.2, green: 0.95, blue: 0.75)
-        case "popular": return Color(red: 1.0, green: 0.55, blue: 0.2)
+        case "popular", "popular_nba", "popular_cbb", "popular_mbb": return Color(red: 1.0, green: 0.55, blue: 0.2)
+        case "popular_nfl": return Color(red: 0.35, green: 0.55, blue: 1.0)
+        case "popular_mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
+        case "popular_nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
+        case "popular_soccer", "popular_wsoc": return Color(red: 0.25, green: 0.78, blue: 0.45)
         case "nba": return Color(red: 0.9, green: 0.28, blue: 0.22)
         case "nfl": return Color(red: 0.2, green: 0.45, blue: 0.95)
         case "mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
         case "nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
         case "soccer": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "cbb", "mbb": return Color(red: 0.95, green: 0.4, blue: 0.18)
+        case "womens_soccer": return Color(red: 0.45, green: 0.85, blue: 0.4)
         default: return brand
         }
     }
@@ -36,12 +42,12 @@ enum JuicdTheme {
     static func ribbonIcon(ribbonId: String) -> String {
         switch ribbonId {
         case "live_api": return "antenna.radiowaves.left.and.right"
-        case "popular": return "flame.fill"
-        case "nba": return "basketball.fill"
-        case "nfl": return "football.fill"
-        case "mlb": return "baseball.fill"
-        case "nhl": return "sportscourt.fill"
-        case "soccer": return "soccerball"
+        case "popular", "popular_nba", "nba", "cbb", "mbb": return "basketball.fill"
+        case "popular_nfl", "nfl": return "football.fill"
+        case "popular_mlb", "mlb": return "baseball.fill"
+        case "popular_nhl", "nhl": return "sportscourt.fill"
+        case "popular_soccer", "soccer": return "soccerball"
+        case "popular_wsoc", "womens_soccer": return "soccerball"
         default: return "line.3.horizontal.decrease.circle.fill"
         }
     }
@@ -54,6 +60,8 @@ enum JuicdTheme {
         case "MLB": return Color(red: 0.92, green: 0.22, blue: 0.24)
         case "NHL": return Color(red: 0.3, green: 0.72, blue: 0.95)
         case "EPL", "UCL", "MLS", "SOC": return Color(red: 0.28, green: 0.82, blue: 0.48)
+        case "CBB", "MBB": return Color(red: 0.92, green: 0.42, blue: 0.2)
+        case "NWSL", "WSL": return Color(red: 0.5, green: 0.88, blue: 0.45)
         case "LIVE": return Color(red: 0.25, green: 0.95, blue: 0.75)
         default: return brand
         }
@@ -231,6 +239,7 @@ struct SectionColumn<Content: View>: View {
 
 struct PlayRibbonHeader: View {
     let ribbon: PlayPropRibbon
+    var onChevronTap: (() -> Void)?
 
     private var accent: Color { JuicdTheme.ribbonAccent(ribbonId: ribbon.id) }
 
@@ -264,15 +273,27 @@ struct PlayRibbonHeader: View {
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(JuicdTheme.textTertiary)
+            if let onChevronTap {
+                Button(action: onChevronTap) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .frame(minWidth: 36, minHeight: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open this league’s board")
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(JuicdTheme.textTertiary)
+            }
         }
         .padding(.horizontal, 4)
     }
 }
 
-// MARK: - Inputs (Sign-in / Groups)
+// MARK: - Inputs (Sign-in / Friends)
 
 struct JuicdInputField<Content: View>: View {
     @ViewBuilder var content: () -> Content

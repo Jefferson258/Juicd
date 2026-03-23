@@ -9,8 +9,14 @@ struct ProfileView: View {
     @AppStorage("juicd_notify_seasonal_updates") private var notifySeasonalUpdates = false
 
     @State private var showRankingDetails = false
+    @State private var showSeasonInfo = false
 
     private let columns = [GridItem(.adaptive(minimum: 92), spacing: 14)]
+
+    private var seasonKey: String { JuicdSeason.currentSeasonKey() }
+
+    private var season: CareerBettingStats { viewModel.seasonStats ?? .zero }
+    private var career: CareerBettingStats { viewModel.careerStats ?? .zero }
 
     var body: some View {
         ScrollView {
@@ -23,6 +29,33 @@ struct ProfileView: View {
                 )
 
                 if let profile = viewModel.profile {
+                    Card(title: "Season record (\(JuicdSeason.shortLabel(for: seasonKey)))", systemImage: "calendar") {
+                        VStack(spacing: 10) {
+                            HStack {
+                                Text("3-month quarter · your local calendar")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                                Spacer()
+                                Button {
+                                    showSeasonInfo = true
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(JuicdTheme.brand)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("About seasons")
+                            }
+                            bettingRecordBlock(stats: season, seasonScopedFootnote: true)
+                        }
+                    }
+
+                    Card(title: "Career record", systemImage: "chart.line.uptrend.xyaxis") {
+                        VStack(spacing: 10) {
+                            bettingRecordBlock(stats: career, seasonScopedFootnote: false)
+                        }
+                    }
+
                     Card(title: profile.displayName, systemImage: "person.crop.circle.fill", style: .hero) {
                         VStack(spacing: 12) {
                             Text(profile.currentTier.displayName)
@@ -134,6 +167,18 @@ struct ProfileView: View {
                             .tint(JuicdTheme.brand)
                             .frame(maxWidth: .infinity)
 
+                            Button("Reset daily closest tournament (today)") {
+                                viewModel.resetDailyClosestTournamentForTesting()
+                            }
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+
+                            Button("Refill daily Play balance") {
+                                viewModel.resetDailyPlayBalanceForTesting()
+                            }
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+
                             Button("Reset season", role: .destructive) {
                                 viewModel.resetSeason()
                             }
@@ -152,6 +197,41 @@ struct ProfileView: View {
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
+        .onAppear {
+            viewModel.refresh()
+        }
+        .sheet(isPresented: $showSeasonInfo) {
+            SeasonInfoSheet(seasonKey: seasonKey)
+        }
+    }
+
+    @ViewBuilder
+    private func bettingRecordBlock(stats: CareerBettingStats, seasonScopedFootnote: Bool) -> some View {
+        HStack {
+            Text("Overall W–L")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(JuicdTheme.textSecondary)
+            Spacer()
+            Text("\(stats.totalWins)–\(stats.totalLosses)")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
+        }
+        Divider().overlay(JuicdTheme.strokeSubtle)
+        statRow(label: "Play parlays", value: "\(stats.playWins)–\(stats.playLosses)")
+        statRow(label: "Ranked daily (quarters)", value: "\(stats.rankedDailyWins)–\(stats.rankedDailyLosses)")
+        statRow(label: "Daily bracket rounds", value: "\(stats.closestRoundWins)–\(stats.closestRoundLosses)")
+        statRow(label: "Total points staked", value: "\(stats.totalPointsStaked)")
+        statRow(label: "Returned from bets", value: "\(stats.totalPointsWonBack)")
+        statRow(label: "Daily bracket wins (full run)", value: "\(stats.dailyBracketTournamentWins)")
+        Text(
+            seasonScopedFootnote
+                ? "Season rows only count slips and ledger entries that fall in \(JuicdSeason.shortLabel(for: seasonKey)) (local calendar quarter)."
+                : "Career totals include all time. Returned from bets sums payouts and daily bracket rewards from the ledger."
+        )
+        .font(.caption.weight(.medium))
+        .foregroundStyle(JuicdTheme.textTertiary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
     }
 
     private func statRow(label: String, value: String) -> some View {
@@ -168,5 +248,59 @@ struct ProfileView: View {
 
     private func requestNotificationAuthorizationIfNeeded() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+    }
+}
+
+private struct SeasonInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let seasonKey: String
+
+    private static let resetDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        return f
+    }()
+
+    private var nextQuarterStart: Date {
+        JuicdSeason.nextSeasonStart(from: .now) ?? .now
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("What is a season?")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                    Text(
+                        "A season here is a 3-month calendar quarter in your device’s local timezone (Q1–Q4). The Season record card only includes picks and ledger activity dated within \(JuicdSeason.shortLabel(for: seasonKey))."
+                    )
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .lineSpacing(4)
+
+                    Text("When does it reset?")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .padding(.top, 8)
+                    Text(
+                        "Season stats roll forward at the start of the next quarter — \(Self.resetDateFormatter.string(from: nextQuarterStart)) local time (first day of the next 3-month window). Your season score on the profile card is separate and can still be reset with the prototype Reset season button for testing."
+                    )
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .lineSpacing(4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+            }
+            .background(JuicdScreenBackground())
+            .navigationTitle("Seasons")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

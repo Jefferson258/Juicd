@@ -26,6 +26,14 @@ final class InMemoryJuicdRepository: ObservableObject {
 
         /// Key `userId|yyyy-MM-dd` → closest-pick daily tournament state.
         var dailyClosestByKey: [String: DailyClosestTournamentState]?
+
+        /// Play-board slips (single or parlay) for dashboard history.
+        var playBoardEntries: [PlayBoardEntry]?
+
+        /// Pending friend invites (prototype persistence; mirror `friend_requests` in Supabase).
+        var friendRequests: [FriendRequest]?
+        /// Accepted friendships — canonical `(min UUID, max UUID)` pair per edge.
+        var friendships: [Friendship]?
     }
 
     struct DailyProgress: Codable, Hashable {
@@ -105,13 +113,13 @@ final class InMemoryJuicdRepository: ObservableObject {
             persist()
         }
 
-        let dayISO = Self.isoDay(date)
-        if profile.lastDailyPointsAwardDateISO == dayISO {
+        let slateKey = SlateDay.slateKey(for: date)
+        if profile.lastDailyPointsAwardDateISO == slateKey {
             return profile
         }
 
         profile.availableDailyPoints += Self.dailyPlayAllowancePoints
-        profile.lastDailyPointsAwardDateISO = dayISO
+        profile.lastDailyPointsAwardDateISO = slateKey
 
         let entry = PointsLedgerEntry(
             id: UUID(),
@@ -147,57 +155,53 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     func recordDailyRankParticipation(userId: UUID, date: Date = .now) {
-        let dayISO = Self.isoDay(date)
-        var set = Set(state.dailyRankParticipationByDay[dayISO] ?? [])
+        let slateKey = SlateDay.slateKey(for: date)
+        var set = Set(state.dailyRankParticipationByDay[slateKey] ?? [])
         set.insert(userId)
-        state.dailyRankParticipationByDay[dayISO] = Array(set)
+        state.dailyRankParticipationByDay[slateKey] = Array(set)
         persist()
     }
 
-    /// Resolves the **previous UTC day** if the user entered a ranked match (placed a bet) and outcomes weren’t applied yet.
-    /// No bet that day → no tier change (no decay).
+    /// Resolves the **previous local slate** (6am boundary) if the user entered a ranked match and outcomes weren’t applied yet.
     func resolveDailyRankOutcomes(userId: UUID, now: Date = .now) {
         guard state.profiles[userId] != nil else { return }
-        var utc = Calendar(identifier: .gregorian)
-        utc.timeZone = TimeZone(secondsFromGMT: 0)!
-        guard let yesterday = utc.date(byAdding: .day, value: -1, to: now) else { return }
-        let yISO = Self.isoDay(yesterday)
+        let prevSlate = SlateDay.previousSlateKey(from: now)
 
-        let participated = (state.dailyRankParticipationByDay[yISO] ?? []).contains(userId)
+        let participated = (state.dailyRankParticipationByDay[prevSlate] ?? []).contains(userId)
         guard participated else { return }
 
-        var resolved = Set(state.dailyRankResolvedByDay[yISO] ?? [])
+        var resolved = Set(state.dailyRankResolvedByDay[prevSlate] ?? [])
         guard !resolved.contains(userId) else { return }
 
         guard var profile = state.profiles[userId] else { return }
 
-        let netProfit = netLedgerDeltaForDailyBets(userId: userId, dayISO: yISO)
+        let netPointsFromBets = netPointsFromBetsOnSlate(userId: userId, slateKey: prevSlate)
         let baseMMR = profile.mmr ?? MMRLogic.startingMMR
         let tierBefore = profile.currentTier
 
         let poolSize = 100
-        var rng = SeededRNG(seed: "\(userId.uuidString)-\(yISO)-pool".hashValueAsUInt64)
+        var rng = SeededRNG(seed: "\(userId.uuidString)-\(prevSlate)-pool".hashValueAsUInt64)
 
         var scores: [(Bool, Double)] = []
         scores.reserveCapacity(poolSize)
         for i in 0..<(poolSize - 1) {
-            var r2 = SeededRNG(seed: "\(yISO)-bot-\(i)".hashValueAsUInt64)
+            var r2 = SeededRNG(seed: "\(prevSlate)-bot-\(i)".hashValueAsUInt64)
             let botMMR = baseMMR + (Double(i % 17) - 8) * 14 + r2.nextDouble() * 6 - 3
             let botId = UUID()
             let perf = MMRLogic.dailyPerformanceScore(
                 userId: botId,
-                dayISO: yISO,
+                dayISO: prevSlate,
                 baseMMR: botMMR,
-                netProfitFromBets: Int(r2.nextDouble() * 20) - 10,
+                netPointsFromBets: Int(r2.nextDouble() * 20) - 10,
                 rng: &r2
             )
             scores.append((false, perf))
         }
         let userPerf = MMRLogic.dailyPerformanceScore(
             userId: userId,
-            dayISO: yISO,
+            dayISO: prevSlate,
             baseMMR: baseMMR,
-            netProfitFromBets: netProfit,
+            netPointsFromBets: netPointsFromBets,
             rng: &rng
         )
         scores.append((true, userPerf))
@@ -211,7 +215,7 @@ final class InMemoryJuicdRepository: ObservableObject {
         profile.mmr = mmrAfter
         profile.currentTier = MMRLogic.tier(for: mmrAfter)
         profile.lastDailyMatch = DailyMatchSnapshot(
-            dayISO: yISO,
+            dayISO: prevSlate,
             placement: placement,
             poolSize: poolSize,
             mmrBefore: baseMMR,
@@ -223,66 +227,182 @@ final class InMemoryJuicdRepository: ObservableObject {
         state.profiles[userId] = profile
 
         resolved.insert(userId)
-        state.dailyRankResolvedByDay[yISO] = Array(resolved)
+        state.dailyRankResolvedByDay[prevSlate] = Array(resolved)
         persist()
     }
 
-    /// Net ledger change from daily tournament bets on that UTC day (stakes + payouts).
-    private func netLedgerDeltaForDailyBets(userId: UUID, dayISO: String) -> Int {
+    /// Net ledger points from bets on a **slate** (local 6am day): Play parlays, daily quarter bets, daily closest.
+    private func netPointsFromBetsOnSlate(userId: UUID, slateKey: String) -> Int {
         state.ledger.reduce(0) { partial, entry in
             guard entry.userId == userId else { return partial }
-            guard Self.isoDay(entry.createdAt) == dayISO else { return partial }
-            guard entry.reason.contains("Daily bet") || entry.reason.contains("Daily closest") else { return partial }
+            guard SlateDay.slateKey(for: entry.createdAt) == slateKey else { return partial }
+            guard entry.reason.contains("Daily bet")
+                || entry.reason.contains("Daily closest")
+                || entry.reason.contains("Play parlay") else { return partial }
             return partial + entry.deltaPoints
         }
     }
 
+    func playBoardEntriesOnSlate(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
+        let sk = SlateDay.slateKey(for: date)
+        return (state.playBoardEntries ?? [])
+            .filter { $0.userId == userId && $0.slateDayKey == sk }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     // MARK: - Daily closest-pick tournament (16 players, 4 quarters)
 
-    /// Dev slate: each game has tip-off staggered from `now`; entry closes **1 hour before** tip-off.
+    /// Dev slate: several tournament *variants* with four distinct round previews; tip times stagger from `now`; entry closes **1 hour before** lock.
     func dailyGameOptions(now: Date = .now) -> [DailyGameOption] {
-        let catalog: [(String, String)] = [
-            ("nba_lal_bos", "LAL @ BOS"),
-            ("nba_phx_den", "PHX @ DEN"),
-            ("nfl_kc_buf", "KC @ BUF"),
-            ("nhl_edm_col", "EDM @ COL")
+        let nflRounds: [DailyRoundPreview] = [
+            DailyRoundPreview(
+                round: 1,
+                title: "Stefon Diggs — Q1 receiving yards",
+                subtitle: "Total receiving yards in the first quarter (simulated).",
+                simMin: 0,
+                simMax: 52
+            ),
+            DailyRoundPreview(
+                round: 2,
+                title: "Josh Allen — Q2 passing TDs",
+                subtitle: "Passing touchdowns in the second quarter (tenths allowed).",
+                simMin: 0,
+                simMax: 3.5
+            ),
+            DailyRoundPreview(
+                round: 3,
+                title: "Combined points — Q3",
+                subtitle: "Total points scored by both teams in the third quarter only.",
+                simMin: 10,
+                simMax: 28
+            ),
+            DailyRoundPreview(
+                round: 4,
+                title: "Full game — total points",
+                subtitle: "Combined points for both teams over the full regulation game.",
+                simMin: 38,
+                simMax: 62
+            )
         ]
-        return catalog.enumerated().map { i, item in
-            let hoursAhead = 3 + i * 2
+        let nbaRounds: [DailyRoundPreview] = [
+            DailyRoundPreview(
+                round: 1,
+                title: "Jaylen Brown — Q1 points",
+                subtitle: "Points scored in the opening quarter.",
+                simMin: 0,
+                simMax: 18
+            ),
+            DailyRoundPreview(
+                round: 2,
+                title: "LeBron James — first-half assists",
+                subtitle: "Assists in the first two quarters.",
+                simMin: 0,
+                simMax: 12
+            ),
+            DailyRoundPreview(
+                round: 3,
+                title: "Combined three-pointers — Q3",
+                subtitle: "Total made threes by both teams in Q3.",
+                simMin: 4,
+                simMax: 22
+            ),
+            DailyRoundPreview(
+                round: 4,
+                title: "Second half — combined points",
+                subtitle: "Total points by both teams in the third and fourth quarters.",
+                simMin: 48,
+                simMax: 118
+            )
+        ]
+        let mashRounds: [DailyRoundPreview] = [
+            DailyRoundPreview(
+                round: 1,
+                title: "[NFL] Tyreek Hill — Q1 receiving yards",
+                subtitle: "NFL leg: first-quarter receiving yards.",
+                simMin: 0,
+                simMax: 55
+            ),
+            DailyRoundPreview(
+                round: 2,
+                title: "[NBA] Shai Gilgeous-Alexander — 1H assists",
+                subtitle: "NBA leg: first-half assist total.",
+                simMin: 0,
+                simMax: 11
+            ),
+            DailyRoundPreview(
+                round: 3,
+                title: "[NHL] Connor McDavid — P1 shots on goal",
+                subtitle: "Round 3 of this bracket (NHL): first-period shots on goal.",
+                simMin: 0,
+                simMax: 9
+            ),
+            DailyRoundPreview(
+                round: 4,
+                title: "[NFL] Q4 — combined points",
+                subtitle: "Final round: both teams’ scoring total in the fourth quarter only.",
+                simMin: 10,
+                simMax: 34
+            )
+        ]
+        let catalog: [(String, String, String, Int, [DailyRoundPreview])] = [
+            ("tourney_nfl_prime", "NFL prime-time sprint", "KC @ BUF", 3, nflRounds),
+            ("tourney_nba_night", "NBA night ladder", "LAL @ BOS", 5, nbaRounds),
+            ("tourney_cross_sport", "Cross-sport four-round draft", "MIXED SLATE", 7, mashRounds)
+        ]
+        return catalog.enumerated().map { i, row in
+            let hoursAhead = row.3 + i
             let tip = now.addingTimeInterval(TimeInterval(hoursAhead * 3600))
             let entry = tip.addingTimeInterval(-3600)
-            return DailyGameOption(id: item.0, label: item.1, tipOffAt: tip, entryClosesAt: entry)
+            return DailyGameOption(
+                id: row.0,
+                label: row.2,
+                tournamentName: row.1,
+                tipOffAt: tip,
+                entryClosesAt: entry,
+                roundPreviews: row.4
+            )
         }
     }
 
-    private func dailyClosestStorageKey(userId: UUID, dayISO: String) -> String {
-        "\(userId.uuidString)|\(dayISO)"
+    private func dailyClosestStorageKey(userId: UUID, slateKey: String) -> String {
+        "\(userId.uuidString)|\(slateKey)"
     }
 
     func dailyClosestState(userId: UUID, date: Date = .now) -> DailyClosestTournamentState? {
-        let k = dailyClosestStorageKey(userId: userId, dayISO: Self.isoDay(date))
+        let k = dailyClosestStorageKey(userId: userId, slateKey: SlateDay.slateKey(for: date))
         return state.dailyClosestByKey?[k]
     }
 
     @discardableResult
     func enterDailyClosestTournament(userId: UUID, gameId: String, date: Date = .now) -> DailyClosestTournamentState? {
         guard state.profiles[userId] != nil else { return nil }
-        let dayISO = Self.isoDay(date)
-        let k = dailyClosestStorageKey(userId: userId, dayISO: dayISO)
+        let dayISO = SlateDay.slateKey(for: date)
+        let k = dailyClosestStorageKey(userId: userId, slateKey: dayISO)
         if let existing = state.dailyClosestByKey?[k] { return existing }
 
         guard let game = dailyGameOptions(now: date).first(where: { $0.id == gameId }) else { return nil }
         guard date < game.entryClosesAt else { return nil }
 
         let t = dailyTournament(for: date)
-        var rng = SeededRNG(seed: "\(userId.uuidString)-\(dayISO)-closest".hashValueAsUInt64)
+        var rng = SeededRNG(seed: Self.stableHashFNV1a64("\(userId.uuidString)-\(dayISO)-closest"))
         let slot = Int(rng.nextDouble() * 16)
+
+        let roundSpecs: [DailyRoundPropSpec] = game.roundPreviews.map {
+            DailyRoundPropSpec(
+                round: $0.round,
+                propLabel: $0.title,
+                statSummary: $0.subtitle,
+                simMin: $0.simMin,
+                simMax: $0.simMax
+            )
+        }
 
         let st = DailyClosestTournamentState(
             tournamentId: t.id,
             dayISO: dayISO,
             gameId: game.id,
             gameLabel: game.label,
+            tournamentName: game.tournamentName,
             tipOffAt: game.tipOffAt,
             entryClosesAt: game.entryClosesAt,
             bracketSize: 16,
@@ -290,7 +410,18 @@ final class InMemoryJuicdRepository: ObservableObject {
             nextQuarter: 1,
             eliminated: false,
             completed: false,
-            roundsCompleted: []
+            roundsCompleted: [],
+            roundSpecs: roundSpecs.isEmpty
+                ? (1...4).map { q in
+                    DailyRoundPropSpec(
+                        round: q,
+                        propLabel: "Combined points scored (Q\(q))",
+                        statSummary: "Total points both teams this quarter.",
+                        simMin: 36,
+                        simMax: 74
+                    )
+                }
+                : roundSpecs
         )
         var map = state.dailyClosestByKey ?? [:]
         map[k] = st
@@ -300,24 +431,36 @@ final class InMemoryJuicdRepository: ObservableObject {
         return st
     }
 
-    func submitDailyClosestPick(userId: UUID, pick: Double, date: Date = .now) -> DailyClosestPickResult? {
+    /// - Parameter playthrough: When `true` (demo “simulate full bracket”), losses do not end the run until four rounds are recorded so you can see every round. Competitive play uses `false`.
+    func submitDailyClosestPick(userId: UUID, pick: Double, date: Date = .now, playthrough: Bool = false) -> DailyClosestPickResult? {
         guard state.profiles[userId] != nil else { return nil }
-        let dayISO = Self.isoDay(date)
-        let k = dailyClosestStorageKey(userId: userId, dayISO: dayISO)
+        let dayISO = SlateDay.slateKey(for: date)
+        let k = dailyClosestStorageKey(userId: userId, slateKey: dayISO)
         guard var st = state.dailyClosestByKey?[k] else { return nil }
         guard !st.eliminated, !st.completed else { return nil }
         let q = st.nextQuarter
         guard q >= 1, q <= 4 else { return nil }
 
-        var rng = SeededRNG(seed: "\(st.tournamentId.uuidString)-\(dayISO)-Q\(q)-\(st.userSlot)".hashValueAsUInt64)
-        let actual = 36 + rng.nextDouble() * 38
+        let spec = st.roundSpecs.first(where: { $0.round == q })
+            ?? DailyRoundPropSpec(
+                round: q,
+                propLabel: "Combined points scored (Q\(q))",
+                statSummary: "Total points both teams this quarter.",
+                simMin: 36,
+                simMax: 74
+            )
+        let span = max(spec.simMax - spec.simMin, 1)
+
+        var rng = SeededRNG(seed: Self.stableHashFNV1a64("\(st.tournamentId.uuidString)-\(dayISO)-Q\(q)-\(st.userSlot)"))
+        let actual = spec.simMin + rng.nextDouble() * span
         let frac = floor(rng.nextDouble() * 10) / 10
         let actualTotal = (actual + frac).rounded(toPlaces: 1)
 
         let oppSlot = st.userSlot ^ 1
         let oppLabel = MMRLogic.opponentName(seed: rng.nextUInt64(), index: oppSlot + q * 17)
-        var rOpp = SeededRNG(seed: "\(dayISO)-opp-\(oppSlot)-\(q)".hashValueAsUInt64)
-        let opponentPick = actualTotal + (rOpp.nextDouble() - 0.5) * 24
+        var rOpp = SeededRNG(seed: Self.stableHashFNV1a64("\(dayISO)-opp-\(oppSlot)-\(q)"))
+        let oppJitter = min(span * 0.65, 32)
+        let opponentPick = actualTotal + (rOpp.nextDouble() - 0.5) * oppJitter
 
         let uErr = abs(pick - actualTotal)
         let oErr = abs(opponentPick - actualTotal)
@@ -334,12 +477,13 @@ final class InMemoryJuicdRepository: ObservableObject {
             }
         }
 
+        let errScale = max(span * 0.45, 2)
         let reward = max(
             0,
-            min(45, Int(48 * (1 - min(1, uErr / 18))))
+            min(45, Int(48 * (1 - min(1, uErr / errScale))))
         )
 
-        let propLabel = "Combined points scored (Q\(q))"
+        let propLabel = spec.propLabel
         let round = DailyClosestQuarterResult(
             quarter: q,
             propLabel: propLabel,
@@ -355,32 +499,11 @@ final class InMemoryJuicdRepository: ObservableObject {
 
         st.roundsCompleted.append(round)
 
-        if userWon {
-            var profile = state.profiles[userId]!
-            profile.seasonPointsWon += reward
-            profile.allTimePointsWon += reward
-            state.profiles[userId] = profile
-            state.ledger.append(
-                PointsLedgerEntry(
-                    id: UUID(),
-                    createdAt: date,
-                    userId: userId,
-                    tournamentId: st.tournamentId,
-                    betSlipId: nil,
-                    deltaPoints: reward,
-                    reason: "Daily closest reward (Q\(q))"
-                )
-            )
-
-            st.userSlot >>= 1
-            st.nextQuarter += 1
-            if st.nextQuarter > 4 {
-                st.completed = true
-                let cupBonus = 120
-                profile = state.profiles[userId]!
-                let tierAtWin = profile.currentTier
-                profile.seasonPointsWon += cupBonus
-                profile.allTimePointsWon += cupBonus
+        if !playthrough {
+            if userWon {
+                var profile = state.profiles[userId]!
+                profile.seasonPointsWon += reward
+                profile.allTimePointsWon += reward
                 state.profiles[userId] = profile
                 state.ledger.append(
                     PointsLedgerEntry(
@@ -389,14 +512,48 @@ final class InMemoryJuicdRepository: ObservableObject {
                         userId: userId,
                         tournamentId: st.tournamentId,
                         betSlipId: nil,
-                        deltaPoints: cupBonus,
-                        reason: "Daily closest — win bracket"
+                        deltaPoints: reward,
+                        reason: "Daily closest reward (Q\(q))"
                     )
                 )
-                awardDailyTournamentWinBadge(userId: userId, tier: tierAtWin)
+
+                st.userSlot >>= 1
+                st.nextQuarter += 1
+                if st.nextQuarter > 4 {
+                    applyDailyClosestBracketWin(userId: userId, date: date, st: &st)
+                }
+            } else {
+                st.eliminated = true
             }
         } else {
-            st.eliminated = true
+            // Demo playthrough: play all four rounds even after a loss so the full slate is visible.
+            if userWon {
+                var profile = state.profiles[userId]!
+                profile.seasonPointsWon += reward
+                profile.allTimePointsWon += reward
+                state.profiles[userId] = profile
+                state.ledger.append(
+                    PointsLedgerEntry(
+                        id: UUID(),
+                        createdAt: date,
+                        userId: userId,
+                        tournamentId: st.tournamentId,
+                        betSlipId: nil,
+                        deltaPoints: reward,
+                        reason: "Daily closest reward (Q\(q))"
+                    )
+                )
+                st.userSlot >>= 1
+            }
+            st.nextQuarter += 1
+            if st.nextQuarter > 4 {
+                let swept = st.roundsCompleted.allSatisfy(\.userWon)
+                if swept {
+                    applyDailyClosestBracketWin(userId: userId, date: date, st: &st)
+                } else {
+                    st.eliminated = true
+                }
+            }
         }
 
         var map = state.dailyClosestByKey ?? [:]
@@ -404,17 +561,46 @@ final class InMemoryJuicdRepository: ObservableObject {
         state.dailyClosestByKey = map
         persist()
 
+        let resultEliminated: Bool
+        if playthrough {
+            resultEliminated = st.eliminated
+        } else {
+            resultEliminated = !userWon
+        }
+
         return DailyClosestPickResult(
             quarter: round,
-            eliminated: !userWon,
+            eliminated: resultEliminated,
             wonTournament: st.completed
         )
+    }
+
+    private func applyDailyClosestBracketWin(userId: UUID, date: Date, st: inout DailyClosestTournamentState) {
+        st.completed = true
+        let cupBonus = 120
+        var profile = state.profiles[userId]!
+        let tierAtWin = profile.currentTier
+        profile.seasonPointsWon += cupBonus
+        profile.allTimePointsWon += cupBonus
+        state.profiles[userId] = profile
+        state.ledger.append(
+            PointsLedgerEntry(
+                id: UUID(),
+                createdAt: date,
+                userId: userId,
+                tournamentId: st.tournamentId,
+                betSlipId: nil,
+                deltaPoints: cupBonus,
+                reason: "Daily closest — win bracket"
+            )
+        )
+        awardDailyTournamentWinBadge(userId: userId, tier: tierAtWin)
     }
 
     // MARK: - Tournament lifecycle
 
     func dailyTournament(for date: Date = .now) -> Tournament {
-        let dayISO = Self.isoDay(date)
+        let dayISO = SlateDay.slateKey(for: date)
         if let existing = state.dailyTournamentByDayISO[dayISO] {
             return existing
         }
@@ -505,11 +691,10 @@ final class InMemoryJuicdRepository: ObservableObject {
 
             state.profiles[userId] = profile
 
-            let profit = max(0, estimatedNetPointsPayout)
-            pointsDelta = profit
-            // Award "points won" toward season ranking.
-            profile.seasonPointsWon += profit
-            profile.allTimePointsWon += profit
+            let seasonPts = max(0, estimatedNetPointsPayout)
+            pointsDelta = seasonPts
+            profile.seasonPointsWon += seasonPts
+            profile.allTimePointsWon += seasonPts
             state.profiles[userId] = profile
 
             let winEntry = PointsLedgerEntry(
@@ -569,13 +754,37 @@ final class InMemoryJuicdRepository: ObservableObject {
         )
     }
 
+    /// FNV-1a over UTF-8 — stable across launches (Swift `String.hashValue` is salted per process).
+    private static func stableHashFNV1a64(_ string: String) -> UInt64 {
+        var hash: UInt64 = 1469598103934665603
+        for b in string.utf8 {
+            hash ^= UInt64(b)
+            hash &*= 1099511628211
+        }
+        return hash == 0 ? 1 : hash
+    }
+
     private func resolveLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
-        var rng = SeededRNG(seed: seedKey.hashValueAsUInt64)
+        var rng = SeededRNG(seed: Self.stableHashFNV1a64(seedKey))
         var outcomes: [(legId: UUID, didWin: Bool)] = []
         outcomes.reserveCapacity(parlayLegs.count)
         for leg in parlayLegs {
             // Odds are "decimal". Approx implied probability = 1/odds.
             let p = min(max(1.0 / max(1.01, leg.oddsDecimalAtSubmit), 0.05), 0.95)
+            let roll = rng.nextDouble()
+            outcomes.append((legId: leg.id, didWin: roll < p))
+        }
+        return outcomes
+    }
+
+    /// Softer per-leg win rates so multi-leg Play parlays are not almost always losses in local/dev.
+    private func resolvePlayParlayLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
+        var rng = SeededRNG(seed: Self.stableHashFNV1a64(seedKey))
+        var outcomes: [(legId: UUID, didWin: Bool)] = []
+        outcomes.reserveCapacity(parlayLegs.count)
+        for leg in parlayLegs {
+            let implied = 1.0 / max(1.01, leg.oddsDecimalAtSubmit)
+            let p = min(0.78, max(0.38, implied * 1.32))
             let roll = rng.nextDouble()
             outcomes.append((legId: leg.id, didWin: roll < p))
         }
@@ -591,8 +800,301 @@ final class InMemoryJuicdRepository: ObservableObject {
 
     func estimatedNetPointsPayout(stakePoints: Int, parlayOddsDecimal: Double) -> Int {
         guard stakePoints > 0 else { return 0 }
-        let profit = Double(stakePoints) * (parlayOddsDecimal - 1.0)
-        return max(0, Int(profit.rounded()))
+        let net = Double(stakePoints) * (parlayOddsDecimal - 1.0)
+        return max(0, Int(net.rounded()))
+    }
+
+    /// Whether the user already placed at least one Play-board parlay stake on the **current slate** (local 6am day).
+    func hasPlayParlayStakeToday(userId: UUID, date: Date = .now) -> Bool {
+        let day = SlateDay.slateKey(for: date)
+        return state.ledger.contains { entry in
+            entry.userId == userId
+                && SlateDay.slateKey(for: entry.createdAt) == day
+                && entry.reason == "Play parlay stake"
+        }
+    }
+
+    /// Single pick or parlay from the Play board: deducts stake, resolves all legs, credits payout + season points on win.
+    func submitPlayParlay(userId: UUID, stakePoints: Int, legs: [BetLeg], date: Date = .now) -> PlayParlayOutcome? {
+        guard stakePoints > 0, !legs.isEmpty else { return nil }
+        guard var profile = state.profiles[userId] else { return nil }
+        let maxStake = min(Self.dailyPlayAllowancePoints, profile.availableDailyPoints)
+        guard stakePoints <= maxStake else { return nil }
+        guard profile.availableDailyPoints >= stakePoints else { return nil }
+
+        recordDailyRankParticipation(userId: userId, date: date)
+
+        profile.availableDailyPoints -= stakePoints
+        state.profiles[userId] = profile
+        state.ledger.append(
+            PointsLedgerEntry(
+                id: UUID(),
+                createdAt: date,
+                userId: userId,
+                tournamentId: nil,
+                betSlipId: nil,
+                deltaPoints: -stakePoints,
+                reason: "Play parlay stake"
+            )
+        )
+
+        let implied = parlayOddsDecimal(for: legs)
+        let slateKey = SlateDay.slateKey(for: date)
+        let seedKey = "\(userId.uuidString)-play-\(slateKey)-\(legs.map { "\($0.marketId.uuidString)|\($0.choiceId.uuidString)|\($0.oddsDecimalAtSubmit)" }.joined(separator: ";"))"
+        let resolved = resolvePlayParlayLegs(parlayLegs: legs, seedKey: seedKey)
+        let didWinAll = resolved.allSatisfy { $0.didWin }
+
+        var seasonPointsEarned = 0
+        if didWinAll {
+            profile = state.profiles[userId]!
+            let payoutIncludingStake = Int((Double(stakePoints) * implied).rounded())
+            profile.availableDailyPoints += payoutIncludingStake
+            seasonPointsEarned = max(0, Int((Double(stakePoints) * (implied - 1.0)).rounded()))
+            profile.seasonPointsWon += seasonPointsEarned
+            profile.allTimePointsWon += seasonPointsEarned
+            state.profiles[userId] = profile
+            state.ledger.append(
+                PointsLedgerEntry(
+                    id: UUID(),
+                    createdAt: date,
+                    userId: userId,
+                    tournamentId: nil,
+                    betSlipId: nil,
+                    deltaPoints: payoutIncludingStake,
+                    reason: "Play parlay payout"
+                )
+            )
+        }
+
+        let slipId = UUID()
+        var entries = state.playBoardEntries ?? []
+        entries.append(
+            PlayBoardEntry(
+                id: slipId,
+                userId: userId,
+                slateDayKey: slateKey,
+                createdAt: date,
+                stakePoints: stakePoints,
+                legSummaries: legs.map(\.choiceLabel),
+                combinedOdds: implied,
+                didWin: didWinAll,
+                seasonPointsEarned: seasonPointsEarned
+            )
+        )
+        state.playBoardEntries = entries
+
+        persist()
+        return PlayParlayOutcome(didWin: didWinAll, seasonPointsEarned: seasonPointsEarned)
+    }
+
+    // MARK: - Career & season stats
+
+    func careerBettingStats(userId: UUID) -> CareerBettingStats {
+        periodBettingStats(userId: userId, seasonKey: nil)
+    }
+
+    func seasonBettingStats(userId: UUID, seasonKey: String = JuicdSeason.currentSeasonKey()) -> CareerBettingStats {
+        periodBettingStats(userId: userId, seasonKey: seasonKey)
+    }
+
+    private func periodBettingStats(userId: UUID, seasonKey: String?) -> CareerBettingStats {
+        func inSeason(_ date: Date) -> Bool {
+            guard let sk = seasonKey else { return true }
+            return JuicdSeason.contains(date, seasonKey: sk)
+        }
+
+        let mine = (state.playBoardEntries ?? []).filter { entry in
+            entry.userId == userId && inSeason(entry.createdAt)
+        }
+        let playWins = mine.filter(\.didWin).count
+        let playLosses = mine.count - playWins
+
+        let dailySlips = state.dailyBets.values.filter { slip in
+            guard slip.userId == userId, let t = slip.resolvedAt else { return false }
+            return inSeason(t)
+        }
+        let rankedDailyWins = dailySlips.filter { $0.didWinAllLegs == true }.count
+        let rankedDailyLosses = dailySlips.count - rankedDailyWins
+
+        var closestRoundWins = 0
+        var closestRoundLosses = 0
+        for (key, st) in state.dailyClosestByKey ?? [:] {
+            guard key.hasPrefix(userId.uuidString) else { continue }
+            if let sk = seasonKey {
+                guard let d = Self.dateFromLocalDayISO(st.dayISO), JuicdSeason.contains(d, seasonKey: sk) else { continue }
+            }
+            for r in st.roundsCompleted {
+                if r.userWon { closestRoundWins += 1 } else { closestRoundLosses += 1 }
+            }
+        }
+
+        var totalPointsStaked = 0
+        var totalPointsWonBack = 0
+        var dailyBracketTournamentWins = 0
+
+        for entry in state.ledger where entry.userId == userId {
+            guard inSeason(entry.createdAt) else { continue }
+            if entry.reason == "Play parlay stake" || entry.reason.hasPrefix("Daily bet stake") {
+                totalPointsStaked += abs(entry.deltaPoints)
+            }
+            if entry.deltaPoints > 0 {
+                if entry.reason == "Play parlay payout"
+                    || entry.reason.contains("Daily bet payout")
+                    || entry.reason.contains("Daily closest reward")
+                    || entry.reason == "Daily closest — win bracket"
+                {
+                    totalPointsWonBack += entry.deltaPoints
+                }
+            }
+            if entry.reason == "Daily closest — win bracket" {
+                dailyBracketTournamentWins += 1
+            }
+        }
+
+        return CareerBettingStats(
+            playWins: playWins,
+            playLosses: playLosses,
+            rankedDailyWins: rankedDailyWins,
+            rankedDailyLosses: rankedDailyLosses,
+            closestRoundWins: closestRoundWins,
+            closestRoundLosses: closestRoundLosses,
+            totalPointsStaked: totalPointsStaked,
+            totalPointsWonBack: totalPointsWonBack,
+            dailyBracketTournamentWins: dailyBracketTournamentWins
+        )
+    }
+
+    // MARK: - Friends
+
+    private func friendshipsList() -> [Friendship] { state.friendships ?? [] }
+
+    private func friendRequestsList() -> [FriendRequest] { state.friendRequests ?? [] }
+
+    private static func sortedUserPair(_ a: UUID, _ b: UUID) -> (UUID, UUID) {
+        a.uuidString < b.uuidString ? (a, b) : (b, a)
+    }
+
+    private func areFriends(_ a: UUID, _ b: UUID) -> Bool {
+        let (l, h) = Self.sortedUserPair(a, b)
+        return friendshipsList().contains { $0.lowerUserId == l && $0.higherUserId == h }
+    }
+
+    func friendUserIds(of userId: UUID) -> [UUID] {
+        var ids: [UUID] = []
+        for f in friendshipsList() {
+            if f.lowerUserId == userId { ids.append(f.higherUserId) }
+            else if f.higherUserId == userId { ids.append(f.lowerUserId) }
+        }
+        return ids
+    }
+
+    func sendFriendRequest(from fromUserId: UUID, to toUserId: UUID) -> Bool {
+        guard fromUserId != toUserId else { return false }
+        guard state.profiles[fromUserId] != nil, state.profiles[toUserId] != nil else { return false }
+        if areFriends(fromUserId, toUserId) { return false }
+        var reqs = friendRequestsList()
+        let duplicate = reqs.contains { r in
+            (r.fromUserId == fromUserId && r.toUserId == toUserId)
+                || (r.fromUserId == toUserId && r.toUserId == fromUserId)
+        }
+        if duplicate { return false }
+        reqs.append(FriendRequest(id: UUID(), fromUserId: fromUserId, toUserId: toUserId, createdAt: .now))
+        state.friendRequests = reqs
+        persist()
+        return true
+    }
+
+    func acceptFriendRequest(requestId: UUID, asUserId: UUID) -> Bool {
+        var reqs = friendRequestsList()
+        guard let idx = reqs.firstIndex(where: { $0.id == requestId }) else { return false }
+        let r = reqs[idx]
+        guard r.toUserId == asUserId else { return false }
+        reqs.remove(at: idx)
+        state.friendRequests = reqs
+        let pair = Self.sortedUserPair(r.fromUserId, r.toUserId)
+        var friends = friendshipsList()
+        if !friends.contains(where: { $0.lowerUserId == pair.0 && $0.higherUserId == pair.1 }) {
+            friends.append(Friendship(lowerUserId: pair.0, higherUserId: pair.1, createdAt: .now))
+        }
+        state.friendships = friends
+        persist()
+        return true
+    }
+
+    func rejectFriendRequest(requestId: UUID, asUserId: UUID) -> Bool {
+        var reqs = friendRequestsList()
+        guard let idx = reqs.firstIndex(where: { $0.id == requestId }) else { return false }
+        guard reqs[idx].toUserId == asUserId else { return false }
+        reqs.remove(at: idx)
+        state.friendRequests = reqs
+        persist()
+        return true
+    }
+
+    func cancelOutgoingFriendRequest(requestId: UUID, asUserId: UUID) -> Bool {
+        var reqs = friendRequestsList()
+        guard let idx = reqs.firstIndex(where: { $0.id == requestId }) else { return false }
+        guard reqs[idx].fromUserId == asUserId else { return false }
+        reqs.remove(at: idx)
+        state.friendRequests = reqs
+        persist()
+        return true
+    }
+
+    func incomingFriendRequests(for userId: UUID) -> [FriendRequest] {
+        friendRequestsList().filter { $0.toUserId == userId }
+    }
+
+    func outgoingFriendRequests(for userId: UUID) -> [FriendRequest] {
+        friendRequestsList().filter { $0.fromUserId == userId }
+    }
+
+    func searchProfilesForFriendInvite(excludingUserId: UUID, query: String) -> [Profile] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return [] }
+        let friends = Set(friendUserIds(of: excludingUserId))
+        let reqs = friendRequestsList()
+        return state.profiles.values.filter { p in
+            guard p.id != excludingUserId else { return false }
+            guard !friends.contains(p.id) else { return false }
+            let pending = reqs.contains { r in
+                (r.fromUserId == excludingUserId && r.toUserId == p.id)
+                    || (r.fromUserId == p.id && r.toUserId == excludingUserId)
+            }
+            guard !pending else { return false }
+            return p.displayName.lowercased().contains(q)
+        }
+        .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    func friendLeaderboardRows(for userId: UUID) -> [(rank: Int, profile: Profile)] {
+        var rows: [Profile] = []
+        if let me = state.profiles[userId] { rows.append(me) }
+        for fid in friendUserIds(of: userId) {
+            if let p = state.profiles[fid] { rows.append(p) }
+        }
+        let sorted = rows.sorted { lhs, rhs in
+            let ml = lhs.mmr ?? MMRLogic.startingMMR
+            let mr = rhs.mmr ?? MMRLogic.startingMMR
+            if ml != mr { return ml > mr }
+            return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+        return sorted.enumerated().map { (i, p) in (rank: i + 1, profile: p) }
+    }
+
+    func recentPlayEntries(userId: UUID, limit: Int = 20) -> [PlayBoardEntry] {
+        Array(
+            (state.playBoardEntries ?? [])
+                .filter { $0.userId == userId }
+                .sorted { $0.createdAt > $1.createdAt }
+                .prefix(limit)
+        )
+    }
+
+    func recentPlayForm(userId: UUID, last n: Int) -> (wins: Int, losses: Int) {
+        let slice = recentPlayEntries(userId: userId, limit: n)
+        let w = slice.filter(\.didWin).count
+        return (w, slice.count - w)
     }
 
     // MARK: - Groups + Weekly mock
@@ -752,6 +1254,25 @@ final class InMemoryJuicdRepository: ObservableObject {
         persist()
     }
 
+    /// Prototype: clear today’s daily closest tournament so you can re-enter and test flows.
+    func resetDailyClosestTournamentForTesting(userId: UUID, date: Date = .now) {
+        let k = dailyClosestStorageKey(userId: userId, slateKey: SlateDay.slateKey(for: date))
+        var map = state.dailyClosestByKey ?? [:]
+        map.removeValue(forKey: k)
+        state.dailyClosestByKey = map
+        persist()
+    }
+
+    /// Prototype: refill daily Play balance to the full allowance for the current slate (no extra ledger “refill” line).
+    func resetDailyPlayBalanceForTesting(userId: UUID, date: Date = .now) {
+        guard var profile = state.profiles[userId] else { return }
+        let slateKey = SlateDay.slateKey(for: date)
+        profile.availableDailyPoints = Self.dailyPlayAllowancePoints
+        profile.lastDailyPointsAwardDateISO = slateKey
+        state.profiles[userId] = profile
+        persist()
+    }
+
     // MARK: - Local persistence helpers
 
     private func seedGroups() {
@@ -785,6 +1306,14 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     // MARK: - Utilities
+
+    private static func dateFromLocalDayISO(_ iso: String) -> Date? {
+        let df = DateFormatter()
+        df.calendar = Calendar.current
+        df.timeZone = Calendar.current.timeZone
+        df.dateFormat = "yyyy-MM-dd"
+        return df.date(from: iso)
+    }
 
     private static func isoDay(_ date: Date) -> String {
         let df = DateFormatter()

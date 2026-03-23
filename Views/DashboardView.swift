@@ -15,6 +15,8 @@ struct DashboardView: View {
                 )
 
                 if let profile = viewModel.profile {
+                    todaysEntriesSection
+
                     lastRankedMatchCard(profile: profile)
 
                     Card(title: "Daily balance", systemImage: "bolt.fill", style: .hero) {
@@ -35,7 +37,7 @@ struct DashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
 
-                            Text("You get \(InMemoryJuicdRepository.dailyPlayAllowancePoints) fresh points each day to bet with. That refill does not add to your season score — only winnings and bonuses do.")
+                            Text("You get \(InMemoryJuicdRepository.dailyPlayAllowancePoints) fresh points each local slate (after 6am) to bet with. That refill does not add to your season score — only points you win from bets and bonuses do.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)
@@ -95,25 +97,6 @@ struct DashboardView: View {
                     }
 
                     rankingsCard(profile: profile)
-
-                    Card(title: "Groups", systemImage: "person.3.fill") {
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.turn.up.right")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(JuicdTheme.brand)
-                            HStack(spacing: 0) {
-                                Text("You’re in \(viewModel.userGroupsCount) group(s). Open the ")
-                                    .foregroundStyle(JuicdTheme.textSecondary)
-                                Text("Groups")
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(JuicdTheme.brand)
-                                Text(" tab for standings.")
-                                    .foregroundStyle(JuicdTheme.textSecondary)
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
                 } else {
                     Card(title: "Loading…", systemImage: "hourglass") {
                         Text("Loading profile.")
@@ -126,6 +109,9 @@ struct DashboardView: View {
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
+        .onAppear {
+            viewModel.refresh()
+        }
         .sheet(isPresented: $showRankingsHelp) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 16) {
@@ -164,40 +150,89 @@ struct DashboardView: View {
         }
     }
 
-    @ViewBuilder
-    private func lastRankedMatchCard(profile: Profile) -> some View {
-        Card(title: "Last ranked match", systemImage: "chart.line.uptrend.xyaxis", style: .hero) {
-            if let m = profile.lastDailyMatch {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(formattedRankPoolDay(m.dayISO))
-                        .font(.caption.weight(.heavy))
-                        .foregroundStyle(JuicdTheme.textTertiary)
-                    Text("Placement \(m.placement) / \(m.poolSize)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textPrimary)
-                    if m.tierBefore != m.tierAfter {
-                        Text("Tier \(m.tierBefore.displayName) → \(m.tierAfter.displayName)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(JuicdTheme.textSecondary)
-                    } else {
-                        Text("Tier unchanged at \(m.tierAfter.displayName)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(JuicdTheme.textSecondary)
-                    }
-                }
-            } else {
-                Text("No ranked pool result yet. When you bet on a day and the pool resolves, your placement for that day appears here.")
+    private var todaysEntriesSection: some View {
+        Card(title: "Today’s entries", systemImage: "list.bullet.clipboard.fill", style: .hero) {
+            if viewModel.todaysEntries.isEmpty {
+                Text("No slips yet on today’s slate. Place picks on the Play tab — they’ll show here with stake, combined odds, and season points.")
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .font(.system(size: 14, weight: .medium))
                     .lineSpacing(3)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(viewModel.todaysEntries.enumerated()), id: \.element.id) { index, entry in
+                        if index > 0 {
+                            Divider().overlay(JuicdTheme.strokeSubtle).padding(.vertical, 8)
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
+                                    .font(.caption.weight(.heavy))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                                Spacer()
+                                Text(entry.didWin ? "Won" : "Missed")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary)
+                            }
+                            Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(JuicdTheme.textPrimary)
+                            Text(entry.legSummaries.joined(separator: " · "))
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .lineLimit(3)
+                            if entry.didWin {
+                                Text("+\(entry.seasonPointsEarned) season pts")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(JuicdTheme.brand)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func lastRankedMatchCard(profile: Profile) -> some View {
+        let snapshot = profile.lastDailyMatch ?? DailyMatchSnapshot.devPreview
+        let isSample = profile.lastDailyMatch == nil
+
+        Card(title: "Last ranked match", systemImage: "chart.line.uptrend.xyaxis", style: .hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                if isSample {
+                    Text("Sample preview")
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(JuicdTheme.brand)
+                }
+                Text(formattedRankPoolDay(snapshot.dayISO))
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(JuicdTheme.textTertiary)
+                Text("Placement \(snapshot.placement) / \(snapshot.poolSize)")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                if snapshot.tierBefore != snapshot.tierAfter {
+                    Text("Tier \(snapshot.tierBefore.displayName) → \(snapshot.tierAfter.displayName)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                } else {
+                    Text("Tier unchanged at \(snapshot.tierAfter.displayName)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                }
+                if isSample {
+                    Text("Your real result appears after a slate resolves once you’ve placed bets.")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                }
             }
         }
     }
 
     private func formattedRankPoolDay(_ iso: String) -> String {
         let inDF = DateFormatter()
-        inDF.calendar = Calendar(identifier: .gregorian)
-        inDF.timeZone = TimeZone(secondsFromGMT: 0)
+        inDF.calendar = Calendar.current
+        inDF.timeZone = TimeZone.current
         inDF.dateFormat = "yyyy-MM-dd"
         guard let d = inDF.date(from: iso) else { return "Pool day \(iso)" }
         let out = DateFormatter()

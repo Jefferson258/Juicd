@@ -3,35 +3,242 @@ import SwiftUI
 struct PlayView: View {
     @ObservedObject var viewModel: PlayViewModel
 
+    private let juicdBoostStroke = Color(red: 1, green: 0.82, blue: 0.12)
+
     var body: some View {
-        ScrollView {
-            SectionColumn(spacing: 22) {
-                BrandHeader(
-                    title: "Play",
-                    subtitle: "Browse props by league. Each UTC night, two random tiles get Juicd 1.5× payout odds (simulated). Add ODDS_API_KEY for a live moneyline tile.",
-                    centered: true,
-                    kicker: "Today’s board"
-                )
+        ZStack(alignment: .top) {
+            ScrollView {
+                SectionColumn(spacing: 22) {
+                    BrandHeader(
+                        title: "Play",
+                        subtitle: "For You shows Popular ribbons by league. Pick a sport to filter by market, search names, and scroll picks vertically. One cached Odds API line per session keeps quota usage low.",
+                        centered: true,
+                        kicker: "Today’s board"
+                    )
 
-                if let profile = viewModel.profile {
-                    bankrollHero(points: profile.availableDailyPoints)
+                    if let profile = viewModel.profile {
+                        bankrollHero(points: profile.availableDailyPoints)
+                    }
+
+                    sportFilterPills
+
+                    if viewModel.sportPill != .forYou {
+                        statFilterPills
+                        searchBar
+                    }
+
+                    oddsToolbar
+
+                    if viewModel.displayedRibbons.isEmpty {
+                        playEmptyState
+                    } else {
+                        ForEach(viewModel.displayedRibbons) { ribbon in
+                            ribbonBlock(ribbon)
+                                .id(ribbon.id)
+                        }
+                    }
                 }
-
-                oddsToolbar
-
-                ForEach(viewModel.ribbons) { ribbon in
-                    ribbonBlock(ribbon)
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .padding(.bottom, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .padding(.bottom, 8)
+            .scrollIndicators(.hidden)
+            .background(JuicdScreenBackground())
+
+            if viewModel.pickingAdditionalLeg {
+                addLegBanner
+            }
         }
-        .scrollIndicators(.hidden)
-        .background(JuicdScreenBackground())
         .task {
             await viewModel.refreshLiveOddsLine()
         }
+        .onAppear {
+            viewModel.refreshProfile()
+        }
+        .sheet(isPresented: $viewModel.showParlayBuilder) {
+            ParlayBuilderSheet(viewModel: viewModel)
+        }
+        .alert("Use your daily points", isPresented: $viewModel.showFirstBetReminder) {
+            Button("Place bet") {
+                viewModel.executePlaceParlay()
+            }
+            Button("Go back", role: .cancel) {}
+        } message: {
+            Text(
+                "This is your first bet today with \(viewModel.stakePoints) of \(InMemoryJuicdRepository.dailyPlayAllowancePoints) daily points. Using the rest on more picks or parlays gives you more chances at a strong ranked day."
+            )
+        }
+        .overlay(alignment: .bottom) {
+            if let toast = viewModel.builderToast {
+                Text(toast)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(
+                        Capsule()
+                            .fill(JuicdTheme.cardElevated)
+                            .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+                    )
+                    .padding(.bottom, 28)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.builderToast)
+    }
+
+    private var sportFilterPills: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(PlaySportPill.primaryRow) { pill in
+                    let selected = viewModel.sportPill == pill
+                    Button {
+                        viewModel.sportPill = pill
+                    } label: {
+                        HStack(spacing: 6) {
+                            if pill == .forYou {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            Text(pill.displayTitle)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(selected ? JuicdTheme.textPrimary : JuicdTheme.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(selected ? JuicdTheme.brand.opacity(0.22) : JuicdTheme.card.opacity(0.9))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(selected ? Color.white.opacity(0.55) : JuicdTheme.strokeSubtle, lineWidth: selected ? 1.5 : 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var statFilterPills: some View {
+        let opts = viewModel.sportPill.statPillOptions
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(opts, id: \.id) { opt in
+                    let selected = viewModel.statFilterId == opt.id
+                    Button {
+                        viewModel.statFilterId = opt.id
+                    } label: {
+                        Text(opt.label)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(selected ? JuicdTheme.textPrimary : JuicdTheme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(selected ? JuicdTheme.cardElevated : JuicdTheme.card.opacity(0.65))
+                            )
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(selected ? Color.white.opacity(0.45) : JuicdTheme.strokeSubtle, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            TextField("Search player or team", text: $viewModel.searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(JuicdTheme.textPrimary)
+            if !viewModel.searchText.isEmpty {
+                Button {
+                    viewModel.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(JuicdTheme.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                )
+        )
+    }
+
+    private var playEmptyState: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.system(size: 44, weight: .medium))
+                .foregroundStyle(JuicdTheme.textTertiary)
+            Text("No picks match")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
+            Text(
+                viewModel.hasActiveSearch
+                    ? "Change the search or clear it, or widen filters to see more lines."
+                    : "Try another stat filter or sport, or sync odds again when lines are up."
+            )
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(JuicdTheme.textSecondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 36)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(JuicdTheme.card.opacity(0.5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                )
+        )
+    }
+
+    private var addLegBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "hand.tap.fill")
+                .foregroundStyle(juicdBoostStroke)
+            Text("Tap a prop to add it to your parlay")
+                .font(.system(size: 14, weight: .semibold))
+            Spacer()
+            Button("Cancel") {
+                viewModel.cancelAddLeg()
+            }
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(JuicdTheme.brand)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(JuicdTheme.cardElevated)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(juicdBoostStroke.opacity(0.7), lineWidth: 1.5)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     private var oddsToolbar: some View {
@@ -164,17 +371,33 @@ struct PlayView: View {
     }
 
     private func ribbonBlock(_ ribbon: PlayPropRibbon) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PlayRibbonHeader(ribbon: ribbon)
+        let applySport = viewModel.sportPillToApply(forRibbonId: ribbon.id)
+        return VStack(alignment: .leading, spacing: 14) {
+            PlayRibbonHeader(
+                ribbon: ribbon,
+                onChevronTap: applySport.map { pill in
+                    { viewModel.sportPill = pill }
+                }
+            )
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
+            if viewModel.sportPill == .forYou {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(ribbon.props) { prop in
+                            propBetSquare(prop, ribbonId: ribbon.id)
+                        }
+                    }
+                    .padding(.leading, 2)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 4)
+                }
+            } else {
+                let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                     ForEach(ribbon.props) { prop in
                         propBetSquare(prop, ribbonId: ribbon.id)
                     }
                 }
-                .padding(.leading, 2)
-                .padding(.trailing, 16)
                 .padding(.vertical, 4)
             }
         }
@@ -183,115 +406,131 @@ struct PlayView: View {
     private func propBetSquare(_ prop: PlayPropBet, ribbonId: String) -> some View {
         let pillColor = JuicdTheme.leaguePillColor(tag: prop.leagueTag)
         let ribbonAccent = JuicdTheme.ribbonAccent(ribbonId: ribbonId)
+        let isJuicdBoost = prop.juicdMultiplier != nil
 
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(prop.leagueTag)
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.95))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [pillColor, pillColor.opacity(0.65)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+        return Button {
+            viewModel.handlePropTap(prop)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(prop.leagueTag)
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [pillColor, pillColor.opacity(0.65)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                    )
-                Spacer(minLength: 0)
-            }
-            .padding(.bottom, 10)
-
-            Text(prop.athleteOrTeam)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(JuicdTheme.textPrimary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.88)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(prop.matchup)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(JuicdTheme.textTertiary)
-                .lineLimit(1)
-                .padding(.top, 4)
-
-            Text(prop.propDescription)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(JuicdTheme.textSecondary)
-                .lineLimit(2)
-                .padding(.top, 6)
-
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(prop.lineText)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textSecondary)
-                Text(prop.pickLabel)
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-            }
-            .padding(.top, 8)
-
-            Spacer(minLength: 10)
-
-            HStack {
-                Text(prop.juicdMultiplier != nil ? "Juicd odds" : "Odds")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textTertiary)
-                Spacer()
-                if prop.juicdMultiplier != nil {
-                    Text("1.5×")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color(red: 1, green: 0.82, blue: 0.35))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color(red: 1, green: 0.75, blue: 0.2).opacity(0.2)))
-                }
-                Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(JuicdTheme.brand)
-            }
-            .padding(.top, 10)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(JuicdTheme.canvasDeep.opacity(0.85))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
-                    )
-            )
-        }
-        .padding(14)
-        .frame(width: 160, alignment: .leading)
-        .frame(minHeight: 210, alignment: .topLeading)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                JuicdTheme.cardElevated,
-                                JuicdTheme.card
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
                         )
-                    )
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [ribbonAccent.opacity(0.35), JuicdTheme.strokeSubtle],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                    if isJuicdBoost {
+                        Text("Juicd 1.5×")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .foregroundStyle(juicdBoostStroke)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(juicdBoostStroke.opacity(0.18)))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.bottom, 10)
+
+                Text(prop.athleteOrTeam)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.88)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(prop.matchup)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(JuicdTheme.textTertiary)
+                    .lineLimit(1)
+                    .padding(.top, 4)
+
+                Text(prop.propDescription)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .lineLimit(2)
+                    .padding(.top, 6)
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(prop.lineText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                    Text(prop.pickLabel)
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textPrimary)
+                }
+                .padding(.top, 8)
+
+                Spacer(minLength: 10)
+
+                HStack {
+                    Text(isJuicdBoost ? "Juicd odds" : "Odds")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                    Spacer()
+                    Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.brand)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .padding(.top, 10)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(JuicdTheme.canvasDeep.opacity(0.85))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                        )
+                )
             }
-            .shadow(color: Color.black.opacity(0.35), radius: 12, y: 6)
+            .padding(14)
+            .frame(width: 160, alignment: .leading)
+            .frame(minHeight: 210, alignment: .topLeading)
+            .background {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    JuicdTheme.cardElevated,
+                                    JuicdTheme.card
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [ribbonAccent.opacity(0.35), JuicdTheme.strokeSubtle],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                    if isJuicdBoost {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(juicdBoostStroke, lineWidth: 2.5)
+                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                            .stroke(juicdBoostStroke.opacity(0.35), lineWidth: 4)
+                    }
+                }
+                .shadow(color: isJuicdBoost ? juicdBoostStroke.opacity(0.25) : Color.black.opacity(0.35), radius: isJuicdBoost ? 14 : 12, y: 6)
+            }
         }
+        .buttonStyle(.plain)
     }
 }

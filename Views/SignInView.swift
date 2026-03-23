@@ -34,7 +34,7 @@ struct SignInView: View {
 
                         Card(title: "Start with \(InMemoryJuicdRepository.dailyPlayAllowancePoints) points / day", systemImage: "bolt.fill", style: .hero) {
                             VStack(spacing: 20) {
-                                Text("Each day you get a balance to bet with. Rank tier moves when you play ranked days — skipping days does not drop your tier.")
+                                Text("Each day you receive \(InMemoryJuicdRepository.dailyPlayAllowancePoints) points to stake on picks and parlays. Use them on the Play board and in ranked modes to try to climb your tier — skipping a day does not drop your rank.")
                                     .foregroundStyle(JuicdTheme.textSecondary)
                                     .font(.system(size: 15, weight: .medium))
                                     .multilineTextAlignment(.center)
@@ -47,27 +47,23 @@ struct SignInView: View {
                                         .textCase(.uppercase)
                                         .tracking(0.6)
 
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(JuicdTheme.card)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
-                                            )
-                                        TextField("Pick a name", text: $viewModel.displayName)
-                                            .textInputAutocapitalization(.words)
-                                            .disableAutocorrection(true)
-                                            .focused($isNameFocused)
-                                            .submitLabel(.done)
-                                            .padding(.horizontal, 14)
-                                            .padding(.vertical, 14)
-                                            .foregroundStyle(JuicdTheme.textPrimary)
-                                    }
-                                    .frame(minHeight: 50)
-                                    .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .onTapGesture {
-                                        isNameFocused = true
-                                    }
+                                    TextField("Pick a name", text: $viewModel.displayName)
+                                        .textInputAutocapitalization(.words)
+                                        .disableAutocorrection(true)
+                                        .focused($isNameFocused)
+                                        .submitLabel(.done)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                                        .foregroundStyle(JuicdTheme.textPrimary)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .fill(JuicdTheme.card)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                                )
+                                        )
                                 }
 
                                 if let error = viewModel.authError {

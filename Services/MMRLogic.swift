@@ -40,13 +40,13 @@ enum MMRLogic {
         userId: UUID,
         dayISO: String,
         baseMMR: Double,
-        netProfitFromBets: Int,
+        netPointsFromBets: Int,
         rng: inout SeededRNG
     ) -> Double {
         let mmrEdge = (baseMMR - startingMMR) / 120
-        let profitEdge = Double(min(40, max(-40, netProfitFromBets))) / 40
+        let pointsEdge = Double(min(40, max(-40, netPointsFromBets))) / 40
         let noise = rng.nextDouble() * 28 + rng.nextDouble() * 12
-        return 50 + mmrEdge * 8 + profitEdge * 10 + noise
+        return 50 + mmrEdge * 8 + pointsEdge * 10 + noise
     }
 
     static func opponentName(seed: UInt64, index: Int) -> String {

@@ -14,6 +14,12 @@ final class TourneyViewModel: ObservableObject {
     @Published var dailyPickText: String = "52.5"
     @Published var errorMessage: String?
 
+    /// Active round’s locked prop (nil if not in a live run).
+    var currentRoundSpec: DailyRoundPropSpec? {
+        guard let st = dailyClosest, !st.completed, !st.eliminated else { return nil }
+        return st.roundSpecs.first { $0.round == st.nextQuarter }
+    }
+
     init(repository: InMemoryJuicdRepository) {
         self.repository = repository
     }
@@ -41,6 +47,14 @@ final class TourneyViewModel: ObservableObject {
         guard let userId else { return }
         dailyClosest = repository.dailyClosestState(userId: userId)
         refreshGameOptions()
+        refreshSuggestedPickText()
+    }
+
+    /// Sets `dailyPickText` to a reasonable midpoint for the next round (after enter or submit).
+    func refreshSuggestedPickText() {
+        guard let spec = currentRoundSpec else { return }
+        let mid = (spec.simMin + spec.simMax) / 2
+        dailyPickText = String(format: "%.1f", (mid * 10).rounded() / 10)
     }
 
     func enterDailyClosest() {
@@ -53,7 +67,33 @@ final class TourneyViewModel: ObservableObject {
         dailyClosest = repository.enterDailyClosestTournament(userId: userId, gameId: gid)
         if dailyClosest == nil {
             errorMessage = "Entry closed for that game or we couldn’t start the bracket."
+        } else {
+            refreshSuggestedPickText()
         }
+    }
+
+    /// Demo: auto-submit picks until the bracket ends (win, loss, or cap). Uses local random jitter around each round’s midpoint.
+    func simulateFullBracketDemo() {
+        guard let userId else { return }
+        errorMessage = nil
+        var iterations = 0
+        while iterations < 16 {
+            iterations += 1
+            refresh()
+            guard let st = dailyClosest, !st.completed, !st.eliminated else { break }
+            guard let spec = st.roundSpecs.first(where: { $0.round == st.nextQuarter }) else {
+                errorMessage = "Missing round data."
+                break
+            }
+            let mid = (spec.simMin + spec.simMax) / 2
+            let jitter = Double.random(in: -2.8 ... 2.8)
+            let v = max(spec.simMin, min(spec.simMax, mid + jitter))
+            dailyPickText = String(format: "%.1f", (v * 10).rounded() / 10)
+            guard let pick = Double(dailyPickText.replacingOccurrences(of: ",", with: ".")) else { break }
+            lastDailyPickResult = repository.submitDailyClosestPick(userId: userId, pick: pick, playthrough: true)
+            if lastDailyPickResult == nil { break }
+        }
+        refresh()
     }
 
     func submitDailyPick() {

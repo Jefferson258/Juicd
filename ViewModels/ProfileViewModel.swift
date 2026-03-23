@@ -8,6 +8,8 @@ final class ProfileViewModel: ObservableObject {
 
     @Published private(set) var profile: Profile?
     @Published private(set) var badges: [RewardBadge] = []
+    @Published private(set) var careerStats: CareerBettingStats?
+    @Published private(set) var seasonStats: CareerBettingStats?
 
     init(repository: InMemoryJuicdRepository) {
         self.repository = repository
@@ -18,20 +20,38 @@ final class ProfileViewModel: ObservableObject {
         guard let userId else { return }
         repository.resolveDailyRankOutcomes(userId: userId, now: .now)
         _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
+        refresh()
+    }
+
+    func refresh() {
+        guard let userId else { return }
         profile = repository.profile(userId: userId)
         badges = repository.userBadges(userId: userId)
+        careerStats = repository.careerBettingStats(userId: userId)
+        seasonStats = repository.seasonBettingStats(userId: userId)
     }
 
     func simulateSeasonEndAward() {
         guard let userId else { return }
         repository.awardSeasonBadgesIfNeeded(userId: userId)
-        badges = repository.userBadges(userId: userId)
+        refresh()
     }
 
     func resetSeason() {
         guard let userId else { return }
         repository.resetSeason(for: userId)
-        profile = repository.profile(userId: userId)
-        badges = repository.userBadges(userId: userId)
+        refresh()
+    }
+
+    func resetDailyClosestTournamentForTesting() {
+        guard let userId else { return }
+        repository.resetDailyClosestTournamentForTesting(userId: userId)
+        refresh()
+    }
+
+    func resetDailyPlayBalanceForTesting() {
+        guard let userId else { return }
+        repository.resetDailyPlayBalanceForTesting(userId: userId)
+        refresh()
     }
 }
