@@ -239,11 +239,26 @@ struct SectionColumn<Content: View>: View {
 
 struct PlayRibbonHeader: View {
     let ribbon: PlayPropRibbon
+    /// When set, the **entire** header row (icon + title + chevron) opens that league filter on Play.
     var onChevronTap: (() -> Void)?
 
     private var accent: Color { JuicdTheme.ribbonAccent(ribbonId: ribbon.id) }
 
+    @ViewBuilder
     var body: some View {
+        if let action = onChevronTap {
+            Button(action: action) {
+                headerRow(showChevron: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open \(ribbon.title) board")
+        } else {
+            headerRow(showChevron: false)
+        }
+    }
+
+    @ViewBuilder
+    private func headerRow(showChevron: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -273,23 +288,16 @@ struct PlayRibbonHeader: View {
                 }
             }
             Spacer(minLength: 0)
-            if let onChevronTap {
-                Button(action: onChevronTap) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(JuicdTheme.textTertiary)
-                        .frame(minWidth: 36, minHeight: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open this league’s board")
-            } else {
+            if showChevron {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(JuicdTheme.textTertiary)
             }
         }
         .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 

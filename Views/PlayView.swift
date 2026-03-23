@@ -42,6 +42,8 @@ struct PlayView: View {
                 .padding(.vertical, 12)
                 .padding(.bottom, 8)
             }
+            // New identity when sport/stat filters change so scroll offset resets to the top (no stale position from the last league).
+            .id("\(viewModel.sportPill.rawValue)-\(viewModel.statFilterId)")
             .scrollIndicators(.hidden)
             .background(JuicdScreenBackground())
 
@@ -372,12 +374,13 @@ struct PlayView: View {
 
     private func ribbonBlock(_ ribbon: PlayPropRibbon) -> some View {
         let applySport = viewModel.sportPillToApply(forRibbonId: ribbon.id)
+        let showLeagueChevron = viewModel.sportPill == .forYou
         return VStack(alignment: .leading, spacing: 14) {
             PlayRibbonHeader(
                 ribbon: ribbon,
-                onChevronTap: applySport.map { pill in
-                    { viewModel.sportPill = pill }
-                }
+                onChevronTap: showLeagueChevron
+                    ? applySport.map { pill in { viewModel.sportPill = pill } }
+                    : nil
             )
 
             if viewModel.sportPill == .forYou {

@@ -11,25 +11,12 @@ struct SignInView: View {
 
                 ScrollView {
                     SectionColumn(spacing: 28) {
-                        ZStack {
-                            Circle()
-                                .fill(JuicdTheme.brand.opacity(0.2))
-                                .frame(width: 200, height: 200)
-                                .blur(radius: 50)
-                                .offset(x: -80, y: -40)
-                            Circle()
-                                .fill(Color.purple.opacity(0.15))
-                                .frame(width: 160, height: 160)
-                                .blur(radius: 40)
-                                .offset(x: 100, y: 20)
-
-                            BrandHeader(
-                                title: "Juicd",
-                                subtitle: "Ranked picks, daily points, and season ladders — built for quick sessions.",
-                                centered: true,
-                                kicker: "Sports picks"
-                            )
-                        }
+                        BrandHeader(
+                            title: "Juicd",
+                            subtitle: "Ranked picks, daily points, and season ladders — built for quick sessions.",
+                            centered: true,
+                            kicker: "Sports picks"
+                        )
                         .padding(.top, 8)
 
                         Card(title: "Start with \(InMemoryJuicdRepository.dailyPlayAllowancePoints) points / day", systemImage: "bolt.fill", style: .hero) {
@@ -49,7 +36,8 @@ struct SignInView: View {
 
                                     TextField("Pick a name", text: $viewModel.displayName)
                                         .textInputAutocapitalization(.words)
-                                        .disableAutocorrection(true)
+                                        .autocorrectionDisabled()
+                                        .textContentType(.nickname)
                                         .focused($isNameFocused)
                                         .submitLabel(.done)
                                         .padding(.horizontal, 16)
