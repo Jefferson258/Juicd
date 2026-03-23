@@ -330,46 +330,24 @@ struct PlayView: View {
                     .tracking(0.8)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(points)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.white, JuicdTheme.brand],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textPrimary)
                     Text("pts")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundStyle(JuicdTheme.textSecondary)
                 }
             }
             Spacer()
         }
-        .padding(18)
+        .padding(20)
         .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            JuicdTheme.cardElevated,
-                            JuicdTheme.card
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(JuicdTheme.card)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [JuicdTheme.brand.opacity(0.45), JuicdTheme.strokeSubtle],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
                 }
-                .shadow(color: Color.black.opacity(0.4), radius: 20, y: 12)
+                .shadow(color: Color.black.opacity(0.35), radius: 16, y: 8)
         }
     }
 

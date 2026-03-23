@@ -133,7 +133,7 @@ private struct JuicdCustomTabBar: View {
             .padding(.top, 10)
             .padding(.bottom, 8)
         }
-        .background(JuicdTheme.slateBackground.ignoresSafeArea(edges: .bottom))
+        .background(JuicdTheme.canvasDeep.opacity(0.98).ignoresSafeArea(edges: .bottom))
     }
 
     private func tabButton(icon: String, title: String, tag: Int) -> some View {

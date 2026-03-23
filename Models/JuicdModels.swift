@@ -149,6 +149,85 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
     var didWin: Bool
     /// Points earned toward season score from this slip.
     var seasonPointsEarned: Int
+    /// Resolved per-leg outcomes for this slip (Play parlay legs only).
+    var playLegWins: Int
+    var playLegLosses: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, userId, slateDayKey, createdAt, stakePoints, legSummaries, combinedOdds, didWin, seasonPointsEarned
+        case playLegWins, playLegLosses
+    }
+
+    init(
+        id: UUID,
+        userId: UUID,
+        slateDayKey: String,
+        createdAt: Date,
+        stakePoints: Int,
+        legSummaries: [String],
+        combinedOdds: Double,
+        didWin: Bool,
+        seasonPointsEarned: Int,
+        playLegWins: Int,
+        playLegLosses: Int
+    ) {
+        self.id = id
+        self.userId = userId
+        self.slateDayKey = slateDayKey
+        self.createdAt = createdAt
+        self.stakePoints = stakePoints
+        self.legSummaries = legSummaries
+        self.combinedOdds = combinedOdds
+        self.didWin = didWin
+        self.seasonPointsEarned = seasonPointsEarned
+        self.playLegWins = playLegWins
+        self.playLegLosses = playLegLosses
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        userId = try c.decode(UUID.self, forKey: .userId)
+        slateDayKey = try c.decode(String.self, forKey: .slateDayKey)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        stakePoints = try c.decode(Int.self, forKey: .stakePoints)
+        legSummaries = try c.decode([String].self, forKey: .legSummaries)
+        combinedOdds = try c.decode(Double.self, forKey: .combinedOdds)
+        didWin = try c.decode(Bool.self, forKey: .didWin)
+        seasonPointsEarned = try c.decode(Int.self, forKey: .seasonPointsEarned)
+        if let plw = try c.decodeIfPresent(Int.self, forKey: .playLegWins),
+           let pll = try c.decodeIfPresent(Int.self, forKey: .playLegLosses) {
+            playLegWins = plw
+            playLegLosses = pll
+        } else {
+            let n = legSummaries.count
+            if n == 0 {
+                playLegWins = 0
+                playLegLosses = 0
+            } else if didWin {
+                playLegWins = n
+                playLegLosses = 0
+            } else {
+                playLegWins = 0
+                playLegLosses = n
+            }
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(slateDayKey, forKey: .slateDayKey)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(stakePoints, forKey: .stakePoints)
+        try c.encode(legSummaries, forKey: .legSummaries)
+        try c.encode(combinedOdds, forKey: .combinedOdds)
+        try c.encode(didWin, forKey: .didWin)
+        try c.encode(seasonPointsEarned, forKey: .seasonPointsEarned)
+        try c.encode(playLegWins, forKey: .playLegWins)
+        try c.encode(playLegLosses, forKey: .playLegLosses)
+    }
 }
 
 // MARK: - Daily closest-pick tournament (one entry per UTC day)
@@ -621,6 +700,12 @@ struct CareerBettingStats: Equatable {
     /// Daily closest-pick tournament rounds completed (from saved bracket states).
     var closestRoundWins: Int
     var closestRoundLosses: Int
+    /// Play parlay legs only (each leg counted separately).
+    var playLegByLegWins: Int
+    var playLegByLegLosses: Int
+    /// Ranked daily parlay legs only.
+    var rankedLegByLegWins: Int
+    var rankedLegByLegLosses: Int
     /// Sum of stake amounts (Play + ranked daily) from the ledger in this period.
     var totalPointsStaked: Int
     /// Wallet credits from bet outcomes: payouts, daily bracket rewards, cup bonus lines.
@@ -631,6 +716,24 @@ struct CareerBettingStats: Equatable {
     var totalWins: Int { playWins + rankedDailyWins + closestRoundWins }
     var totalLosses: Int { playLosses + rankedDailyLosses + closestRoundLosses }
 
+    /// All parlay legs (Play + ranked daily); bracket rounds are not included.
+    var legByLegWins: Int { playLegByLegWins + rankedLegByLegWins }
+    var legByLegLosses: Int { playLegByLegLosses + rankedLegByLegLosses }
+
+    /// Win rate across all bet outcomes in this period (slips, rounds, etc.).
+    var overallWinPct: Double {
+        let d = totalWins + totalLosses
+        guard d > 0 else { return 0 }
+        return Double(totalWins) / Double(d) * 100
+    }
+
+    /// Win rate on individual parlay legs (Play + ranked daily only).
+    var legByLegWinPct: Double {
+        let d = legByLegWins + legByLegLosses
+        guard d > 0 else { return 0 }
+        return Double(legByLegWins) / Double(d) * 100
+    }
+
     static let zero = CareerBettingStats(
         playWins: 0,
         playLosses: 0,
@@ -638,6 +741,10 @@ struct CareerBettingStats: Equatable {
         rankedDailyLosses: 0,
         closestRoundWins: 0,
         closestRoundLosses: 0,
+        playLegByLegWins: 0,
+        playLegByLegLosses: 0,
+        rankedLegByLegWins: 0,
+        rankedLegByLegLosses: 0,
         totalPointsStaked: 0,
         totalPointsWonBack: 0,
         dailyBracketTournamentWins: 0

@@ -6,19 +6,23 @@ enum JuicdTheme {
     static let brand2 = Color(red: 0.18, green: 0.58, blue: 0.98)
     static let brandMuted = Color(red: 0.22, green: 0.45, blue: 0.62)
 
-    /// Deep canvas (slightly blue-black, sports-app feel)
-    static let canvasDeep = Color(red: 0.06, green: 0.08, blue: 0.12)
-    static let slateBackground = Color(red: 0.10, green: 0.12, blue: 0.17)
+    /// Near-black canvas (high-contrast “portfolio” style)
+    static let canvasDeep = Color(red: 0.04, green: 0.04, blue: 0.05)
+    static let slateBackground = Color(red: 0.07, green: 0.07, blue: 0.09)
 
     /// Card / surface layers
-    static let card = Color(red: 0.16, green: 0.19, blue: 0.26)
-    static let cardElevated = Color(red: 0.20, green: 0.23, blue: 0.32)
-    static let strokeSubtle = Color.white.opacity(0.08)
-    static let strokeHighlight = Color.white.opacity(0.12)
+    static let card = Color(red: 0.12, green: 0.12, blue: 0.14)
+    static let cardElevated = Color(red: 0.16, green: 0.16, blue: 0.18)
+    static let strokeSubtle = Color.white.opacity(0.06)
+    static let strokeHighlight = Color.white.opacity(0.1)
 
     static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.62)
-    static let textTertiary = Color.white.opacity(0.42)
+    static let textSecondary = Color.white.opacity(0.58)
+    static let textTertiary = Color.white.opacity(0.38)
+
+    /// Trend / P&L (muted neon — not system green/red)
+    static let trendUp = Color(red: 0.35, green: 0.92, blue: 0.58)
+    static let trendDown = Color(red: 0.98, green: 0.38, blue: 0.42)
 
     static func ribbonAccent(ribbonId: String) -> Color {
         switch ribbonId {
@@ -77,26 +81,16 @@ struct JuicdScreenBackground: View {
             JuicdTheme.canvasDeep
             RadialGradient(
                 colors: [
-                    JuicdTheme.brand.opacity(0.14),
-                    JuicdTheme.brand.opacity(0.04),
+                    JuicdTheme.brand.opacity(0.07),
                     Color.clear
                 ],
-                center: UnitPoint(x: 0.15, y: 0.0),
-                startRadius: 20,
-                endRadius: 420
-            )
-            RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.12),
-                    Color.clear
-                ],
-                center: UnitPoint(x: 0.92, y: 0.08),
-                startRadius: 10,
-                endRadius: 280
+                center: UnitPoint(x: 0.2, y: 0.05),
+                startRadius: 40,
+                endRadius: 380
             )
             LinearGradient(
                 colors: [
-                    JuicdTheme.slateBackground.opacity(0.3),
+                    JuicdTheme.slateBackground.opacity(0.45),
                     JuicdTheme.canvasDeep
                 ],
                 startPoint: .top,
@@ -118,19 +112,18 @@ struct JuicdTabScreenAccent: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            JuicdTheme.brand.opacity(0.95),
-                            JuicdTheme.brand2.opacity(0.55),
-                            Color.purple.opacity(0.35)
+                            JuicdTheme.brand.opacity(0.85),
+                            JuicdTheme.brand2.opacity(0.4)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
-                .frame(width: 88, height: 4)
-                .shadow(color: JuicdTheme.brand.opacity(0.35), radius: 8, y: 0)
+                .frame(width: 64, height: 3)
+                .shadow(color: JuicdTheme.brand.opacity(0.2), radius: 6, y: 0)
             Spacer()
         }
-        .padding(.bottom, 4)
+        .padding(.bottom, 6)
     }
 }
 
@@ -176,35 +169,22 @@ struct Card: View {
                         .accessibilityHidden(true)
                     }
                     Text(title)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(JuicdTheme.textPrimary)
                 }
             }
             content
         }
-        .padding(style == .hero ? 20 : 16)
+        .padding(style == .hero ? 22 : 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: style == .hero ? 22 : 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [JuicdTheme.cardElevated, JuicdTheme.card],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(color: Color.black.opacity(0.45), radius: style == .hero ? 24 : 16, y: 10)
+            RoundedRectangle(cornerRadius: style == .hero ? 24 : 22, style: .continuous)
+                .fill(JuicdTheme.card)
+                .shadow(color: Color.black.opacity(0.35), radius: style == .hero ? 18 : 12, y: 8)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: style == .hero ? 22 : 18, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [JuicdTheme.strokeHighlight, JuicdTheme.strokeSubtle],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+            RoundedRectangle(cornerRadius: style == .hero ? 24 : 22, style: .continuous)
+                .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
         }
     }
 }
@@ -218,39 +198,33 @@ struct BrandHeader: View {
     var kicker: String? = nil
 
     var body: some View {
-        VStack(alignment: centered ? .center : .leading, spacing: 8) {
+        VStack(alignment: centered ? .center : .leading, spacing: 10) {
             if let kicker {
                 Text(kicker.uppercased())
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .tracking(1.4)
-                    .foregroundStyle(JuicdTheme.brand.opacity(0.9))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .tracking(1.6)
+                    .foregroundStyle(JuicdTheme.textTertiary)
             }
             Text(title)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.white, JuicdTheme.brand, JuicdTheme.brand2.opacity(0.95)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
                 .multilineTextAlignment(centered ? .center : .leading)
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .multilineTextAlignment(centered ? .center : .leading)
-                    .lineSpacing(3)
+                    .lineSpacing(4)
             }
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
-        .padding(.bottom, 4)
+        .padding(.bottom, 8)
     }
 }
 
 /// Readable column on wide phones; generous vertical rhythm.
 struct SectionColumn<Content: View>: View {
-    var spacing: CGFloat = 20
+    var spacing: CGFloat = 28
     @ViewBuilder var content: () -> Content
 
     var body: some View {

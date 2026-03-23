@@ -764,6 +764,17 @@ final class InMemoryJuicdRepository: ObservableObject {
         return hash == 0 ? 1 : hash
     }
 
+    /// Per-leg outcomes for ranked daily slips (same RNG as `submitDailyQuarterParlay`).
+    func rankedSlipLegCounts(_ slip: BetSlip) -> (wins: Int, losses: Int) {
+        guard !slip.legs.isEmpty else { return (0, 0) }
+        let resolved = resolveLegs(
+            parlayLegs: slip.legs,
+            seedKey: "\(slip.userId.uuidString)-\(slip.tournamentId.uuidString)-Q\(slip.stageIndex)"
+        )
+        let w = resolved.filter(\.didWin).count
+        return (w, resolved.count - w)
+    }
+
     private func resolveLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
         var rng = SeededRNG(seed: Self.stableHashFNV1a64(seedKey))
         var outcomes: [(legId: UUID, didWin: Bool)] = []
@@ -867,6 +878,8 @@ final class InMemoryJuicdRepository: ObservableObject {
         }
 
         let slipId = UUID()
+        let legWins = resolved.filter(\.didWin).count
+        let legLosses = resolved.count - legWins
         var entries = state.playBoardEntries ?? []
         entries.append(
             PlayBoardEntry(
@@ -878,7 +891,9 @@ final class InMemoryJuicdRepository: ObservableObject {
                 legSummaries: legs.map(\.choiceLabel),
                 combinedOdds: implied,
                 didWin: didWinAll,
-                seasonPointsEarned: seasonPointsEarned
+                seasonPointsEarned: seasonPointsEarned,
+                playLegWins: legWins,
+                playLegLosses: legLosses
             )
         )
         state.playBoardEntries = entries
@@ -915,6 +930,17 @@ final class InMemoryJuicdRepository: ObservableObject {
         }
         let rankedDailyWins = dailySlips.filter { $0.didWinAllLegs == true }.count
         let rankedDailyLosses = dailySlips.count - rankedDailyWins
+
+        var rankedDailyLegWins = 0
+        var rankedDailyLegLosses = 0
+        for slip in dailySlips {
+            let leg = rankedSlipLegCounts(slip)
+            rankedDailyLegWins += leg.wins
+            rankedDailyLegLosses += leg.losses
+        }
+
+        let playLegWinsTotal = mine.reduce(0) { $0 + $1.playLegWins }
+        let playLegLossesTotal = mine.reduce(0) { $0 + $1.playLegLosses }
 
         var closestRoundWins = 0
         var closestRoundLosses = 0
@@ -958,6 +984,10 @@ final class InMemoryJuicdRepository: ObservableObject {
             rankedDailyLosses: rankedDailyLosses,
             closestRoundWins: closestRoundWins,
             closestRoundLosses: closestRoundLosses,
+            playLegByLegWins: playLegWinsTotal,
+            playLegByLegLosses: playLegLossesTotal,
+            rankedLegByLegWins: rankedDailyLegWins,
+            rankedLegByLegLosses: rankedDailyLegLosses,
             totalPointsStaked: totalPointsStaked,
             totalPointsWonBack: totalPointsWonBack,
             dailyBracketTournamentWins: dailyBracketTournamentWins

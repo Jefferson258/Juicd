@@ -25,15 +25,9 @@ struct DashboardView: View {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 Text("\(profile.availableDailyPoints)")
                                     .font(.system(size: 52, weight: .bold, design: .rounded))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white, JuicdTheme.brand],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
+                                    .foregroundStyle(JuicdTheme.textPrimary)
                                 Text("pts")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                                     .foregroundStyle(JuicdTheme.textSecondary)
                             }
                             .frame(maxWidth: .infinity)
@@ -58,13 +52,7 @@ struct DashboardView: View {
                                         .tracking(0.8)
                                     Text(profile.currentTier.displayName)
                                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [JuicdTheme.brand, JuicdTheme.brand2],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
+                                        .foregroundStyle(JuicdTheme.textPrimary)
                                 }
                                 Spacer()
                                 tierBadge(for: profile.currentTier)

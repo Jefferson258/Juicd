@@ -10,6 +10,8 @@ struct ProfileView: View {
 
     @State private var showRankingDetails = false
     @State private var showSeasonInfo = false
+    @State private var showSeasonMetrics = false
+    @State private var showCareerMetrics = false
 
     private let columns = [GridItem(.adaptive(minimum: 92), spacing: 14)]
 
@@ -24,38 +26,27 @@ struct ProfileView: View {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Profile",
-                    subtitle: "Your season footprint and badge shelf.",
+                    subtitle: "Season footprint, career numbers, and badges.",
                     centered: true,
                     kicker: "You"
                 )
 
                 if let profile = viewModel.profile {
-                    Card(title: "Season record (\(JuicdSeason.shortLabel(for: seasonKey)))", systemImage: "calendar") {
-                        VStack(spacing: 10) {
-                            HStack {
-                                Text("3-month quarter · your local calendar")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(JuicdTheme.textTertiary)
-                                Spacer()
-                                Button {
-                                    showSeasonInfo = true
-                                } label: {
-                                    Image(systemName: "info.circle")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(JuicdTheme.brand)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("About seasons")
-                            }
-                            bettingRecordBlock(stats: season, seasonScopedFootnote: true)
-                        }
-                    }
+                    recordHeroCard(
+                        title: "Season record",
+                        subtitle: "\(JuicdSeason.shortLabel(for: seasonKey)) · local quarter",
+                        stats: season,
+                        onTap: { showSeasonMetrics = true },
+                        onSeasonInfo: { showSeasonInfo = true }
+                    )
 
-                    Card(title: "Career record", systemImage: "chart.line.uptrend.xyaxis") {
-                        VStack(spacing: 10) {
-                            bettingRecordBlock(stats: career, seasonScopedFootnote: false)
-                        }
-                    }
+                    recordHeroCard(
+                        title: "Career record",
+                        subtitle: "All-time",
+                        stats: career,
+                        onTap: { showCareerMetrics = true },
+                        onSeasonInfo: nil
+                    )
 
                     Card(title: profile.displayName, systemImage: "person.crop.circle.fill", style: .hero) {
                         VStack(spacing: 12) {
@@ -204,35 +195,97 @@ struct ProfileView: View {
         .sheet(isPresented: $showSeasonInfo) {
             SeasonInfoSheet(seasonKey: seasonKey)
         }
+        .sheet(isPresented: $showSeasonMetrics) {
+            BettingRecordDetailSheet(
+                title: "Season metrics",
+                stats: season,
+                footnote: "Season rows only count slips and ledger entries in \(JuicdSeason.shortLabel(for: seasonKey)) (local calendar quarter)."
+            )
+        }
+        .sheet(isPresented: $showCareerMetrics) {
+            BettingRecordDetailSheet(
+                title: "Career metrics",
+                stats: career,
+                footnote: "Career totals include all time. Returned from bets sums payouts and daily bracket rewards from the ledger."
+            )
+        }
     }
 
-    @ViewBuilder
-    private func bettingRecordBlock(stats: CareerBettingStats, seasonScopedFootnote: Bool) -> some View {
-        HStack {
-            Text("Overall W–L")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(JuicdTheme.textSecondary)
-            Spacer()
-            Text("\(stats.totalWins)–\(stats.totalLosses)")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(JuicdTheme.textPrimary)
+    private func recordHeroCard(
+        title: String,
+        subtitle: String,
+        stats: CareerBettingStats,
+        onTap: @escaping () -> Void,
+        onSeasonInfo: (() -> Void)?
+    ) -> some View {
+        let outcomeDenom = stats.totalWins + stats.totalLosses
+        return Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(JuicdTheme.textPrimary)
+                        Text(subtitle)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(JuicdTheme.textTertiary)
+                    }
+                    Spacer(minLength: 0)
+                    if onSeasonInfo != nil {
+                        Color.clear.frame(width: 28, height: 28)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                }
+
+                Text("\(stats.totalWins)–\(stats.totalLosses)")
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+
+                if outcomeDenom > 0 {
+                    Text(String(format: "%.1f%% · all bet outcomes", stats.overallWinPct))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(stats.overallWinPct >= 50 ? JuicdTheme.trendUp : JuicdTheme.trendDown)
+                } else {
+                    Text("No resolved bets in this window yet")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                }
+
+                Text("Tap for breakdown · leg-by-leg, pools, and ledger totals")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(JuicdTheme.textTertiary)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(JuicdTheme.card)
+                    .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+            }
         }
-        Divider().overlay(JuicdTheme.strokeSubtle)
-        statRow(label: "Play parlays", value: "\(stats.playWins)–\(stats.playLosses)")
-        statRow(label: "Ranked daily (quarters)", value: "\(stats.rankedDailyWins)–\(stats.rankedDailyLosses)")
-        statRow(label: "Daily bracket rounds", value: "\(stats.closestRoundWins)–\(stats.closestRoundLosses)")
-        statRow(label: "Total points staked", value: "\(stats.totalPointsStaked)")
-        statRow(label: "Returned from bets", value: "\(stats.totalPointsWonBack)")
-        statRow(label: "Daily bracket wins (full run)", value: "\(stats.dailyBracketTournamentWins)")
-        Text(
-            seasonScopedFootnote
-                ? "Season rows only count slips and ledger entries that fall in \(JuicdSeason.shortLabel(for: seasonKey)) (local calendar quarter)."
-                : "Career totals include all time. Returned from bets sums payouts and daily bracket rewards from the ledger."
-        )
-        .font(.caption.weight(.medium))
-        .foregroundStyle(JuicdTheme.textTertiary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 4)
+        .buttonStyle(.plain)
+        .overlay(alignment: .topTrailing) {
+            if let onSeasonInfo {
+                Button {
+                    onSeasonInfo()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(JuicdTheme.brand.opacity(0.9))
+                        .padding(18)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About seasons")
+            }
+        }
     }
 
     private func statRow(label: String, value: String) -> some View {
@@ -249,6 +302,107 @@ struct ProfileView: View {
 
     private func requestNotificationAuthorizationIfNeeded() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+    }
+}
+
+private struct BettingRecordDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let stats: CareerBettingStats
+    let footnote: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Parlay legs")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+
+                    detailRow(
+                        label: "Leg-by-leg (Play + ranked)",
+                        value: "\(stats.legByLegWins)–\(stats.legByLegLosses)"
+                    )
+                    if stats.legByLegWins + stats.legByLegLosses > 0 {
+                        detailRow(
+                            label: "Leg win rate",
+                            value: String(format: "%.1f%%", stats.legByLegWinPct),
+                            valueColor: stats.legByLegWinPct >= 50 ? JuicdTheme.trendUp : JuicdTheme.trendDown
+                        )
+                    }
+                    detailRow(
+                        label: "· Play board legs",
+                        value: "\(stats.playLegByLegWins)–\(stats.playLegByLegLosses)"
+                    )
+                    detailRow(
+                        label: "· Ranked daily legs",
+                        value: "\(stats.rankedLegByLegWins)–\(stats.rankedLegByLegLosses)"
+                    )
+
+                    Text("Bet outcomes (slips & rounds)")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+                        .padding(.top, 8)
+
+                    detailRow(label: "Play parlays", value: "\(stats.playWins)–\(stats.playLosses)")
+                    detailRow(label: "Ranked daily (quarters)", value: "\(stats.rankedDailyWins)–\(stats.rankedDailyLosses)")
+                    detailRow(label: "Daily bracket rounds", value: "\(stats.closestRoundWins)–\(stats.closestRoundLosses)")
+
+                    Text("Ledger")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+                        .padding(.top, 8)
+
+                    detailRow(label: "Total points staked", value: "\(stats.totalPointsStaked)")
+                    detailRow(label: "Returned from bets", value: "\(stats.totalPointsWonBack)")
+                    detailRow(label: "Daily bracket wins (full run)", value: "\(stats.dailyBracketTournamentWins)")
+
+                    Text(
+                        "Leg-by-leg counts each pick on Play and ranked daily parlays separately (e.g. a 6-leg card that misses one leg still adds five wins and one loss here). Daily bracket rounds are separate row-level outcomes, not parlay legs."
+                    )
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(JuicdTheme.textTertiary)
+                    .lineSpacing(3)
+                    .padding(.top, 4)
+
+                    Text(footnote)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .lineSpacing(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+            }
+            .scrollIndicators(.hidden)
+            .background(JuicdScreenBackground())
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func detailRow(label: String, value: String, valueColor: Color = JuicdTheme.textPrimary) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(valueColor)
+        }
     }
 }
 
