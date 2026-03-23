@@ -15,3 +15,7 @@ Launch shows **Sign in with Apple** (uses your Apple ID name when Apple provides
 ## Repo hygiene
 
 Do not commit API keys. Use **Info** `ODDS_API_KEY` or a gitignored `Local.xcconfig` (see SETUP).
+
+## Ads (dev)
+
+Optional **Play** tab placeholders; toggle under **Profile → Prototype tools**. Details and frequency math: **[ADS.md](ADS.md)**. Real AdMob steps: **[SETUP.md](SETUP.md)** §8.

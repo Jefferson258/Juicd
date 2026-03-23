@@ -7,6 +7,9 @@ struct ProfileView: View {
     @AppStorage("juicd_notify_daily_updates") private var notifyDailyUpdates = false
     @AppStorage("juicd_notify_tournament_updates") private var notifyTournamentUpdates = false
     @AppStorage("juicd_notify_seasonal_updates") private var notifySeasonalUpdates = false
+    @AppStorage("juicd_ads_enabled") private var adsEnabled = false
+    @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
+    @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
     @State private var showRankingDetails = false
     @State private var showSeasonInfo = false
@@ -175,6 +178,53 @@ struct ProfileView: View {
                                 viewModel.resetSeason()
                             }
                             .font(.system(size: 15, weight: .semibold))
+
+                            Divider().overlay(JuicdTheme.strokeSubtle)
+
+                            Toggle("Show dev ad placeholders (Play tab)", isOn: $adsEnabled)
+                                .font(.system(size: 14, weight: .semibold))
+                                .tint(JuicdTheme.brand)
+                                .onChange(of: adsEnabled) { _, on in
+                                    if !on {
+                                        forceCreativeId = ""
+                                        forceRevision += 1
+                                    }
+                                }
+                            Text("Rare native-style slots between ribbons. Off by default. See ADS.md for frequency math.")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(JuicdTheme.textTertiary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Text("Spawn ad on Play (immediate)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(JuicdTheme.textTertiary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 4)
+
+                            VStack(spacing: 8) {
+                                ForEach(JuicdDevAdCreative.all) { creative in
+                                    Button {
+                                        forceCreativeId = creative.id
+                                        forceRevision += 1
+                                    } label: {
+                                        Text(creative.sponsorName)
+                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(JuicdTheme.brand.opacity(0.85))
+                                }
+
+                                Button("Clear forced preview") {
+                                    forceCreativeId = ""
+                                    forceRevision += 1
+                                }
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                            }
                         }
                     }
                 } else {

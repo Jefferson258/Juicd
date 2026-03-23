@@ -36,6 +36,8 @@
 		225E4B472F6F2CED002955B9 /* TutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B482F6F2CED002955B9 /* TutorialView.swift */; };
 		225E4B532F6F2CED002955B9 /* JuicdSeason.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B542F6F2CED002955B9 /* JuicdSeason.swift */; };
 		225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */; };
+		225E4B612F6F2CED002955B9 /* JuicdAdsDev.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */; };
+		225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +70,8 @@
 		225E4B482F6F2CED002955B9 /* TutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialView.swift; sourceTree = "<group>"; };
 		225E4B542F6F2CED002955B9 /* JuicdSeason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdSeason.swift; sourceTree = "<group>"; };
 		225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaySportFilter.swift; sourceTree = "<group>"; };
+		225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdAdsDev.swift; sourceTree = "<group>"; };
+		225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNativeAdPlaceholder.swift; sourceTree = "<group>"; };
 		225E4B602F6F2CED002955B9 /* Juicd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Juicd.entitlements; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -105,6 +109,7 @@
 				225E4B402F6F2CED002955B9 /* DailySlate.swift */,
 				225E4B542F6F2CED002955B9 /* JuicdSeason.swift */,
 				225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */,
+				225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -133,6 +138,7 @@
 				225E4B122F6F2CED002955B9 /* TourneyView.swift */,
 				225E4B142F6F2CED002955B9 /* ProfileView.swift */,
 				225E4B152F6F2CED002955B9 /* SignInView.swift */,
+				225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -260,6 +266,8 @@
 				225E4B472F6F2CED002955B9 /* TutorialView.swift in Sources */,
 				225E4B532F6F2CED002955B9 /* JuicdSeason.swift in Sources */,
 				225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */,
+				225E4B612F6F2CED002955B9 /* JuicdAdsDev.swift in Sources */,
+				225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

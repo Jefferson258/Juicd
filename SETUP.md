@@ -15,6 +15,7 @@ Configure **Xcode**, **Apple Developer**, **keys**, and **Supabase** here. **Fea
 | ☐ | (Later) **Supabase** project + Swift package + `SUPABASE_URL` / `SUPABASE_ANON_KEY` — do not commit secrets |
 | ☐ | (Later) **Push:** capability + APNs key + backend to send |
 | ☐ | (Ship) **App Store Connect** record, privacy URL, encryption export answer |
+| ☐ | (Ads) See **§8** when wiring Google Mobile Ads or mediation |
 
 ---
 
@@ -83,6 +84,24 @@ Profile toggles are local until you wire a backend.
 
 ---
 
+## 8. In-app ads (Google Mobile Ads or other)
+
+The app ships with **dev-only** placeholder ads on the **Play** tab (toggle under **Profile → Prototype tools**). Behavior and frequency math are documented in **[ADS.md](ADS.md)**.
+
+To connect **real** ads:
+
+1. **Create ad units** in [Google AdMob](https://admob.google.com/) (or your network): use **native** or **banner** formats to match the current placeholder layout.
+2. **Add the SDK** — e.g. [Google Mobile Ads SDK for iOS](https://developers.google.com/admob/ios/quick-start): Swift Package Manager **or** CocoaPods as Google documents.
+3. **Use test ad unit IDs** while developing ([Google test units](https://developers.google.com/admob/ios/test-ads)); put production IDs in **Info.plist** / **xcconfig** that is **gitignored** if the repo is public.
+4. **Initialize** the SDK once at launch (e.g. in `JuicdApp` / app delegate pattern per Google’s current SwiftUI guidance).
+5. **Privacy / EEA:** integrate the **User Messaging Platform (UMP)** SDK for consent where required before loading personalized ads.
+6. **App Store Connect:** answer the advertising / tracking questions; provide a **Privacy Policy URL** if you show third-party ads.
+7. **Replace** the SwiftUI placeholder in [`Views/PlayView.swift`](Views/PlayView.swift) with your network’s native ad view; keep your own **frequency caps** if you want to stay close to the rare dev behavior in [ADS.md](ADS.md).
+
+**Note:** Many ad networks restrict **real-money gambling** creatives; sports media / generic brand ads are easier to fill. Get legal/compliance review for your jurisdictions.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely fix |
@@ -90,6 +109,7 @@ Profile toggles are local until you wire a backend.
 | Sign in with Apple fails | Capability on target + **Bundle ID** matches App ID with Sign in with Apple |
 | No live odds | `ODDS_API_KEY` set on the **Juicd** target Info; check quota / network |
 | Build errors after clone | Open `.xcodeproj`, clean build folder (⇧⌘K), rebuild |
+| Ads don’t appear | Toggle **Show dev ad placeholders** on Profile; change sport/filter to rebuild feed; wait **cooldown** (see [ADS.md](ADS.md)) |
 
 ---
 
