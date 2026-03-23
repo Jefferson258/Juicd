@@ -6,7 +6,8 @@ struct FriendsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                SectionColumn(spacing: 22) {
+                SectionColumn(spacing: 24) {
+                    JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Friends",
                         subtitle: "Requests, your crew, and the Friends Leaderboard — tap someone to see recent Play picks.",

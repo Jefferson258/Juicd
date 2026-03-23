@@ -6,7 +6,8 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            SectionColumn(spacing: 22) {
+            SectionColumn(spacing: 24) {
+                JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Dashboard",
                     subtitle: "Your daily balance, season tier, and how you stack up.",

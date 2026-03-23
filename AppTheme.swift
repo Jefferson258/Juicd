@@ -107,6 +107,33 @@ struct JuicdScreenBackground: View {
     }
 }
 
+// MARK: - Main tab chrome (shared “pop” across Play / Dashboard / Tourney / Friends / Profile)
+
+/// Compact accent under the safe area — ties all five tabs to the same modern look as Play.
+struct JuicdTabScreenAccent: View {
+    var body: some View {
+        HStack {
+            Spacer()
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            JuicdTheme.brand.opacity(0.95),
+                            JuicdTheme.brand2.opacity(0.55),
+                            Color.purple.opacity(0.35)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: 88, height: 4)
+                .shadow(color: JuicdTheme.brand.opacity(0.35), radius: 8, y: 0)
+            Spacer()
+        }
+        .padding(.bottom, 4)
+    }
+}
+
 // MARK: - Cards
 
 struct Card: View {

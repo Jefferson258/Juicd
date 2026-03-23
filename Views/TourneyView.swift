@@ -12,7 +12,8 @@ struct TourneyView: View {
 
     var body: some View {
         ScrollView {
-            SectionColumn(spacing: 22) {
+            SectionColumn(spacing: 24) {
+                JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Tourney",
                     subtitle: "Daily closest-pick bracket — choose a tournament variant, preview all four rounds, enter before lock, then one numeric pick per round.",

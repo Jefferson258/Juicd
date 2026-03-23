@@ -35,6 +35,7 @@ private struct LoggedInTabShell: View {
 
     @AppStorage("juicd_tutorial_completed") private var tutorialCompleted = false
     @State private var showTutorial = false
+    @State private var selectedTab = 0
 
     init(repository: InMemoryJuicdRepository, userId: UUID) {
         self.repository = repository
@@ -47,25 +48,28 @@ private struct LoggedInTabShell: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Play", systemImage: "sportscourt.fill") {
+        VStack(spacing: 0) {
+            ZStack {
                 PlayView(viewModel: playVM)
-            }
-            Tab("Dashboard", systemImage: "rectangle.grid.2x2.fill") {
+                    .opacity(selectedTab == 0 ? 1 : 0)
+                    .allowsHitTesting(selectedTab == 0)
                 DashboardView(viewModel: dashboardVM)
-            }
-            Tab("Tourney", systemImage: "trophy.fill") {
+                    .opacity(selectedTab == 1 ? 1 : 0)
+                    .allowsHitTesting(selectedTab == 1)
                 TourneyView(viewModel: tourneyVM)
-            }
-            Tab("Friends", systemImage: "person.2.fill") {
+                    .opacity(selectedTab == 2 ? 1 : 0)
+                    .allowsHitTesting(selectedTab == 2)
                 FriendsView(viewModel: friendsVM)
-            }
-            Tab("Profile", systemImage: "person.crop.circle.fill") {
+                    .opacity(selectedTab == 3 ? 1 : 0)
+                    .allowsHitTesting(selectedTab == 3)
                 ProfileView(viewModel: profileVM)
+                    .opacity(selectedTab == 4 ? 1 : 0)
+                    .allowsHitTesting(selectedTab == 4)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            JuicdCustomTabBar(selectedTab: $selectedTab)
         }
-        .tabBarMinimizeBehavior(.never)
-        .tint(JuicdTheme.brand)
         .background(JuicdTheme.canvasDeep.ignoresSafeArea())
         .onAppear {
             configureAll(userId: userId)
@@ -87,5 +91,68 @@ private struct LoggedInTabShell: View {
         tourneyVM.configure(userId: userId)
         friendsVM.configure(userId: userId)
         profileVM.configure(userId: userId)
+    }
+}
+
+// MARK: - Custom tab bar (opaque strip — no system “liquid glass” bubble)
+
+private struct JuicdCustomTabBar: View {
+    @Binding var selectedTab: Int
+
+    private struct Item {
+        let icon: String
+        let title: String
+        let tag: Int
+    }
+
+    private let items: [Item] = [
+        Item(icon: "sportscourt.fill", title: "Play", tag: 0),
+        Item(icon: "rectangle.grid.2x2.fill", title: "Dashboard", tag: 1),
+        Item(icon: "trophy.fill", title: "Tourney", tag: 2),
+        Item(icon: "person.2.fill", title: "Friends", tag: 3),
+        Item(icon: "person.crop.circle.fill", title: "Profile", tag: 4)
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [JuicdTheme.strokeHighlight.opacity(0.5), JuicdTheme.strokeSubtle],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+
+            HStack(spacing: 0) {
+                ForEach(items, id: \.tag) { item in
+                    tabButton(icon: item.icon, title: item.title, tag: item.tag)
+                }
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+        }
+        .background(JuicdTheme.slateBackground.ignoresSafeArea(edges: .bottom))
+    }
+
+    private func tabButton(icon: String, title: String, tag: Int) -> some View {
+        let isSelected = selectedTab == tag
+        return Button {
+            selectedTab = tag
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(isSelected ? JuicdTheme.brand : JuicdTheme.textTertiary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

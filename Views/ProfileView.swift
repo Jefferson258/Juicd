@@ -20,7 +20,8 @@ struct ProfileView: View {
 
     var body: some View {
         ScrollView {
-            SectionColumn(spacing: 22) {
+            SectionColumn(spacing: 24) {
+                JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Profile",
                     subtitle: "Your season footprint and badge shelf.",

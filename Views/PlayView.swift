@@ -8,7 +8,8 @@ struct PlayView: View {
     var body: some View {
         ZStack(alignment: .top) {
             ScrollView {
-                SectionColumn(spacing: 22) {
+                SectionColumn(spacing: 24) {
+                    JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Play",
                         subtitle: "For You shows Popular ribbons by league. Pick a sport to filter by market, search names, and scroll picks vertically. One cached Odds API line per session keeps quota usage low.",
