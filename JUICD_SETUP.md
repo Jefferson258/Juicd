@@ -1,47 +1,38 @@
-# Juicd setup (reference)
+# Juicd setup (short reference)
 
-**Use this file for background notes.** The **step-by-step out-of-code checklist** (Xcode, Sign in with Apple, notifications, Supabase, Odds API, App Store) is maintained in **[README.md](README.md)** — start there.
+**Do this first:** **[SETUP.md](SETUP.md)** — Xcode, signing, Odds API key, Supabase, App Store (step-by-step, minimal clutter).
 
----
-
-## What this doc adds
-
-- Deeper **Supabase table / RLS** outline
-- **Production odds** pattern (proxy, no client keys)
-- **Ads / league revenue** considerations (non-code)
-
-The Swift prototype in this repo uses an **in-memory/local repository** (`UserDefaults`) so the UI works without any backend.
+**Long narrative + full checklists:** **[README_REFERENCE.md](README_REFERENCE.md)**
 
 ---
 
-## 0) What you have right now
+## What this file is for
 
-1. The SwiftUI prototype lives next to `Juicd.xcodeproj` in the repo root.
-2. Tabs: **Play** (Odds API hook), **Dashboard**, **Tourney** (daily closest-pick), **Friends** (requests + MMR leaderboard), **Profile**.
-3. **Profile** includes notification preference toggles (stored locally; wire to APNs + backend for real pushes).
+- Brief **Supabase schema** ideas and **production odds** pattern (no client API keys).
+- Pointers only; the detailed sections moved to **README_REFERENCE.md**.
+
+The Swift prototype uses **`InMemoryJuicdRepository`** (`UserDefaults`) so the UI runs with no backend.
 
 ---
 
-## Supabase schema outline (optional detail)
+## Supabase schema outline (optional)
 
-See the original sections in git history or expand your backend with:
-
-- `profiles` — user display, season stats, tier, optional cached balances
-- `points_ledger` — append-only point movements
-- `tournaments`, `tournament_participants` — if you persist bracket state server-side
+- `profiles` — display name, season stats, tier, balances
+- `points_ledger` — append-only movements
+- `tournaments`, bracket state — if persisted server-side
 - `bet_slips` / `bet_legs` — parlay model
 - `groups`, `group_memberships`, `user_badges`
 
-Enable **RLS** on all user-specific tables; use Edge Functions for trusted writes.
+Enable **RLS**; use Edge Functions for trusted writes.
 
 ---
 
-## Live odds: production pattern
+## Live odds (production)
 
-Do not ship provider API keys in the app. Use a Supabase Edge Function (or other backend) as an **odds proxy** with caching and rate limits.
+Do not ship provider keys in the app. Use a **Supabase Edge Function** (or other backend) as an odds proxy with caching and rate limits.
 
 ---
 
-## Ads revenue
+## Ads / revenue
 
-Integrating an ad SDK (e.g. AdMob) and any league revenue-sharing is **contract + reporting** work beyond client-only code.
+Ad SDKs and league revenue share are **contract + reporting** work beyond the client prototype.

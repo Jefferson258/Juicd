@@ -700,10 +700,10 @@ struct CareerBettingStats: Equatable {
     /// Daily closest-pick tournament rounds completed (from saved bracket states).
     var closestRoundWins: Int
     var closestRoundLosses: Int
-    /// Play parlay legs only (each leg counted separately).
+    /// Play tab slate parlays — each leg counted separately.
     var playLegByLegWins: Int
     var playLegByLegLosses: Int
-    /// Ranked daily parlay legs only.
+    /// Dashboard daily tournament (quarter) parlays — each leg counted separately.
     var rankedLegByLegWins: Int
     var rankedLegByLegLosses: Int
     /// Sum of stake amounts (Play + ranked daily) from the ledger in this period.
@@ -716,7 +716,7 @@ struct CareerBettingStats: Equatable {
     var totalWins: Int { playWins + rankedDailyWins + closestRoundWins }
     var totalLosses: Int { playLosses + rankedDailyLosses + closestRoundLosses }
 
-    /// All parlay legs (Play + ranked daily); bracket rounds are not included.
+    /// All parlay legs (Play tab + Dashboard daily tournaments); bracket rounds are not included.
     var legByLegWins: Int { playLegByLegWins + rankedLegByLegWins }
     var legByLegLosses: Int { playLegByLegLosses + rankedLegByLegLosses }
 

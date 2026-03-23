@@ -68,6 +68,7 @@
 		225E4B482F6F2CED002955B9 /* TutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialView.swift; sourceTree = "<group>"; };
 		225E4B542F6F2CED002955B9 /* JuicdSeason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdSeason.swift; sourceTree = "<group>"; };
 		225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaySportFilter.swift; sourceTree = "<group>"; };
+		225E4B602F6F2CED002955B9 /* Juicd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Juicd.entitlements; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -140,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				225E4B002F6F2CED002955B9 /* AppTheme.swift */,
+				225E4B602F6F2CED002955B9 /* Juicd.entitlements */,
 				225E4B012F6F2CED002955B9 /* JuicdApp.swift */,
 				225E4B032F6F2CED002955B9 /* Models */,
 				225E4B042F6F2CED002955B9 /* RootView.swift */,
@@ -390,6 +392,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8H2437SV33;
@@ -422,6 +425,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8H2437SV33;

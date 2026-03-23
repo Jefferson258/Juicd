@@ -322,7 +322,7 @@ private struct BettingRecordDetailSheet: View {
                         .tracking(0.6)
 
                     detailRow(
-                        label: "Leg-by-leg (Play + ranked)",
+                        label: "All parlay legs (combined)",
                         value: "\(stats.legByLegWins)–\(stats.legByLegLosses)"
                     )
                     if stats.legByLegWins + stats.legByLegLosses > 0 {
@@ -333,11 +333,11 @@ private struct BettingRecordDetailSheet: View {
                         )
                     }
                     detailRow(
-                        label: "· Play board legs",
+                        label: "· Play tab (slate parlays)",
                         value: "\(stats.playLegByLegWins)–\(stats.playLegByLegLosses)"
                     )
                     detailRow(
-                        label: "· Ranked daily legs",
+                        label: "· Dashboard daily tournaments",
                         value: "\(stats.rankedLegByLegWins)–\(stats.rankedLegByLegLosses)"
                     )
 
@@ -348,8 +348,8 @@ private struct BettingRecordDetailSheet: View {
                         .tracking(0.6)
                         .padding(.top, 8)
 
-                    detailRow(label: "Play parlays", value: "\(stats.playWins)–\(stats.playLosses)")
-                    detailRow(label: "Ranked daily (quarters)", value: "\(stats.rankedDailyWins)–\(stats.rankedDailyLosses)")
+                    detailRow(label: "Play tab slates", value: "\(stats.playWins)–\(stats.playLosses)")
+                    detailRow(label: "Dashboard daily tournaments", value: "\(stats.rankedDailyWins)–\(stats.rankedDailyLosses)")
                     detailRow(label: "Daily bracket rounds", value: "\(stats.closestRoundWins)–\(stats.closestRoundLosses)")
 
                     Text("Ledger")
@@ -364,7 +364,7 @@ private struct BettingRecordDetailSheet: View {
                     detailRow(label: "Daily bracket wins (full run)", value: "\(stats.dailyBracketTournamentWins)")
 
                     Text(
-                        "Leg-by-leg counts each pick on Play and ranked daily parlays separately (e.g. a 6-leg card that misses one leg still adds five wins and one loss here). Daily bracket rounds are separate row-level outcomes, not parlay legs."
+                        "“Leg” here is each pick on a parlay card. The app tracks Play tab parlays and Dashboard daily tournament parlays separately (two different flows), then adds them for the combined total. The daily closest-pick bracket uses the “Daily bracket rounds” row above — those are one result per round, not stacked parlay legs."
                     )
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(JuicdTheme.textTertiary)
