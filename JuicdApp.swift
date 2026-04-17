@@ -26,7 +26,7 @@ struct JuicdApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(repository: repository)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(ColorScheme.dark)
         }
     }
 }

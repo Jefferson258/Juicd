@@ -44,7 +44,7 @@ struct DashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
 
-                            Text("Your balance resets to \(InMemoryJuicdRepository.dailyPlayAllowancePoints) each new slate. Refill points are not season score.")
+                            Text("Your balance resets to \(JuicdBalance.dailyPlayAllowancePoints) each new slate. Refill points are not season score.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)

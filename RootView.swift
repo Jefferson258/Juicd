@@ -70,6 +70,7 @@ private struct LoggedInTabShell: View {
 
             JuicdCustomTabBar(selectedTab: $selectedTab)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .background(JuicdTheme.canvasDeep.ignoresSafeArea())
         .onAppear {
             configureAll(userId: userId)

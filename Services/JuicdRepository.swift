@@ -102,7 +102,6 @@ final class InMemoryJuicdRepository: ObservableObject {
     // MARK: - Daily points
 
     /// Playable balance refilled each day — **does not** affect rank tier or season score.
-    static let dailyPlayAllowancePoints = 100
 
     func awardDailyPointsIfNeeded(userId: UUID, date: Date = .now) -> Profile? {
         guard var profile = state.profiles[userId] else { return nil }
@@ -118,7 +117,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             return profile
         }
 
-        profile.availableDailyPoints = Self.dailyPlayAllowancePoints
+        profile.availableDailyPoints = JuicdBalance.dailyPlayAllowancePoints
         profile.lastDailyPointsAwardDateISO = slateKey
 
         let entry = PointsLedgerEntry(
@@ -127,7 +126,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             userId: userId,
             tournamentId: nil,
             betSlipId: nil,
-            deltaPoints: Self.dailyPlayAllowancePoints,
+            deltaPoints: JuicdBalance.dailyPlayAllowancePoints,
             reason: "Daily play allowance reset (wallet only — not rank score)"
         )
 
@@ -249,7 +248,7 @@ final class InMemoryJuicdRepository: ObservableObject {
         }
         guard staked > 0 else { return 0 }
         let roi = Double(net) / Double(staked)
-        return roi * Double(Self.dailyPlayAllowancePoints)
+        return roi * Double(JuicdBalance.dailyPlayAllowancePoints)
     }
 
     func playBoardEntriesOnSlate(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
@@ -845,7 +844,7 @@ final class InMemoryJuicdRepository: ObservableObject {
     func submitPlayParlay(userId: UUID, stakePoints: Int, legs: [BetLeg], date: Date = .now) -> PlayParlayOutcome? {
         guard stakePoints > 0, !legs.isEmpty else { return nil }
         guard var profile = state.profiles[userId] else { return nil }
-        let maxStake = min(Self.dailyPlayAllowancePoints, profile.availableDailyPoints)
+        let maxStake = min(JuicdBalance.dailyPlayAllowancePoints, profile.availableDailyPoints)
         guard stakePoints <= maxStake else { return nil }
         guard profile.availableDailyPoints >= stakePoints else { return nil }
 
@@ -924,7 +923,11 @@ final class InMemoryJuicdRepository: ObservableObject {
         periodBettingStats(userId: userId, seasonKey: nil)
     }
 
-    func seasonBettingStats(userId: UUID, seasonKey: String = JuicdSeason.currentSeasonKey()) -> CareerBettingStats {
+    func seasonBettingStats(userId: UUID) -> CareerBettingStats {
+        seasonBettingStats(userId: userId, seasonKey: JuicdSeason.currentSeasonKey())
+    }
+
+    func seasonBettingStats(userId: UUID, seasonKey: String) -> CareerBettingStats {
         periodBettingStats(userId: userId, seasonKey: seasonKey)
     }
 
@@ -1351,7 +1354,7 @@ final class InMemoryJuicdRepository: ObservableObject {
     func resetDailyPlayBalanceForTesting(userId: UUID, date: Date = .now) {
         guard var profile = state.profiles[userId] else { return }
         let slateKey = SlateDay.slateKey(for: date)
-        profile.availableDailyPoints = Self.dailyPlayAllowancePoints
+        profile.availableDailyPoints = JuicdBalance.dailyPlayAllowancePoints
         profile.lastDailyPointsAwardDateISO = slateKey
         state.profiles[userId] = profile
         persist()

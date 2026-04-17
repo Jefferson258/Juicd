@@ -48,7 +48,7 @@ final class PlayViewModel: ObservableObject {
 
     var maxStakePoints: Int {
         guard let profile else { return 0 }
-        return min(InMemoryJuicdRepository.dailyPlayAllowancePoints, profile.availableDailyPoints)
+        return min(JuicdBalance.dailyPlayAllowancePoints, profile.availableDailyPoints)
     }
 
     var impliedParlayDecimal: Double {

@@ -3,6 +3,7 @@ import SwiftUI
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
     @State private var showTourneyTips = false
+    @FocusState private var dailyPickFieldFocused: Bool
 
     private static let tipTimeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -12,7 +13,8 @@ struct TourneyView: View {
     }()
 
     var body: some View {
-        ScrollView {
+        NavigationStack {
+            ScrollView {
             SectionColumn(spacing: 24) {
                 JuicdTabScreenAccent()
                 BrandHeader(
@@ -40,6 +42,9 @@ struct TourneyView: View {
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
+        .juicdKeyboardDoneButton { dailyPickFieldFocused = false }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showTourneyTips) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 14) {
@@ -131,6 +136,7 @@ struct TourneyView: View {
                         }
 
                         TextField(roundPlaceholder(for: viewModel.currentRoundSpec), text: $viewModel.dailyPickText)
+                            .focused($dailyPickFieldFocused)
                             .keyboardType(.decimalPad)
                             .padding(12)
                             .frame(maxWidth: .infinity)

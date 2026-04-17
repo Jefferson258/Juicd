@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FriendsView: View {
     @ObservedObject var viewModel: FriendsViewModel
+    @FocusState private var friendsSearchFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -81,6 +82,7 @@ struct FriendsView: View {
 
                             JuicdInputField {
                                 TextField("Search players", text: $viewModel.searchQuery)
+                                    .focused($friendsSearchFocused)
                                     .textInputAutocapitalization(.words)
                                     .disableAutocorrection(true)
                                     .onChange(of: viewModel.searchQuery) { _, _ in
@@ -171,6 +173,7 @@ struct FriendsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(JuicdScreenBackground())
             .navigationBarTitleDisplayMode(.inline)
+            .juicdKeyboardDoneButton { friendsSearchFocused = false }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(JuicdTheme.canvasDeep.ignoresSafeArea(edges: .bottom))

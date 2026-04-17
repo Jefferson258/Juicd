@@ -322,3 +322,18 @@ struct JuicdInputField<Content: View>: View {
             }
     }
 }
+
+// MARK: - Keyboard accessory
+
+extension View {
+    /// Adds a trailing **Done** button on the software keyboard (use with `@FocusState` to dismiss).
+    func juicdKeyboardDoneButton(dismiss: @escaping () -> Void) -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done", action: dismiss)
+                    .fontWeight(.semibold)
+            }
+        }
+    }
+}

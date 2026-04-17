@@ -14,11 +14,13 @@ struct PlayView: View {
     @State private var adDismissedForCurrentRibbonFeed = false
     @State private var previousRibbonSig = ""
     @State private var showPlayTips = false
+    @FocusState private var searchFieldFocused: Bool
 
     private let juicdBoostStroke = Color(red: 1, green: 0.82, blue: 0.12)
 
     var body: some View {
-        ZStack(alignment: .top) {
+        NavigationStack {
+            ZStack(alignment: .top) {
             ScrollView {
                 SectionColumn(spacing: 24) {
                     JuicdTabScreenAccent()
@@ -94,7 +96,7 @@ struct PlayView: View {
             if viewModel.pickingAdditionalLeg {
                 addLegBanner
             }
-        }
+            }
         .task {
             await viewModel.refreshLiveOddsLine()
         }
@@ -155,6 +157,9 @@ struct PlayView: View {
             }
             .presentationDetents([.medium])
         }
+        .juicdKeyboardDoneButton { searchFieldFocused = false }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     private var sportFilterPills: some View {
@@ -228,6 +233,7 @@ struct PlayView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(JuicdTheme.textTertiary)
             TextField("Search player or team", text: $viewModel.searchText)
+                .focused($searchFieldFocused)
                 .textFieldStyle(.plain)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(JuicdTheme.textPrimary)

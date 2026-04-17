@@ -1,5 +1,10 @@
 import Foundation
 
+/// Wallet constants shared by `InMemoryJuicdRepository` and views (single source of truth).
+enum JuicdBalance {
+    static let dailyPlayAllowancePoints = 100
+}
+
 enum TournamentKind: String, Codable, CaseIterable, Identifiable {
     case daily
     case weeklyGroup
