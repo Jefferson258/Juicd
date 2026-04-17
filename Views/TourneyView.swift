@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
+    @State private var showTourneyTips = false
 
     private static let tipTimeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -16,10 +17,21 @@ struct TourneyView: View {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Tourney",
-                    subtitle: "Daily closest-pick bracket — choose a tournament variant, preview all four rounds, enter before lock, then one numeric pick per round.",
+                    subtitle: "Daily closest-pick bracket. Enter, then submit one number each round.",
                     centered: true,
                     kicker: "Daily"
                 )
+                HStack {
+                    Spacer()
+                    Button {
+                        showTourneyTips = true
+                    } label: {
+                        Label("How Tourney works", systemImage: "info.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(JuicdTheme.brand)
+                }
 
                 dailySection
             }
@@ -28,12 +40,35 @@ struct TourneyView: View {
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
+        .sheet(isPresented: $showTourneyTips) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Tourney tips")
+                        .font(.title3.bold())
+                    Text("• Daily closest and daily quarter are separate from Play ranking.")
+                    Text("• Daily quarter tourneys award seasonal badges.")
+                    Text("• Win one in-season for a winner badge.")
+                    Text("• Win 5+ in one season for a 5x winner badge.")
+                    Spacer()
+                }
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(JuicdScreenBackground())
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { showTourneyTips = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     private var dailySection: some View {
         Card(title: "Daily closest-pick", systemImage: "trophy.fill", style: .hero) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("One bracket per UTC day. Sixteen players — each round uses the prop shown below; closest to the simulated result advances. One pick per round (no per-round stake).")
+                Text("One bracket per day. Closest pick advances. No per-round stake.")
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .font(.system(size: 14, weight: .medium))
                     .lineSpacing(3)
@@ -205,7 +240,7 @@ struct TourneyView: View {
 
     private func roundPreviewBlock(for g: DailyGameOption) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Your four rounds (locked at entry)")
+            Text("Four rounds (locked at entry)")
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(JuicdTheme.textTertiary)
             ForEach(g.roundPreviews) { p in
@@ -248,7 +283,7 @@ struct TourneyView: View {
             Text("Time left to enter")
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(JuicdTheme.textTertiary)
-            Text("Locks 1 hour before tip-off so brackets can be built on the server.")
+            Text("Entry locks 1 hour before tip-off.")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(JuicdTheme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -288,7 +323,7 @@ struct TourneyView: View {
             Text("Tiebreakers")
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(JuicdTheme.textTertiary)
-            Text("Closer to the actual total wins. If both are equally close, we compare fractional parts of each pick × 1337; if still tied, the lower submitted pick wins.")
+            Text("Closer to the result wins. If still tied, lower submitted pick wins.")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(JuicdTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

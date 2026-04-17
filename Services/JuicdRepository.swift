@@ -19,7 +19,7 @@ final class InMemoryJuicdRepository: ObservableObject {
 
         var weeklySubmissions: [WeeklySubmission] = []
 
-        /// UTC day `yyyy-MM-dd` → user IDs who placed at least one daily bet (enters that day’s ranked pool).
+    /// UTC day `yyyy-MM-dd` → user IDs who placed at least one Play bet (enters that day’s ranked pool).
         var dailyRankParticipationByDay: [String: [UUID]] = [:]
         /// UTC day → user IDs for whom daily tier movement has already been applied.
         var dailyRankResolvedByDay: [String: [UUID]] = [:]
@@ -118,7 +118,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             return profile
         }
 
-        profile.availableDailyPoints += Self.dailyPlayAllowancePoints
+        profile.availableDailyPoints = Self.dailyPlayAllowancePoints
         profile.lastDailyPointsAwardDateISO = slateKey
 
         let entry = PointsLedgerEntry(
@@ -128,7 +128,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             tournamentId: nil,
             betSlipId: nil,
             deltaPoints: Self.dailyPlayAllowancePoints,
-            reason: "Daily play allowance (wallet only — not rank score)"
+            reason: "Daily play allowance reset (wallet only — not rank score)"
         )
 
         state.profiles[userId] = profile
@@ -175,11 +175,11 @@ final class InMemoryJuicdRepository: ObservableObject {
 
         guard var profile = state.profiles[userId] else { return }
 
-        let netPointsFromBets = netPointsFromBetsOnSlate(userId: userId, slateKey: prevSlate)
+        let normalizedNetAtHundred = normalizedNetPerformanceAtHundredOnSlate(userId: userId, slateKey: prevSlate)
         let baseMMR = profile.mmr ?? MMRLogic.startingMMR
         let tierBefore = profile.currentTier
 
-        let poolSize = 100
+        let poolSize = MMRLogic.dailyRankGroupSize
         var rng = SeededRNG(seed: "\(userId.uuidString)-\(prevSlate)-pool".hashValueAsUInt64)
 
         var scores: [(Bool, Double)] = []
@@ -188,11 +188,12 @@ final class InMemoryJuicdRepository: ObservableObject {
             var r2 = SeededRNG(seed: "\(prevSlate)-bot-\(i)".hashValueAsUInt64)
             let botMMR = baseMMR + (Double(i % 17) - 8) * 14 + r2.nextDouble() * 6 - 3
             let botId = UUID()
+            let botScaled = (r2.nextDouble() * 120) - 60
             let perf = MMRLogic.dailyPerformanceScore(
                 userId: botId,
                 dayISO: prevSlate,
                 baseMMR: botMMR,
-                netPointsFromBets: Int(r2.nextDouble() * 20) - 10,
+                normalizedNetAtHundred: botScaled,
                 rng: &r2
             )
             scores.append((false, perf))
@@ -201,7 +202,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             userId: userId,
             dayISO: prevSlate,
             baseMMR: baseMMR,
-            netPointsFromBets: netPointsFromBets,
+            normalizedNetAtHundred: normalizedNetAtHundred,
             rng: &rng
         )
         scores.append((true, userPerf))
@@ -210,8 +211,9 @@ final class InMemoryJuicdRepository: ObservableObject {
         guard let rankIdx = scores.firstIndex(where: { $0.0 }) else { return }
         let placement = rankIdx + 1
 
-        let delta = MMRLogic.mmrDelta(rank: placement, poolSize: poolSize)
-        let mmrAfter = baseMMR + delta
+        let rawDelta = MMRLogic.mmrDelta(rank: placement, poolSize: poolSize)
+        let mmrAfter = MMRLogic.smoothedMMR(currentMMR: baseMMR, rawDelta: rawDelta)
+        let appliedDelta = mmrAfter - baseMMR
         profile.mmr = mmrAfter
         profile.currentTier = MMRLogic.tier(for: mmrAfter)
         profile.lastDailyMatch = DailyMatchSnapshot(
@@ -219,7 +221,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             placement: placement,
             poolSize: poolSize,
             mmrBefore: baseMMR,
-            mmrDelta: delta,
+            mmrDelta: appliedDelta,
             mmrAfter: mmrAfter,
             tierBefore: tierBefore,
             tierAfter: profile.currentTier
@@ -231,16 +233,23 @@ final class InMemoryJuicdRepository: ObservableObject {
         persist()
     }
 
-    /// Net ledger points from bets on a **slate** (local 6am day): Play parlays, daily quarter bets, daily closest.
-    private func netPointsFromBetsOnSlate(userId: UUID, slateKey: String) -> Int {
-        state.ledger.reduce(0) { partial, entry in
-            guard entry.userId == userId else { return partial }
-            guard SlateDay.slateKey(for: entry.createdAt) == slateKey else { return partial }
-            guard entry.reason.contains("Daily bet")
-                || entry.reason.contains("Daily closest")
-                || entry.reason.contains("Play parlay") else { return partial }
-            return partial + entry.deltaPoints
+    /// Scales Play-only daily results to a 100-point baseline so users are ranked by quality, not by spending all points.
+    /// Example: spending 10 points for +5 net => +50 at 100.
+    private func normalizedNetPerformanceAtHundredOnSlate(userId: UUID, slateKey: String) -> Double {
+        var staked = 0
+        var net = 0
+        for entry in state.ledger where entry.userId == userId {
+            guard SlateDay.slateKey(for: entry.createdAt) == slateKey else { continue }
+            if entry.reason == "Play parlay stake" {
+                staked += abs(entry.deltaPoints)
+                net += entry.deltaPoints
+            } else if entry.reason == "Play parlay payout" {
+                net += entry.deltaPoints
+            }
         }
+        guard staked > 0 else { return 0 }
+        let roi = Double(net) / Double(staked)
+        return roi * Double(Self.dailyPlayAllowancePoints)
     }
 
     func playBoardEntriesOnSlate(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
@@ -426,7 +435,6 @@ final class InMemoryJuicdRepository: ObservableObject {
         var map = state.dailyClosestByKey ?? [:]
         map[k] = st
         state.dailyClosestByKey = map
-        recordDailyRankParticipation(userId: userId, date: date)
         persist()
         return st
     }
@@ -663,8 +671,6 @@ final class InMemoryJuicdRepository: ObservableObject {
         guard stageIndex >= 1 && stageIndex <= tournament.stageCount else { return nil }
         guard profile.availableDailyPoints >= stakePoints else { return nil }
 
-        recordDailyRankParticipation(userId: userId, date: date)
-
         // Deduct stake immediately.
         profile.availableDailyPoints -= stakePoints
         state.profiles[userId] = profile
@@ -691,11 +697,7 @@ final class InMemoryJuicdRepository: ObservableObject {
 
             state.profiles[userId] = profile
 
-            let seasonPts = max(0, estimatedNetPointsPayout)
-            pointsDelta = seasonPts
-            profile.seasonPointsWon += seasonPts
-            profile.allTimePointsWon += seasonPts
-            state.profiles[userId] = profile
+            pointsDelta = payoutIncludingStake - stakePoints
 
             let winEntry = PointsLedgerEntry(
                 id: UUID(),
@@ -707,6 +709,20 @@ final class InMemoryJuicdRepository: ObservableObject {
                 reason: "Daily bet payout (Q\(stageIndex))"
             )
             state.ledger.append(winEntry)
+            if stageIndex == tournament.stageCount {
+                state.ledger.append(
+                    PointsLedgerEntry(
+                        id: UUID(),
+                        createdAt: date,
+                        userId: userId,
+                        tournamentId: tournament.id,
+                        betSlipId: nil,
+                        deltaPoints: 0,
+                        reason: "Daily quarter tournament win"
+                    )
+                )
+                awardSeasonTournamentWinnerBadges(userId: userId, date: date)
+            }
         }
 
         // Persist bet slip record.
@@ -1253,6 +1269,44 @@ final class InMemoryJuicdRepository: ObservableObject {
         if !(state.rewards[userId] ?? []).contains(where: { $0.title == badge.title }) {
             state.rewards[userId, default: []].append(badge)
             persist()
+        }
+    }
+
+    private func awardSeasonTournamentWinnerBadges(userId: UUID, date: Date = .now) {
+        let seasonKey = JuicdSeason.currentSeasonKey(at: date)
+        let seasonLabel = JuicdSeason.shortLabel(for: seasonKey)
+        let singleTitle = "\(seasonLabel) Tourney Winner"
+        let fiveTitle = "\(seasonLabel) 5x Tourney Winner"
+
+        func inSeason(_ d: Date) -> Bool { JuicdSeason.contains(d, seasonKey: seasonKey) }
+        let seasonWins = state.ledger.reduce(0) { partial, entry in
+            guard entry.userId == userId, inSeason(entry.createdAt), entry.reason == "Daily quarter tournament win" else {
+                return partial
+            }
+            return partial + 1
+        }
+
+        if !(state.rewards[userId] ?? []).contains(where: { $0.title == singleTitle }) {
+            state.rewards[userId, default: []].append(
+                RewardBadge(
+                    id: UUID(),
+                    title: singleTitle,
+                    description: "Won a daily quarter tournament in \(seasonLabel).",
+                    achievedAt: date,
+                    imageSystemName: "trophy.fill"
+                )
+            )
+        }
+        if seasonWins >= 5, !(state.rewards[userId] ?? []).contains(where: { $0.title == fiveTitle }) {
+            state.rewards[userId, default: []].append(
+                RewardBadge(
+                    id: UUID(),
+                    title: fiveTitle,
+                    description: "Won 5+ daily quarter tournaments in \(seasonLabel).",
+                    achievedAt: date,
+                    imageSystemName: "rosette"
+                )
+            )
         }
     }
 

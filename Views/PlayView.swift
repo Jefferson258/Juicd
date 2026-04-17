@@ -13,6 +13,7 @@ struct PlayView: View {
     /// After user taps dismiss on the ad, no new random ad until ribbons change (spawn still works).
     @State private var adDismissedForCurrentRibbonFeed = false
     @State private var previousRibbonSig = ""
+    @State private var showPlayTips = false
 
     private let juicdBoostStroke = Color(red: 1, green: 0.82, blue: 0.12)
 
@@ -23,10 +24,21 @@ struct PlayView: View {
                     JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Play",
-                        subtitle: "For You shows Popular ribbons by league. Pick a sport to filter by market, search names, and scroll picks vertically. One cached Odds API line per session keeps quota usage low.",
+                        subtitle: "Find picks, build slips, and place bets.",
                         centered: true,
                         kicker: "Today’s board"
                     )
+                    HStack {
+                        Spacer()
+                        Button {
+                            showPlayTips = true
+                        } label: {
+                            Label("How Play works", systemImage: "info.circle")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(JuicdTheme.brand)
+                    }
 
                     if let profile = viewModel.profile {
                         bankrollHero(points: profile.availableDailyPoints)
@@ -99,7 +111,7 @@ struct PlayView: View {
             Button("Go back", role: .cancel) {}
         } message: {
             Text(
-                "This is your first bet today with \(viewModel.stakePoints) of \(InMemoryJuicdRepository.dailyPlayAllowancePoints) daily points. Using the rest on more picks or parlays gives you more chances at a strong ranked day."
+                "You can spend all or part of your daily points. Ranked results are normalized to a 100-point baseline."
             )
         }
         .overlay(alignment: .bottom) {
@@ -119,6 +131,30 @@ struct PlayView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.builderToast)
+        .sheet(isPresented: $showPlayTips) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Play tips")
+                        .font(.title3.bold())
+                    Text("• Your daily points reset to 100 each slate.")
+                    Text("• You can spend all or part of the 100.")
+                    Text("• Daily rank performance uses Play bets only.")
+                    Text("• If you spend less than 100, results are normalized to a 100-point baseline.")
+                    Text("• Daily quarter tourneys are tracked separately for season winner badges.")
+                    Spacer()
+                }
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(JuicdScreenBackground())
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { showPlayTips = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     private var sportFilterPills: some View {
@@ -223,13 +259,13 @@ struct PlayView: View {
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(.system(size: 44, weight: .medium))
                 .foregroundStyle(JuicdTheme.textTertiary)
-            Text("No picks match")
+            Text("No picks found")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(JuicdTheme.textPrimary)
             Text(
                 viewModel.hasActiveSearch
-                    ? "Change the search or clear it, or widen filters to see more lines."
-                    : "Try another stat filter or sport, or sync odds again when lines are up."
+                    ? "Try a different search or clear it."
+                    : "Try another filter or sync again."
             )
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(JuicdTheme.textSecondary)

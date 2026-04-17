@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var showRankingsHelp = false
+    @State private var showDashboardTips = false
 
     var body: some View {
         ScrollView {
@@ -10,10 +11,21 @@ struct DashboardView: View {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Dashboard",
-                    subtitle: "Your daily balance, season tier, and how you stack up.",
+                    subtitle: "Daily points, rank, and where you stand.",
                     centered: true,
                     kicker: "Overview"
                 )
+                HStack {
+                    Spacer()
+                    Button {
+                        showDashboardTips = true
+                    } label: {
+                        Label("Quick help", systemImage: "info.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(JuicdTheme.brand)
+                }
 
                 if let profile = viewModel.profile {
                     todaysEntriesSection
@@ -32,7 +44,7 @@ struct DashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
 
-                            Text("You get \(InMemoryJuicdRepository.dailyPlayAllowancePoints) fresh points each local slate (after 6am) to bet with. That refill does not add to your season score — only points you win from bets and bonuses do.")
+                            Text("Your balance resets to \(InMemoryJuicdRepository.dailyPlayAllowancePoints) each new slate. Refill points are not season score.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)
@@ -58,7 +70,7 @@ struct DashboardView: View {
                                 tierBadge(for: profile.currentTier)
                             }
 
-                            Text("Your tier reflects recent ranked play. Each day you bet, you’re grouped with similar players; finishes can nudge your tier, but small swings don’t always move it.")
+                            Text("Tier comes from your MMR, based on daily ranked results.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 13, weight: .medium))
                                 .multilineTextAlignment(.leading)
@@ -74,7 +86,7 @@ struct DashboardView: View {
                                 .tracking(0.8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Text("\(profile.seasonPointsWon) pts from bet wins & daily tourney bonuses — not from your daily refill.")
+                            Text("\(profile.seasonPointsWon) pts from wins and bonuses.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,6 +98,7 @@ struct DashboardView: View {
                     }
 
                     rankingsCard(profile: profile)
+                    mmrCalculationCard
                 } else {
                     Card(title: "Loading…", systemImage: "hourglass") {
                         Text("Loading profile.")
@@ -109,15 +122,15 @@ struct DashboardView: View {
                         .foregroundStyle(JuicdTheme.textPrimary)
                     Text(
                         """
-                        Daily balance: a fixed amount of points each day to bet with. It is not added to your season score.
+                        Daily points reset to 100 each slate. Refill points are not season score.
 
-                        Season score: only points you win from bets and daily tourney bonuses count here — not the daily refill.
+                        Season score only includes points from wins and bonuses.
 
-                        Ranked play: each day you bet, you enter a pool of similarly skilled players (simulated). Your finish can move your visible tier; you can have a rough day and barely move, or stay in the same tier.
+                        Ranked play: each day you bet, you enter a 10-player group. Top 5 gain MMR; bottom 5 lose MMR.
 
-                        If you skip a day, you don’t enter the pool — no tier change from ranked that day.
+                        If you spend fewer than 100 points, your result is scaled to a 100-point baseline for fair ranking.
 
-                        Seasons reset tier progression and season score. A detailed skill rating (MMR) is optional on Profile.
+                        MMR updates use a moving average, so one day does not over-swing your rank.
                         """
                     )
                         .foregroundStyle(JuicdTheme.textSecondary)
@@ -132,6 +145,30 @@ struct DashboardView: View {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { showRankingsHelp = false }
                             .fontWeight(.semibold)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showDashboardTips) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Dashboard tips")
+                        .font(.title3.bold())
+                    Text("• Daily points reset to 100 each slate.")
+                    Text("• Rank/MMR is based on Play bets only.")
+                    Text("• Daily groups are 10 players: top 5 gain, bottom 5 lose.")
+                    Text("• MMR movement is smoothed with a moving average.")
+                    Text("• Tier distribution is bell-curved around Platinum.")
+                    Spacer()
+                }
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(JuicdScreenBackground())
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { showDashboardTips = false }
                     }
                 }
             }
@@ -210,7 +247,7 @@ struct DashboardView: View {
                         .foregroundStyle(JuicdTheme.textSecondary)
                 }
                 if isSample {
-                    Text("Your real result appears after a slate resolves once you’ve placed bets.")
+                    Text("Your real result appears after the slate resolves.")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(JuicdTheme.textTertiary)
                 }
@@ -299,7 +336,7 @@ struct DashboardView: View {
                             Text(tier.displayName)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundStyle(isCurrent ? JuicdTheme.brand : JuicdTheme.textPrimary)
-                            Text("Based on ranked performance")
+                            Text("Based on MMR")
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .font(.system(size: 12, weight: .medium))
                         }
@@ -353,6 +390,48 @@ struct DashboardView: View {
                     ),
                     lineWidth: 1
                 )
+        }
+    }
+
+    private var mmrCalculationCard: some View {
+        Card(title: "MMR each day", systemImage: "function", style: .hero) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("1) Grouping")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                Text("You are matched into a daily group of 10 similar players.")
+                    .font(.caption)
+                    .foregroundStyle(JuicdTheme.textSecondary)
+
+                Text("2) Fair scaling")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                Text("Your daily net is scaled to a 100-point baseline, so spending fewer points does not punish rank quality.")
+                    .font(.caption)
+                    .foregroundStyle(JuicdTheme.textSecondary)
+
+                Text("3) Placement")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                Text("Top 5 gain MMR. Bottom 5 lose MMR. #1 gains the most, #10 loses the most.")
+                    .font(.caption)
+                    .foregroundStyle(JuicdTheme.textSecondary)
+
+                Text("4) Moving average")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                Text("Daily changes are smoothed with a moving average to keep rank movement stable.")
+                    .font(.caption)
+                    .foregroundStyle(JuicdTheme.textSecondary)
+
+                Text("5) Bell-curve tiers")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                Text("Tier cutoffs follow a bell curve centered near Platinum, with fewer players in farther tiers.")
+                    .font(.caption)
+                    .foregroundStyle(JuicdTheme.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

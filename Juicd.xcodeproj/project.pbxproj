@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		225E4B662F6F2CED002955B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 225E4B672F6F2CED002955B9 /* Assets.xcassets */; };
 		225E4B172F6F2CED002955B9 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B002F6F2CED002955B9 /* AppTheme.swift */; };
 		225E4B182F6F2CED002955B9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B102F6F2CED002955B9 /* DashboardView.swift */; };
 		225E4B192F6F2CED002955B9 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B082F6F2CED002955B9 /* AuthViewModel.swift */; };
@@ -41,6 +42,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		225E4B672F6F2CED002955B9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Juicd/Assets.xcassets; sourceTree = "<group>"; };
 		225E4B002F6F2CED002955B9 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		225E4B012F6F2CED002955B9 /* JuicdApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdApp.swift; sourceTree = "<group>"; };
 		225E4B022F6F2CED002955B9 /* JuicdModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdModels.swift; sourceTree = "<group>"; };
@@ -146,6 +148,7 @@
 		22E1FDB52F6F2A85004D740F = {
 			isa = PBXGroup;
 			children = (
+				225E4B672F6F2CED002955B9 /* Assets.xcassets */,
 				225E4B002F6F2CED002955B9 /* AppTheme.swift */,
 				225E4B602F6F2CED002955B9 /* Juicd.entitlements */,
 				225E4B012F6F2CED002955B9 /* JuicdApp.swift */,
@@ -227,6 +230,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				225E4B662F6F2CED002955B9 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

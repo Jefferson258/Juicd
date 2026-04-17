@@ -222,18 +222,11 @@ final class PlayViewModel: ObservableObject {
     }
 
     func placeBetTapped() {
-        guard let userId else { return }
+        guard userId != nil else { return }
         guard !parlayLegs.isEmpty else { return }
         clampStakeToBalance()
         guard stakePoints >= 1, stakePoints <= maxStakePoints else { return }
-
-        let needsReminder = !repository.hasPlayParlayStakeToday(userId: userId)
-            && stakePoints < InMemoryJuicdRepository.dailyPlayAllowancePoints
-        if needsReminder {
-            showFirstBetReminder = true
-        } else {
-            executePlaceParlay()
-        }
+        executePlaceParlay()
     }
 
     func executePlaceParlay() {

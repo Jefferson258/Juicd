@@ -126,8 +126,8 @@ struct DailyMatchSnapshot: Codable, Equatable {
     /// Dev-only sample when the user has no resolved pool yet.
     static let devPreview = DailyMatchSnapshot(
         dayISO: "2026-03-20",
-        placement: 34,
-        poolSize: 100,
+        placement: 4,
+        poolSize: 10,
         mmrBefore: 1500,
         mmrDelta: 4,
         mmrAfter: 1504,
