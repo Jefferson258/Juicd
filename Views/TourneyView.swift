@@ -19,20 +19,22 @@ struct TourneyView: View {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Tourney",
-                    subtitle: "Daily closest-pick bracket. Enter, then submit one number each round.",
+                    subtitle: "Closest-pick bracket, 1 number each round.",
                     centered: true,
                     kicker: "Daily"
                 )
-                HStack {
-                    Spacer()
+                HStack(spacing: 10) {
+                    compactTopIcon(systemName: "trophy.fill")
+                    compactTopIcon(systemName: "target")
+                    compactTopIcon(systemName: "clock.fill")
                     Button {
                         showTourneyTips = true
                     } label: {
-                        Label("How Tourney works", systemImage: "info.circle")
-                            .font(.system(size: 13, weight: .semibold))
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
                     }
-                    .buttonStyle(.bordered)
-                    .tint(JuicdTheme.brand)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(JuicdTheme.brand)
                 }
 
                 dailySection
@@ -48,12 +50,11 @@ struct TourneyView: View {
         .sheet(isPresented: $showTourneyTips) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Tourney tips")
+                    Text("Tourney quick tips")
                         .font(.title3.bold())
-                    Text("• Daily closest and daily quarter are separate from Play ranking.")
-                    Text("• Daily quarter tourneys award seasonal badges.")
-                    Text("• Win one in-season for a winner badge.")
-                    Text("• Win 5+ in one season for a 5x winner badge.")
+                    tipRow(icon: "shuffle", text: "Tourney ranking is separate from Play.")
+                    tipRow(icon: "rosette", text: "Wins can unlock seasonal badges.")
+                    tipRow(icon: "flag.checkered", text: "One pick each round.")
                     Spacer()
                 }
                 .foregroundStyle(JuicdTheme.textSecondary)
@@ -73,10 +74,15 @@ struct TourneyView: View {
     private var dailySection: some View {
         Card(title: "Daily closest-pick", systemImage: "trophy.fill", style: .hero) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("One bracket per day. Closest pick advances. No per-round stake.")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Label("1 bracket/day", systemImage: "calendar")
+                        Label("Closest wins", systemImage: "target")
+                        Label("No stake", systemImage: "slash.circle")
+                    }
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(JuicdTheme.textSecondary)
-                    .font(.system(size: 14, weight: .medium))
-                    .lineSpacing(3)
+                }
 
                 tiebreakerFootnote
 
@@ -337,5 +343,27 @@ struct TourneyView: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.canvasDeep.opacity(0.4)))
+    }
+
+    private func compactTopIcon(systemName: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(JuicdTheme.brand.opacity(0.2))
+                .overlay(Circle().stroke(JuicdTheme.brand.opacity(0.55), lineWidth: 1))
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 32, height: 32)
+    }
+
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .frame(width: 18)
+                .foregroundStyle(JuicdTheme.brand)
+            Text(text)
+        }
+        .font(.system(size: 14, weight: .semibold))
     }
 }

@@ -39,13 +39,14 @@ struct ParlayBuilderSheet: View {
                     Button {
                         viewModel.placeBetTapped()
                     } label: {
-                        Text("Place \(viewModel.stakePoints) pts")
+                        Text(viewModel.isSubmittingPlayParlay ? "Placing…" : "Place \(viewModel.stakePoints) pts")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(JuicdTheme.brand)
+                    .disabled(viewModel.isSubmittingPlayParlay)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     .background(JuicdTheme.canvasDeep.opacity(0.95))
@@ -56,9 +57,9 @@ struct ParlayBuilderSheet: View {
 
     private var legsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Legs")
+            Label("Legs", systemImage: "list.bullet.clipboard.fill")
                 .font(.caption.weight(.heavy))
-                .foregroundStyle(JuicdTheme.textTertiary)
+                .foregroundStyle(.white.opacity(0.95))
             ForEach(Array(viewModel.parlayLegs.enumerated()), id: \.element.id) { index, prop in
                 HStack(alignment: .top, spacing: 10) {
                     Text("\(index + 1)")
@@ -85,7 +86,13 @@ struct ParlayBuilderSheet: View {
                     .buttonStyle(.plain)
                 }
                 .padding(12)
-                .background(RoundedRectangle(cornerRadius: 14).fill(JuicdTheme.card))
+                .background(
+                    RoundedRectangle(cornerRadius: 14).fill(JuicdTheme.card)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(JuicdTheme.brand.opacity(0.4), lineWidth: 1)
+                        )
+                )
             }
         }
     }
@@ -93,9 +100,9 @@ struct ParlayBuilderSheet: View {
     private var stakeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Stake")
+                Label("Stake", systemImage: "banknote.fill")
                     .font(.caption.weight(.heavy))
-                    .foregroundStyle(JuicdTheme.textTertiary)
+                    .foregroundStyle(.white.opacity(0.95))
                 Spacer()
                 Text("Max \(viewModel.maxStakePoints) pts")
                     .font(.caption.weight(.semibold))
@@ -115,13 +122,19 @@ struct ParlayBuilderSheet: View {
                 .foregroundStyle(JuicdTheme.textPrimary)
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16).fill(JuicdTheme.canvasDeep.opacity(0.5)))
+        .background(
+            RoundedRectangle(cornerRadius: 16).fill(JuicdTheme.canvasDeep.opacity(0.6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(JuicdTheme.brand2.opacity(0.45), lineWidth: 1)
+                )
+        )
     }
 
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Combined odds")
+                Label("Combined odds", systemImage: "sum")
                 Spacer()
                 Text(String(format: "%.2f", viewModel.impliedParlayDecimal))
                     .fontWeight(.bold)
@@ -129,7 +142,7 @@ struct ParlayBuilderSheet: View {
             }
             .font(.system(size: 14, weight: .medium))
             HStack {
-                Text("Est. season pts if win")
+                Label("Est. season pts if win", systemImage: "sparkles")
                 Spacer()
                 Text("+\(viewModel.estimatedSeasonPointsIfWin) pts")
                     .fontWeight(.bold)
@@ -140,7 +153,13 @@ struct ParlayBuilderSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill(JuicdTheme.card.opacity(0.6)))
+        .background(
+            RoundedRectangle(cornerRadius: 16).fill(JuicdTheme.card.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(JuicdTheme.brand.opacity(0.35), lineWidth: 1)
+                )
+        )
     }
 
     private var addLegButton: some View {

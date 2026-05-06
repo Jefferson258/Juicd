@@ -14,6 +14,14 @@ final class PlayViewModel: ObservableObject {
     /// Full board after slate + boosts (before sport / stat / search filters).
     @Published private(set) var ribbons: [PlayPropRibbon] = []
 
+    /// When true, `ribbons` came from Supabase and must not be replaced by local stub rebuilds when switching sport filters.
+    private var boardUsesRemoteFeed = false
+
+    /// Bumps on each odds refresh start; completions from older generations are discarded (avoids overlapping `Task`s corrupting board state).
+    private var oddsRefreshGeneration: UInt64 = 0
+
+    @Published private(set) var isSubmittingPlayParlay = false
+
     @Published var sportPill: PlaySportPill = .forYou {
         didSet {
             if sportPill == .forYou {
@@ -23,6 +31,7 @@ final class PlayViewModel: ObservableObject {
                 statFilterId = "popular"
             }
             rebuildRibbons()
+            clampSportPillToAvailableOdds()
         }
     }
 
@@ -74,6 +83,11 @@ final class PlayViewModel: ObservableObject {
         sportPill != .forYou && !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Sport filter pills that currently have at least one priced prop on the board (always includes **For You**).
+    var sportPillsWithOdds: [PlaySportPill] {
+        Self.sportPillsMatchingLeagues(on: propsUnionForSportToolbar())
+    }
+
     /// Ribbon chevron: select that league’s sport filter (live ribbon infers from cached API line).
     func sportPillToApply(forRibbonId ribbonId: String) -> PlaySportPill? {
         if ribbonId == "live_api" {
@@ -99,29 +113,87 @@ final class PlayViewModel: ObservableObject {
         _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         profile = repository.profile(userId: userId)
         rebuildRibbons()
+        Task { await refreshLiveOddsLine() }
     }
 
     func refreshLiveOddsLine() async {
-        guard OddsAPIConfig.isConfigured else {
-            oddsStatus = "Add ODDS_API_KEY in Xcode target Info to load a live line."
+        oddsRefreshGeneration &+= 1
+        let generation = oddsRefreshGeneration
+
+        if SupabaseConfig.isConfigured,
+           let serverBoard = await SupabaseOddsService.fetchPlayBoard() {
+            guard generation == oddsRefreshGeneration else { return }
             liveLine = nil
-            rebuildRibbons()
+            isLoadingOdds = false
+            oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source)"
+            let mapped = serverBoard.ribbons.map { ribbon in
+                PlayPropRibbon(
+                    id: ribbon.id,
+                    title: ribbon.title,
+                    subtitle: ribbon.subtitle,
+                    props: ribbon.props.compactMap { dto in
+                        guard dto.oddsDecimal > 1.001 else { return nil }
+                        let fallbackId = StableUUID.from(
+                            "\(serverBoard.slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
+                        )
+                        return PlayPropBet(
+                            id: UUID(uuidString: dto.id) ?? fallbackId,
+                            leagueTag: dto.leagueTag,
+                            athleteOrTeam: dto.athleteOrTeam,
+                            matchup: dto.matchup,
+                            propDescription: dto.propDescription,
+                            lineText: dto.lineText,
+                            pickLabel: dto.pickLabel,
+                            oddsDecimal: dto.oddsDecimal
+                        )
+                    }
+                )
+            }
+            let trimmed = Self.ribbonsDroppingEmpty(mapped)
+            if trimmed.isEmpty {
+                boardUsesRemoteFeed = false
+                oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
+                rebuildRibbons()
+            } else {
+                boardUsesRemoteFeed = true
+                ribbons = trimmed
+            }
+            clampSportPillToAvailableOdds()
             return
         }
+
+        guard generation == oddsRefreshGeneration else { return }
+
+        boardUsesRemoteFeed = false
+        guard OddsAPIConfig.isConfigured else {
+            oddsStatus = "Supabase offline. Add SUPABASE_URL and SUPABASE_ANON_KEY."
+            liveLine = nil
+            rebuildRibbons()
+            clampSportPillToAvailableOdds()
+            return
+        }
+
         isLoadingOdds = true
         oddsStatus = "Loading one line…"
         let line = await TheOddsAPIService.fetchOneCachedLine()
+        guard generation == oddsRefreshGeneration else {
+            isLoadingOdds = false
+            return
+        }
         liveLine = line
         isLoadingOdds = false
         rebuildRibbons()
+        clampSportPillToAvailableOdds()
         if let line {
-            oddsStatus = "Live (cached up to 1h) · \(line.sportKey)"
+            oddsStatus = "Fallback live (client) · \(line.sportKey)"
         } else {
-            oddsStatus = "Couldn’t load odds (off-season or network)."
+            oddsStatus = "Couldn’t load odds."
         }
     }
 
     private func rebuildRibbons() {
+        if boardUsesRemoteFeed { return }
+
         let slateKey = SlateDay.slateKey()
         var board = DailySlateBoard.ribbons(forSlateKey: slateKey, sport: sportPill)
 
@@ -135,7 +207,59 @@ final class PlayViewModel: ObservableObject {
             )
             board = [liveRibbon] + board
         }
-        ribbons = JuicdOddsNightly.applyBoosts(to: board, slateKey: slateKey)
+        ribbons = Self.ribbonsDroppingEmpty(JuicdOddsNightly.applyBoosts(to: board, slateKey: slateKey))
+    }
+
+    /// Props across the full cross-sport inventory (stub + optional live line), or the remote board when active.
+    private func propsUnionForSportToolbar() -> [PlayPropBet] {
+        if boardUsesRemoteFeed {
+            return ribbons.flatMap(\.props)
+        }
+        let slateKey = SlateDay.slateKey()
+        var inventory = JuicdOddsNightly.applyBoosts(
+            to: DailySlateBoard.ribbons(forSlateKey: slateKey, sport: .forYou),
+            slateKey: slateKey
+        )
+        if let line = liveLine {
+            let liveProp = livePropBet(from: line, slateKey: slateKey)
+            guard liveProp.oddsDecimal > 1.001 else {
+                return Self.ribbonsDroppingEmpty(inventory).flatMap(\.props)
+            }
+            let liveRibbon = PlayPropRibbon(
+                id: "live_api",
+                title: "Live · API",
+                subtitle: "Cached moneyline (h2h) — swap for player props via TheOddsAPIPlayboardHook",
+                props: [liveProp]
+            )
+            inventory = [liveRibbon] + inventory
+        }
+        return Self.ribbonsDroppingEmpty(inventory).flatMap(\.props)
+    }
+
+    private func clampSportPillToAvailableOdds() {
+        let allowed = Self.sportPillsMatchingLeagues(on: propsUnionForSportToolbar())
+        guard !allowed.contains(sportPill) else { return }
+        sportPill = .forYou
+    }
+
+    private static func ribbonsDroppingEmpty(_ ribbons: [PlayPropRibbon]) -> [PlayPropRibbon] {
+        ribbons.compactMap { ribbon in
+            let props = ribbon.props.filter { $0.oddsDecimal > 1.001 }
+            guard !props.isEmpty else { return nil }
+            var r = ribbon
+            r.props = props
+            return r
+        }
+    }
+
+    private static func sportPillsMatchingLeagues(on props: [PlayPropBet]) -> [PlaySportPill] {
+        var pills: [PlaySportPill] = [.forYou]
+        for pill in PlaySportPill.primaryRow where pill != .forYou {
+            if props.contains(where: { pill.matchesLeagueTag($0.leagueTag) }) {
+                pills.append(pill)
+            }
+        }
+        return pills
     }
 
     private func liveLineMatchesSportFilter(_ line: LiveOddsLine) -> Bool {
@@ -224,12 +348,17 @@ final class PlayViewModel: ObservableObject {
     func placeBetTapped() {
         guard userId != nil else { return }
         guard !parlayLegs.isEmpty else { return }
+        guard !isSubmittingPlayParlay else { return }
         clampStakeToBalance()
         guard stakePoints >= 1, stakePoints <= maxStakePoints else { return }
-        executePlaceParlay()
+        Task { await executePlaceParlay() }
     }
 
-    func executePlaceParlay() {
+    func executePlaceParlay() async {
+        guard !isSubmittingPlayParlay else { return }
+        isSubmittingPlayParlay = true
+        defer { isSubmittingPlayParlay = false }
+
         showFirstBetReminder = false
         guard let userId else { return }
         guard !parlayLegs.isEmpty else { return }
@@ -237,7 +366,24 @@ final class PlayViewModel: ObservableObject {
         guard stakePoints >= 1, stakePoints <= maxStakePoints else { return }
 
         let legs = parlayLegs.map { $0.asBetLeg() }
-        if let outcome = repository.submitPlayParlay(userId: userId, stakePoints: stakePoints, legs: legs) {
+        let serverOutcomeMap: [UUID: Bool]? = await {
+            guard SupabaseConfig.isConfigured else { return nil }
+            guard let remote = await SupabaseOddsService.resolvePlaySlip(userId: userId, legs: legs) else { return nil }
+            var map: [UUID: Bool] = [:]
+            for legOutcome in remote.outcomes {
+                if let id = UUID(uuidString: legOutcome.legId) {
+                    map[id] = legOutcome.didWin
+                }
+            }
+            return map.isEmpty ? nil : map
+        }()
+
+        if let outcome = repository.submitPlayParlay(
+            userId: userId,
+            stakePoints: stakePoints,
+            legs: legs,
+            forcedLegOutcomesByLegId: serverOutcomeMap
+        ) {
             profile = repository.profile(userId: userId)
             if outcome.didWin {
                 builderToast = "Hit! +\(outcome.seasonPointsEarned) season pts"

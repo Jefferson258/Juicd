@@ -67,6 +67,15 @@ struct ProfileView: View {
                                 statRow(label: "All-time pts won", value: "\(profile.allTimePointsWon)")
                             }
                             .padding(.top, 4)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(JuicdTheme.canvasDeep.opacity(0.55))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(JuicdTheme.brand.opacity(0.35), lineWidth: 1)
+                                    )
+                            )
 
                             DisclosureGroup(isExpanded: $showRankingDetails) {
                                 Text("Internal skill rating used to place you in ranked pools. Your tier on Dashboard is what most players should care about.")
@@ -85,7 +94,7 @@ struct ProfileView: View {
                         .frame(maxWidth: .infinity)
                     }
 
-                    Card(title: "Notifications", systemImage: "bell.badge.fill") {
+                    Card(title: "Notifications", systemImage: "bell.and.waves.left.and.right.fill") {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Choose what you’d like to hear about. Turning any option on asks for notification permission once.")
                                 .font(.system(size: 13, weight: .medium))
@@ -110,7 +119,7 @@ struct ProfileView: View {
                         }
                     }
 
-                    Card(title: "Badges", systemImage: "star.circle.fill") {
+                    Card(title: "Badges", systemImage: "rosette") {
                         if viewModel.badges.isEmpty {
                             Text("Win tourneys and seasons to earn badges.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
@@ -125,11 +134,11 @@ struct ProfileView: View {
                                                 .fill(JuicdTheme.card)
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                                        .stroke(JuicdTheme.brand2.opacity(0.4), lineWidth: 1.2)
                                                 )
                                             Image(systemName: badge.imageSystemName)
                                                 .font(.system(size: 28, weight: .semibold))
-                                                .foregroundStyle(JuicdTheme.brand)
+                                                .foregroundStyle(.white)
                                         }
                                         .frame(height: 72)
                                         Text(badge.title)
@@ -142,10 +151,10 @@ struct ProfileView: View {
                                     .frame(maxWidth: .infinity)
                                     .background {
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .fill(JuicdTheme.canvasDeep.opacity(0.6))
+                                            .fill(JuicdTheme.canvasDeep.opacity(0.7))
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                                                    .stroke(JuicdTheme.brand.opacity(0.3), lineWidth: 1)
                                             )
                                     }
                                 }
@@ -275,7 +284,7 @@ struct ProfileView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
                             .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(JuicdTheme.textPrimary)
+                            .foregroundStyle(.white)
                         Text(subtitle)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(JuicdTheme.textTertiary)
@@ -291,7 +300,7 @@ struct ProfileView: View {
 
                 Text("\(stats.totalWins)–\(stats.totalLosses)")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textPrimary)
+                    .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
@@ -313,12 +322,12 @@ struct ProfileView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(JuicdTheme.card)
+                    .fill(JuicdTheme.card.opacity(0.95))
                     .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                    .stroke(JuicdTheme.brand2.opacity(0.35), lineWidth: 1.2)
             }
         }
         .buttonStyle(.plain)

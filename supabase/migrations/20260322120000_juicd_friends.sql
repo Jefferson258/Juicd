@@ -35,28 +35,34 @@ alter table public.juicd_friendships enable row level security;
 alter table public.juicd_friend_requests enable row level security;
 
 -- RLS: users read/write only their edges (friendships).
+drop policy if exists "friendships_select_own" on public.juicd_friendships;
 create policy "friendships_select_own"
   on public.juicd_friendships for select
   using (auth.uid() = user_low or auth.uid() = user_high);
 
 -- Inserts/deletes should be done via RPC or service role in production; minimal policy for dev:
+drop policy if exists "friendships_insert_own_edge" on public.juicd_friendships;
 create policy "friendships_insert_own_edge"
   on public.juicd_friendships for insert
   with check (auth.uid() = user_low or auth.uid() = user_high);
 
+drop policy if exists "friendships_delete_own_edge" on public.juicd_friendships;
 create policy "friendships_delete_own_edge"
   on public.juicd_friendships for delete
   using (auth.uid() = user_low or auth.uid() = user_high);
 
 -- Requests: participants only.
+drop policy if exists "friend_requests_select_participant" on public.juicd_friend_requests;
 create policy "friend_requests_select_participant"
   on public.juicd_friend_requests for select
   using (auth.uid() = from_id or auth.uid() = to_id);
 
+drop policy if exists "friend_requests_insert_sender" on public.juicd_friend_requests;
 create policy "friend_requests_insert_sender"
   on public.juicd_friend_requests for insert
   with check (auth.uid() = from_id);
 
+drop policy if exists "friend_requests_delete_participant" on public.juicd_friend_requests;
 create policy "friend_requests_delete_participant"
   on public.juicd_friend_requests for delete
   using (auth.uid() = from_id or auth.uid() = to_id);

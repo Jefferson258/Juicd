@@ -11,10 +11,15 @@ struct FriendsView: View {
                     JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Friends",
-                        subtitle: "Requests, your crew, and the Friends Leaderboard — tap someone to see recent Play picks.",
+                        subtitle: "Requests, crew, leaderboard.",
                         centered: true,
                         kicker: "Social"
                     )
+                    HStack(spacing: 10) {
+                        compactTopIcon(systemName: "person.2.fill")
+                        compactTopIcon(systemName: "person.badge.plus")
+                        compactTopIcon(systemName: "chart.bar.fill")
+                    }
 
                     if !viewModel.incomingRequests.isEmpty {
                         Card(title: "Friend requests", systemImage: "envelope.badge.fill") {
@@ -75,10 +80,9 @@ struct FriendsView: View {
 
                     Card(title: "Add friends", systemImage: "person.badge.plus") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Search by display name (another account on this device signs in with a different name).")
-                                .font(.caption.weight(.medium))
+                            Label("Search by display name", systemImage: "magnifyingglass")
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(JuicdTheme.textTertiary)
-                                .fixedSize(horizontal: false, vertical: true)
 
                             JuicdInputField {
                                 TextField("Search players", text: $viewModel.searchQuery)
@@ -119,10 +123,9 @@ struct FriendsView: View {
 
                     Card(title: "Friends Leaderboard", systemImage: "chart.bar.fill") {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("You and your friends, highest skill placement first.")
-                                .font(.caption.weight(.medium))
+                            Label("Highest placement first", systemImage: "arrow.up.forward")
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(JuicdTheme.textTertiary)
-                                .fixedSize(horizontal: false, vertical: true)
 
                             if viewModel.leaderboard.count <= 1 {
                                 Text("Add friends to compare ranks. Solo players still see their own row.")
@@ -183,6 +186,18 @@ struct FriendsView: View {
         .onAppear {
             viewModel.refresh()
         }
+    }
+
+    private func compactTopIcon(systemName: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(JuicdTheme.brand.opacity(0.2))
+                .overlay(Circle().stroke(JuicdTheme.brand.opacity(0.55), lineWidth: 1))
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 32, height: 32)
     }
 }
 

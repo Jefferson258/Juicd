@@ -253,9 +253,20 @@ final class InMemoryJuicdRepository: ObservableObject {
 
     func playBoardEntriesOnSlate(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
         let sk = SlateDay.slateKey(for: date)
-        return (state.playBoardEntries ?? [])
-            .filter { $0.userId == userId && $0.slateDayKey == sk }
+        return playBoardEntries(userId: userId, slateDayKey: sk)
+    }
+
+    /// All Play slips for a user on a given slate key (`yyyy-MM-dd`, 6am boundary).
+    func playBoardEntries(userId: UUID, slateDayKey: String) -> [PlayBoardEntry] {
+        (state.playBoardEntries ?? [])
+            .filter { $0.userId == userId && $0.slateDayKey == slateDayKey }
             .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Distinct slate keys that have at least one Play slip for this user, newest first.
+    func distinctPlaySlateDayKeys(for userId: UUID) -> [String] {
+        let keys = Set((state.playBoardEntries ?? []).filter { $0.userId == userId }.map(\.slateDayKey))
+        return keys.sorted(by: >)
     }
 
     // MARK: - Daily closest-pick tournament (16 players, 4 quarters)
@@ -841,7 +852,13 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     /// Single pick or parlay from the Play board: deducts stake, resolves all legs, credits payout + season points on win.
-    func submitPlayParlay(userId: UUID, stakePoints: Int, legs: [BetLeg], date: Date = .now) -> PlayParlayOutcome? {
+    func submitPlayParlay(
+        userId: UUID,
+        stakePoints: Int,
+        legs: [BetLeg],
+        date: Date = .now,
+        forcedLegOutcomesByLegId: [UUID: Bool]? = nil
+    ) -> PlayParlayOutcome? {
         guard stakePoints > 0, !legs.isEmpty else { return nil }
         guard var profile = state.profiles[userId] else { return nil }
         let maxStake = min(JuicdBalance.dailyPlayAllowancePoints, profile.availableDailyPoints)
@@ -867,7 +884,14 @@ final class InMemoryJuicdRepository: ObservableObject {
         let implied = parlayOddsDecimal(for: legs)
         let slateKey = SlateDay.slateKey(for: date)
         let seedKey = "\(userId.uuidString)-play-\(slateKey)-\(legs.map { "\($0.marketId.uuidString)|\($0.choiceId.uuidString)|\($0.oddsDecimalAtSubmit)" }.joined(separator: ";"))"
-        let resolved = resolvePlayParlayLegs(parlayLegs: legs, seedKey: seedKey)
+        let resolved: [(legId: UUID, didWin: Bool)]
+        if let forced = forcedLegOutcomesByLegId, !forced.isEmpty {
+            resolved = legs.map { leg in
+                (legId: leg.id, didWin: forced[leg.id] ?? false)
+            }
+        } else {
+            resolved = resolvePlayParlayLegs(parlayLegs: legs, seedKey: seedKey)
+        }
         let didWinAll = resolved.allSatisfy { $0.didWin }
 
         var seasonPointsEarned = 0

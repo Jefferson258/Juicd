@@ -39,6 +39,13 @@ struct SignInView: View {
                             .lineSpacing(4)
                             .padding(.horizontal, 4)
 
+                        HStack(spacing: 14) {
+                            brightFeatureIcon(systemName: "basketball.fill", color: JuicdTheme.brand)
+                            brightFeatureIcon(systemName: "trophy.fill", color: JuicdTheme.brand2)
+                            brightFeatureIcon(systemName: "chart.line.uptrend.xyaxis.circle.fill", color: .yellow)
+                        }
+                        .padding(.top, 2)
+
                         VStack(spacing: 14) {
                             SignInWithAppleButton(.signIn) { request in
                                 request.requestedScopes = [.fullName, .email]
@@ -77,6 +84,23 @@ struct SignInView: View {
                                 .lineSpacing(3)
                         }
                         .padding(.top, 8)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(JuicdTheme.card.opacity(0.78))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .stroke(LinearGradient(
+                                            colors: [
+                                                JuicdTheme.brand.opacity(0.7),
+                                                JuicdTheme.brand2.opacity(0.7),
+                                                .white.opacity(0.4)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ), lineWidth: 1.2)
+                                )
+                        )
 
                         if let error = viewModel.authError {
                             Text(error)
@@ -100,5 +124,20 @@ struct SignInView: View {
         if !combined.isEmpty { return combined }
         let suffix = String(credential.user.prefix(8))
         return "Apple \(suffix)"
+    }
+
+    private func brightFeatureIcon(systemName: String, color: Color) -> some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.22))
+                .overlay(
+                    Circle()
+                        .stroke(color.opacity(0.9), lineWidth: 1)
+                )
+            Image(systemName: systemName)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 42, height: 42)
     }
 }

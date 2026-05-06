@@ -11,8 +11,9 @@ Configure **Xcode**, **Apple Developer**, **keys**, and **Supabase** here. **Fea
 | ☐ | Open `Juicd.xcodeproj` → **Juicd** scheme → **Run** (⌘R) on Simulator or device |
 | ☐ | **Signing & Capabilities** → Team + unique **Bundle ID** |
 | ☐ | **Sign in with Apple** capability (entitlements file `Juicd.entitlements` is in the repo; enable capability in Xcode if needed) |
-| ☐ | **Odds API (Play tab):** add `ODDS_API_KEY` in target **Info** (or `Local.xcconfig`, gitignored) — [the-odds-api.com](https://the-odds-api.com/) |
-| ☐ | (Later) **Supabase** project + Swift package + `SUPABASE_URL` / `SUPABASE_ANON_KEY` — do not commit secrets |
+| ☐ | **Supabase shared odds mode:** run SQL migrations + deploy Edge Functions (`play-board`, `resolve-play-slip`; sources in `supabase/functions/`) |
+| ☐ | Add `SUPABASE_URL` + `SUPABASE_ANON_KEY` to iOS target **Info** (or `Local.xcconfig`, gitignored) |
+| ☐ | Add `ODDS_API_KEY` as a **Supabase Edge Function secret** (for live mode); optional **`ODDS_API_KEY` in iOS Info** only for client fallback when Supabase isn’t configured |
 | ☐ | (Later) **Push:** capability + APNs key + backend to send |
 | ☐ | (Ship) **App Store Connect** record, privacy URL, encryption export answer |
 | ☐ | (Ads) See **§8** when wiring Google Mobile Ads or mediation |
@@ -39,22 +40,98 @@ For **Supabase Auth** later: **Authentication → Providers → Apple** → **Cl
 
 ---
 
-## 3. Odds API key (Play tab)
+## 3. Supabase shared odds + outcomes (beta default)
 
-1. Sign up at [the-odds-api.com](https://the-odds-api.com/) and copy your API key.
-2. **Juicd** target → **Info** → **Custom iOS Target Properties**:
-   - Key: **`ODDS_API_KEY`** (String)
-   - Value: your key  
+The app now uses Supabase Edge Functions for:
 
-**Production:** do not ship the key in the client; use a **backend or Supabase Edge Function** proxy.
+- shared Play board odds across all beta devices (`play-board`)
+- shared deterministic slip outcomes (`resolve-play-slip`)
+- runtime source switch (`simulated` vs `live`) via DB config
 
 ---
 
-## 4. Supabase (when you wire a backend)
+### 3.1 Run SQL migration
+
+Run these migrations in Supabase SQL editor (or CLI):
+
+- `supabase/migrations/20260322120000_juicd_friends.sql`
+- `supabase/migrations/20260424113000_juicd_odds_runtime.sql`
+
+These migrations are idempotent and safe to rerun:
+
+- tables: `create table if not exists`
+- indexes: `create index if not exists`
+- policies: `drop policy if exists` then recreate
+
+The second migration creates:
+
+- `juicd_runtime_config` (contains `odds_mode`, `outcome_mode`)
+- `juicd_play_board_snapshots`
+- `juicd_play_slip_outcomes`
+
+### 3.2 Deploy Edge Functions
+
+From your local machine (with Supabase CLI + linked project):
+
+- `supabase functions deploy play-board`
+- `supabase functions deploy resolve-play-slip`
+
+### 3.3 Set Supabase function secrets
+
+Set these in Supabase (Edge Functions secrets):
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ODDS_API_KEY` (only used when `odds_mode=live`)
+
+### 3.4 Configure iOS app keys (client)
+
+In **Juicd** target → **Info** → **Custom iOS Target Properties**:
+
+- `SUPABASE_URL` (your project URL)
+- `SUPABASE_ANON_KEY` (anon/public key)
+
+Do not add `ODDS_API_KEY` to iOS target Info for this flow.
+
+**Optional (local dev only):** if `SUPABASE_URL` / `SUPABASE_ANON_KEY` are **not** set but **`ODDS_API_KEY`** is in target **Info**, the app can still load a single cached **The Odds API** line on-device. Prefer the Edge Function path above for betas and production so provider keys stay off the client.
+
+### 3.5 Flip switch: simulated -> live
+
+For beta (default, no external dependency), keep:
+
+```sql
+update public.juicd_runtime_config
+set value = 'simulated', updated_at = now()
+where key = 'odds_mode';
+```
+
+When you are ready for real Odds API:
+
+```sql
+update public.juicd_runtime_config
+set value = 'live', updated_at = now()
+where key = 'odds_mode';
+```
+
+Rollback is the same switch back to `simulated`.
+
+### 3.6 (Optional) Prewarm board snapshots on a schedule
+
+To keep responses fast and avoid first-user cold generation, schedule `play-board` in Supabase:
+
+- Use Supabase cron/pg_cron or an external scheduler.
+- Hit `GET https://<project-ref>.supabase.co/functions/v1/play-board` every 5-15 minutes.
+- Include headers:
+  - `apikey: <SUPABASE_ANON_KEY>`
+  - `Authorization: Bearer <SUPABASE_ANON_KEY>`
+
+---
+
+## 4. Supabase (general)
 
 1. Create a project → **Settings → API**: **Project URL** + **anon public key**.
-2. Add **supabase-swift** to the target; pass URL/key via **Info.plist** / **xcconfig** (gitignored if public repo).
-3. Run SQL migrations under `supabase/migrations/` as needed (see README_REFERENCE for friends, etc.).
+2. This app currently calls Supabase Edge Functions via `URLSession`; no extra SDK required for odds mode.
+3. Run SQL migrations under `supabase/migrations/`.
 4. Enable **RLS** on user tables; never ship **service_role** in the app.
 
 ---
@@ -100,6 +177,72 @@ To connect **real** ads:
 
 **Note:** Many ad networks restrict **real-money gambling** creatives; sports media / generic brand ads are easier to fill. Get legal/compliance review for your jurisdictions.
 
+For a full advertiser onboarding/sales/ops playbook, see [`ADVERTISERS_SETUP.md`](ADVERTISERS_SETUP.md).
+
+---
+
+## 9. App Store listing copy (draft)
+
+### App Name
+
+Juicd
+
+### Subtitle
+
+Daily sports picks, ladders, and friends
+
+### Promotional Text
+
+Build quick picks, track season progress, and compete with friends in a fast, skill-first sports experience.
+
+### Description
+
+Juicd is a fast sports picks app built for short daily sessions.
+
+- Build singles and parlays from a shared board
+- Compete in daily Tourney brackets
+- Track points, rank movement, and season progress
+- Compare with friends on leaderboard views
+- Earn badges as you win and improve
+
+Built for smooth, focused play:
+
+- Shared board odds across beta devices
+- Deterministic outcomes for reproducible testing
+- Quick navigation with clear, high-contrast UI
+
+### Keywords
+
+sports picks,parlay,predictions,leaderboard,fantasy,sports betting tracker,tournament
+
+---
+
+## 10. Screenshot plan for App Store page
+
+Capture at least 6 iPhone screenshots (prepare 6.7-inch and 6.5-inch sets):
+
+1. **Play board**: sport filters + visible odds tiles
+2. **Parlay builder**: legs, stake, estimated payout
+3. **Tourney**: bracket entry + round pick flow
+4. **Dashboard**: Play slips (today / past slates), rank tier + progress cards
+5. **Friends leaderboard**: social comparison view
+6. **Profile + badges**: long-term progression
+
+Suggested caption snippets:
+
+- "Build picks in seconds"
+- "Mix picks your way"
+- "Compete in daily rounds"
+- "Track rank and momentum"
+- "Climb with your crew"
+- "See your progress and rewards"
+
+Quality rules:
+
+- Use polished sample data (no debug/dev labels)
+- Keep copy readable and uncluttered
+- Keep color/style consistent across all screenshots
+
 ---
 
 ## Troubleshooting
@@ -107,7 +250,9 @@ To connect **real** ads:
 | Symptom | Likely fix |
 |---------|------------|
 | Sign in with Apple fails | Capability on target + **Bundle ID** matches App ID with Sign in with Apple |
-| No live odds | `ODDS_API_KEY` set on the **Juicd** target Info; check quota / network |
+| No shared odds | Check iOS `SUPABASE_URL` + `SUPABASE_ANON_KEY`, function deploy, and function logs in Supabase dashboard |
+| No odds at all | If Supabase isn’t set up, set **`ODDS_API_KEY`** in target Info for client fallback, or complete §3 |
+| Live mode not working | Verify `juicd_runtime_config.odds_mode='live'` and Edge secret `ODDS_API_KEY` is set |
 | Build errors after clone | Open `.xcodeproj`, clean build folder (⇧⌘K), rebuild |
 | Ads don’t appear | Toggle **Show dev ad placeholders** on Profile; change sport/filter to rebuild feed; wait **cooldown** (see [ADS.md](ADS.md)) |
 

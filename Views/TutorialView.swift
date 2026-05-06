@@ -9,32 +9,32 @@ struct TutorialView: View {
         (
             "Welcome to Juicd",
             "Short sessions for picks, daily tournaments, and season ladders. Use Next to preview what each tab is for.",
-            "sparkles"
+            "bolt.heart.fill"
         ),
         (
             "Play",
             "Build parlays from today’s board with your daily point allowance. A couple of lines may show a Juicd boost — same pick, better price. One parlay stake per slate.",
-            "sportscourt.fill"
+            "basketball.fill"
         ),
         (
             "Dashboard",
             "See today’s slips, wins and misses, and how your picks shook out. Your Play history shows up here first.",
-            "rectangle.grid.2x2.fill"
+            "chart.bar.xaxis"
         ),
         (
             "Tourney",
             "Enter the daily closest-pick bracket: preview four rounds, lock in before tip, and submit one pick per round.",
-            "trophy.fill"
+            "trophy.circle.fill"
         ),
         (
             "Friends",
             "Send friend requests, accept or decline, compare ranks on the Friends Leaderboard, and open someone to see their recent Play form.",
-            "person.2.fill"
+            "person.3.sequence.fill"
         ),
         (
             "Profile",
             "Tier, career and season stats, badges, and notification settings. Season tools for testing live here too.",
-            "person.crop.circle.fill"
+            "medal.star.fill"
         )
     ]
 
@@ -58,25 +58,35 @@ struct TutorialView: View {
                         VStack {
                             Spacer(minLength: 0)
                             VStack(spacing: 22) {
-                                Image(systemName: pages[i].2)
-                                    .font(.system(size: 52, weight: .semibold))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [JuicdTheme.brand, JuicdTheme.brand2],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                        .fill(JuicdTheme.card.opacity(0.75))
+                                        .frame(width: 120, height: 120)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [JuicdTheme.brand.opacity(0.9), JuicdTheme.brand2.opacity(0.85), .white.opacity(0.4)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: 1.5
+                                                )
                                         )
-                                    )
+                                    Image(systemName: pages[i].2)
+                                        .font(.system(size: 50, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
 
                                 Text(pages[i].0)
                                     .font(.system(size: 26, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.center)
-                                    .foregroundStyle(JuicdTheme.textPrimary)
+                                    .foregroundStyle(.white)
 
                                 Text(pages[i].1)
                                     .font(.system(size: 16, weight: .medium))
                                     .multilineTextAlignment(.center)
-                                    .foregroundStyle(JuicdTheme.textSecondary)
+                                    .foregroundStyle(JuicdTheme.textPrimary.opacity(0.95))
                                     .lineSpacing(4)
                                     .padding(.horizontal, 28)
                             }

@@ -18,11 +18,15 @@ struct JuicdNativeAdPlaceholder: View {
                 HStack(spacing: 10) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(accent.opacity(0.22))
+                            .fill(accent.opacity(0.3))
                             .frame(width: 44, height: 44)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(accent.opacity(0.8), lineWidth: 1)
+                            )
                         Image(systemName: creative.systemImage)
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(accent)
+                            .foregroundStyle(.white)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Sponsored")
@@ -32,7 +36,7 @@ struct JuicdNativeAdPlaceholder: View {
                             .tracking(0.6)
                         Text(creative.sponsorName)
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .foregroundStyle(.white)
                     }
                     Spacer(minLength: 0)
                 }
@@ -63,10 +67,10 @@ struct JuicdNativeAdPlaceholder: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(JuicdTheme.card.opacity(0.85))
+                    .fill(JuicdTheme.card.opacity(0.92))
                     .overlay {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(accent.opacity(0.25), lineWidth: 1)
+                            .stroke(accent.opacity(0.45), lineWidth: 1.2)
                     }
             }
 

@@ -11,24 +11,26 @@ struct DashboardView: View {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Dashboard",
-                    subtitle: "Daily points, rank, and where you stand.",
+                    subtitle: "Points, rank, progress.",
                     centered: true,
                     kicker: "Overview"
                 )
-                HStack {
-                    Spacer()
+                HStack(spacing: 10) {
+                    compactTopIcon(systemName: "chart.bar.fill")
+                    compactTopIcon(systemName: "trophy.fill")
+                    compactTopIcon(systemName: "bolt.fill")
                     Button {
                         showDashboardTips = true
                     } label: {
-                        Label("Quick help", systemImage: "info.circle")
-                            .font(.system(size: 13, weight: .semibold))
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
                     }
-                    .buttonStyle(.bordered)
-                    .tint(JuicdTheme.brand)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(JuicdTheme.brand)
                 }
 
                 if let profile = viewModel.profile {
-                    todaysEntriesSection
+                    playSlipsSection
 
                     lastRankedMatchCard(profile: profile)
 
@@ -44,7 +46,7 @@ struct DashboardView: View {
                             }
                             .frame(maxWidth: .infinity)
 
-                            Text("Your balance resets to \(JuicdBalance.dailyPlayAllowancePoints) each new slate. Refill points are not season score.")
+                            Text("Resets to \(JuicdBalance.dailyPlayAllowancePoints) each slate.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)
@@ -153,13 +155,12 @@ struct DashboardView: View {
         .sheet(isPresented: $showDashboardTips) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Dashboard tips")
+                    Text("Dashboard quick tips")
                         .font(.title3.bold())
-                    Text("• Daily points reset to 100 each slate.")
-                    Text("• Rank/MMR is based on Play bets only.")
-                    Text("• Daily groups are 10 players: top 5 gain, bottom 5 lose.")
-                    Text("• MMR movement is smoothed with a moving average.")
-                    Text("• Tier distribution is bell-curved around Platinum.")
+                    tipRow(icon: "bolt.fill", text: "Daily points reset each slate.")
+                    tipRow(icon: "sportscourt.fill", text: "MMR is based on Play outcomes.")
+                    tipRow(icon: "person.3.fill", text: "Daily groups are 10 players.")
+                    tipRow(icon: "waveform.path.ecg", text: "MMR changes are smoothed.")
                     Spacer()
                 }
                 .foregroundStyle(JuicdTheme.textSecondary)
@@ -176,47 +177,106 @@ struct DashboardView: View {
         }
     }
 
-    private var todaysEntriesSection: some View {
-        Card(title: "Today’s entries", systemImage: "list.bullet.clipboard.fill", style: .hero) {
-            if viewModel.todaysEntries.isEmpty {
-                Text("No slips yet on today’s slate. Place picks on the Play tab — they’ll show here with stake, combined odds, and season points.")
+    private var playSlipsSection: some View {
+        Card(title: "Play slips", systemImage: "list.bullet.clipboard.fill", style: .hero) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Singles and parlays by slate day (resets at 6:00 local).")
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)
-                    .font(.system(size: 14, weight: .medium))
                     .lineSpacing(3)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.todaysEntries.enumerated()), id: \.element.id) { index, entry in
-                        if index > 0 {
-                            Divider().overlay(JuicdTheme.strokeSubtle).padding(.vertical, 8)
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
-                                    .font(.caption.weight(.heavy))
-                                    .foregroundStyle(JuicdTheme.textTertiary)
-                                Spacer()
-                                Text(entry.didWin ? "Won" : "Missed")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(viewModel.playSlatePickerKeys, id: \.self) { key in
+                            let isSelected = viewModel.selectedPlaySlateKey == key
+                            Button {
+                                viewModel.selectPlaySlate(key)
+                            } label: {
+                                Text(slateChipLabel(key))
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(isSelected ? JuicdTheme.textPrimary : JuicdTheme.textSecondary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        Capsule(style: .continuous)
+                                            .fill(isSelected ? JuicdTheme.brand.opacity(0.28) : JuicdTheme.cardElevated)
+                                    )
+                                    .overlay(
+                                        Capsule(style: .continuous)
+                                            .stroke(isSelected ? Color.white.opacity(0.45) : JuicdTheme.strokeSubtle, lineWidth: isSelected ? 1.5 : 1)
+                                    )
                             }
-                            Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(JuicdTheme.textPrimary)
-                            Text(entry.legSummaries.joined(separator: " · "))
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                                .lineLimit(3)
-                            if entry.didWin {
-                                Text("+\(entry.seasonPointsEarned) season pts")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(JuicdTheme.brand)
-                            }
+                            .buttonStyle(.plain)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .padding(.vertical, 2)
+                }
+
+                if viewModel.playSlipsForSelectedSlate.isEmpty {
+                    Text(emptyPlaySlipsCopy)
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineSpacing(3)
+                } else {
+                    playSlipRows
                 }
             }
         }
+    }
+
+    private var emptyPlaySlipsCopy: String {
+        let today = SlateDay.slateKey()
+        if viewModel.selectedPlaySlateKey == today {
+            return "No slips on today’s slate yet. Place picks on the Play tab — they’ll show here with stake, combined odds, and season points."
+        }
+        return "No slips on this slate. Pick another day above, or place new picks on Play."
+    }
+
+    private var playSlipRows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(viewModel.playSlipsForSelectedSlate.enumerated()), id: \.element.id) { index, entry in
+                if index > 0 {
+                    Divider().overlay(JuicdTheme.strokeSubtle).padding(.vertical, 8)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(JuicdTheme.textTertiary)
+                        Spacer()
+                        Text(entry.didWin ? "Won" : "Missed")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary)
+                    }
+                    Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(JuicdTheme.textPrimary)
+                    Text(entry.legSummaries.joined(separator: " · "))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                        .lineLimit(3)
+                    if entry.didWin {
+                        Text("+\(entry.seasonPointsEarned) season pts")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(JuicdTheme.brand)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func slateChipLabel(_ slateKey: String) -> String {
+        let today = SlateDay.slateKey()
+        if slateKey == today { return "Today" }
+        let inDF = DateFormatter()
+        inDF.calendar = Calendar.current
+        inDF.timeZone = TimeZone.current
+        inDF.dateFormat = "yyyy-MM-dd"
+        guard let d = inDF.date(from: slateKey) else { return slateKey }
+        let out = DateFormatter()
+        out.dateFormat = "EEE MMM d"
+        return out.string(from: d)
     }
 
     @ViewBuilder
@@ -433,5 +493,27 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func compactTopIcon(systemName: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(JuicdTheme.brand.opacity(0.2))
+                .overlay(Circle().stroke(JuicdTheme.brand.opacity(0.55), lineWidth: 1))
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 32, height: 32)
+    }
+
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .frame(width: 18)
+                .foregroundStyle(JuicdTheme.brand)
+            Text(text)
+        }
+        .font(.system(size: 14, weight: .semibold))
     }
 }

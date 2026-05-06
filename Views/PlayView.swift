@@ -26,20 +26,22 @@ struct PlayView: View {
                     JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Play",
-                        subtitle: "Find picks, build slips, and place bets.",
+                        subtitle: "Picks, slips, and bets.",
                         centered: true,
                         kicker: "Today’s board"
                     )
-                    HStack {
-                        Spacer()
+                    HStack(spacing: 10) {
+                        compactTopIcon(systemName: "sportscourt.fill")
+                        compactTopIcon(systemName: "bolt.fill")
+                        compactTopIcon(systemName: "ticket.fill")
                         Button {
                             showPlayTips = true
                         } label: {
-                            Label("How Play works", systemImage: "info.circle")
-                                .font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
                         }
-                        .buttonStyle(.bordered)
-                        .tint(JuicdTheme.brand)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(JuicdTheme.brand)
                     }
 
                     if let profile = viewModel.profile {
@@ -108,7 +110,7 @@ struct PlayView: View {
         }
         .alert("Use your daily points", isPresented: $viewModel.showFirstBetReminder) {
             Button("Place bet") {
-                viewModel.executePlaceParlay()
+                Task { await viewModel.executePlaceParlay() }
             }
             Button("Go back", role: .cancel) {}
         } message: {
@@ -136,13 +138,12 @@ struct PlayView: View {
         .sheet(isPresented: $showPlayTips) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Play tips")
+                    Text("Play quick tips")
                         .font(.title3.bold())
-                    Text("• Your daily points reset to 100 each slate.")
-                    Text("• You can spend all or part of the 100.")
-                    Text("• Daily rank performance uses Play bets only.")
-                    Text("• If you spend less than 100, results are normalized to a 100-point baseline.")
-                    Text("• Daily quarter tourneys are tracked separately for season winner badges.")
+                    tipRow(icon: "bolt.fill", text: "Daily balance resets to 100.")
+                    tipRow(icon: "slider.horizontal.3", text: "Spend all or part of it.")
+                    tipRow(icon: "chart.line.uptrend.xyaxis", text: "Rank uses Play results only.")
+                    tipRow(icon: "scale.3d", text: "Low stake days are normalized.")
                     Spacer()
                 }
                 .foregroundStyle(JuicdTheme.textSecondary)
@@ -162,10 +163,32 @@ struct PlayView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
     }
 
+    private func compactTopIcon(systemName: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(JuicdTheme.brand.opacity(0.2))
+                .overlay(Circle().stroke(JuicdTheme.brand.opacity(0.55), lineWidth: 1))
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 32, height: 32)
+    }
+
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .frame(width: 18)
+                .foregroundStyle(JuicdTheme.brand)
+            Text(text)
+        }
+        .font(.system(size: 14, weight: .semibold))
+    }
+
     private var sportFilterPills: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                ForEach(PlaySportPill.primaryRow) { pill in
+                ForEach(viewModel.sportPillsWithOdds) { pill in
                     let selected = viewModel.sportPill == pill
                     Button {
                         viewModel.sportPill = pill
@@ -380,7 +403,7 @@ struct PlayView: View {
     }
 
     private func bankrollHero(points: Int) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(
@@ -390,29 +413,30 @@ struct PlayView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 52, height: 52)
+                    .frame(width: 42, height: 42)
                 Image(systemName: "bolt.fill")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(.white)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("Balance")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
                     .foregroundStyle(JuicdTheme.textTertiary)
                     .textCase(.uppercase)
                     .tracking(0.8)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(points)")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(JuicdTheme.textPrimary)
                     Text("pts")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(JuicdTheme.textSecondary)
                 }
             }
             Spacer()
         }
-        .padding(20)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(JuicdTheme.card)
