@@ -7,7 +7,7 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            SectionColumn(spacing: 24) {
+            SectionColumn(spacing: 30) {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Dashboard",
@@ -35,7 +35,7 @@ struct DashboardView: View {
                     lastRankedMatchCard(profile: profile)
 
                     Card(title: "Daily balance", systemImage: "bolt.fill", style: .hero) {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 18) {
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 Text("\(profile.availableDailyPoints)")
                                     .font(.system(size: 52, weight: .bold, design: .rounded))
@@ -56,9 +56,9 @@ struct DashboardView: View {
                     }
 
                     Card(title: "Rank tier", systemImage: "trophy.fill") {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 18) {
                             HStack {
-                                VStack(alignment: .leading, spacing: 6) {
+                                VStack(alignment: .leading, spacing: 8) {
                                     Text("Current tier")
                                         .font(.system(size: 11, weight: .heavy, design: .rounded))
                                         .foregroundStyle(JuicdTheme.textTertiary)
@@ -79,7 +79,7 @@ struct DashboardView: View {
                                 .lineSpacing(3)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Divider().overlay(JuicdTheme.strokeSubtle)
+                            Divider().overlay(JuicdTheme.strokeSubtle).padding(.vertical, 2)
 
                             Text("Season score")
                                 .font(.system(size: 11, weight: .heavy, design: .rounded))
@@ -109,7 +109,7 @@ struct DashboardView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 18)
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
@@ -118,30 +118,46 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showRankingsHelp) {
             NavigationStack {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("How rank & score work")
-                        .font(.title2.bold())
-                        .foregroundStyle(JuicdTheme.textPrimary)
-                    Text(
-                        """
-                        Daily points reset to 100 each slate. Refill points are not season score.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        Text("How rank & score work")
+                            .font(.title2.bold())
+                            .foregroundStyle(JuicdTheme.textPrimary)
 
-                        Season score only includes points from wins and bonuses.
+                        helpSectionTitle("Two different numbers")
+                        Text("Daily balance is spendable points this slate (refills each slate — prototype uses up to 100). It is not your skill rating.\n\nSeason score only grows from wins and bonuses — it’s your long-run trophy progress on Profile.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .font(.body)
+                            .lineSpacing(5)
 
-                        Ranked play: each day you bet, you enter a 10-player group. Top 5 gain MMR; bottom 5 lose MMR.
+                        helpSectionTitle("Ranked pools (MMR)")
+                        Text("When you place Play bets on a slate, you enter a simulated 10-player skill pool after that slate resolves. Placement (#1–#10) shifts MMR, which drives your tier on the ladder.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .font(.body)
+                            .lineSpacing(5)
 
-                        If you spend fewer than 100 points, your result is scaled to a 100-point baseline for fair ranking.
+                        helpSectionTitle("Fair staking")
+                        Text("If you risk fewer points than the daily allowance, your net result is scaled to a 100-point baseline before ranking. That way cautious staking doesn’t tank your placement unfairly.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .font(.body)
+                            .lineSpacing(5)
 
-                        MMR updates use a moving average, so one day does not over-swing your rank.
-                        """
-                    )
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .font(.body)
-                        .lineSpacing(4)
-                    Spacer()
+                        helpSectionTitle("Smoothing")
+                        Text("MMR uses a moving average so one lucky or unlucky slate doesn’t swing your tier wildly.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .font(.body)
+                            .lineSpacing(5)
+
+                        helpSectionTitle("This ladder")
+                        Text("The list is every tier in order. Your row shows a checkmark. Challenger/Champion sport small badges — they’re cosmetic flair on top of MMR.")
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .font(.body)
+                            .lineSpacing(5)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .scrollIndicators(.hidden)
                 .background(JuicdScreenBackground())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -150,30 +166,36 @@ struct DashboardView: View {
                     }
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showDashboardTips) {
             NavigationStack {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Dashboard quick tips")
-                        .font(.title3.bold())
-                    tipRow(icon: "bolt.fill", text: "Daily points reset each slate.")
-                    tipRow(icon: "sportscourt.fill", text: "MMR is based on Play outcomes.")
-                    tipRow(icon: "person.3.fill", text: "Daily groups are 10 players.")
-                    tipRow(icon: "waveform.path.ecg", text: "MMR changes are smoothed.")
-                    Spacer()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Dashboard guide")
+                            .font(.title2.bold())
+                            .foregroundStyle(JuicdTheme.textPrimary)
+
+                        tipRow(icon: "list.bullet.clipboard.fill", text: "Play slips: pick a slate chip (Today or a past day) to review singles and parlays — stake, combined odds, result, and season points earned.")
+                        tipRow(icon: "chart.line.uptrend.xyaxis", text: "Last ranked match summarizes how you placed in the prior slate’s 10-player pool once results apply.")
+                        tipRow(icon: "bolt.fill", text: "Daily balance refills each slate; spending it doesn’t directly move tier — ranked outcomes from Play do.")
+                        tipRow(icon: "trophy.fill", text: "Rank tier card shows your current band; open Ranking help (?) on Rank ladder for the full MMR story.")
+                        tipRow(icon: "function", text: "MMR each day breaks down grouping, scaling, placement, smoothing, and tier curves in plain language.")
+                    }
+                    .foregroundStyle(JuicdTheme.textSecondary)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .foregroundStyle(JuicdTheme.textSecondary)
-                .padding(20)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .scrollIndicators(.hidden)
                 .background(JuicdScreenBackground())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { showDashboardTips = false }
+                            .fontWeight(.semibold)
                     }
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -382,7 +404,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("How rankings work")
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
 
             VStack(spacing: 0) {
                 ForEach(Array(viewModel.rankLadder.enumerated()), id: \.offset) { index, tier in
@@ -390,11 +412,12 @@ struct DashboardView: View {
                     if index > 0 {
                         Divider()
                             .overlay(JuicdTheme.strokeSubtle)
+                            .padding(.vertical, 2)
                     }
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 7) {
                             Text(tier.displayName)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundStyle(isCurrent ? JuicdTheme.brand : JuicdTheme.textPrimary)
                             Text("Based on MMR")
                                 .foregroundStyle(JuicdTheme.textTertiary)
@@ -418,7 +441,8 @@ struct DashboardView: View {
                                 .font(.system(size: 18))
                         }
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 2)
                     .background(
                         isCurrent
                             ? JuicdTheme.brand.opacity(0.06)
@@ -427,7 +451,7 @@ struct DashboardView: View {
                 }
             }
         }
-        .padding(18)
+        .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -455,7 +479,7 @@ struct DashboardView: View {
 
     private var mmrCalculationCard: some View {
         Card(title: "MMR each day", systemImage: "function", style: .hero) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("1) Grouping")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(JuicdTheme.textPrimary)
@@ -508,12 +532,25 @@ struct DashboardView: View {
     }
 
     private func tipRow(icon: String, text: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
-                .frame(width: 18)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 22, alignment: .center)
                 .foregroundStyle(JuicdTheme.brand)
+                .padding(.top, 2)
             Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.system(size: 14, weight: .semibold))
+    }
+
+    private func helpSectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 13, weight: .heavy, design: .rounded))
+            .foregroundStyle(JuicdTheme.brand)
+            .textCase(.uppercase)
+            .tracking(0.6)
     }
 }

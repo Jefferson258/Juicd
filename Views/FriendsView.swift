@@ -3,6 +3,7 @@ import SwiftUI
 struct FriendsView: View {
     @ObservedObject var viewModel: FriendsViewModel
     @FocusState private var friendsSearchFocused: Bool
+    @State private var showFriendsTips = false
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,14 @@ struct FriendsView: View {
                         compactTopIcon(systemName: "person.2.fill")
                         compactTopIcon(systemName: "person.badge.plus")
                         compactTopIcon(systemName: "chart.bar.fill")
+                        Button {
+                            showFriendsTips = true
+                        } label: {
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(JuicdTheme.brand)
                     }
 
                     if !viewModel.incomingRequests.isEmpty {
@@ -169,7 +178,7 @@ struct FriendsView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 18)
                 .padding(.bottom, 8)
             }
             .scrollIndicators(.hidden)
@@ -180,11 +189,54 @@ struct FriendsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(JuicdTheme.canvasDeep.ignoresSafeArea(edges: .bottom))
+        .sheet(isPresented: $showFriendsTips) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Friends guide")
+                            .font(.title2.bold())
+                            .foregroundStyle(JuicdTheme.textPrimary)
+
+                        friendsTipRow(icon: "person.badge.plus", text: "Search by display name and send a request. Incoming requests land at the top — accept to link crews or decline to clear the queue.")
+                        friendsTipRow(icon: "paperplane.fill", text: "Outgoing shows pending invites you can cancel if you mistyped a name or changed your mind.")
+                        friendsTipRow(icon: "chart.bar.fill", text: "The leaderboard ranks accepted friends by competitive placement (MMR-driven tier). Tap a row to open their mini profile.")
+                        friendsTipRow(icon: "arrow.left.arrow.right", text: "Friend lists are separate from Play slips and Tourney brackets — social compare only, no wallet transfers.")
+                        friendsTipRow(icon: "bolt.fill", text: "Daily Play balance and ranked pools stay on the Play tab; Dashboard shows how your skill ladder moves after slates resolve.")
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollIndicators(.hidden)
+                .background(JuicdScreenBackground())
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { showFriendsTips = false }
+                            .fontWeight(.semibold)
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
         .sheet(item: $viewModel.selectedFriend) { profile in
             FriendDetailSheet(profile: profile, viewModel: viewModel)
         }
         .onAppear {
             viewModel.refresh()
+        }
+    }
+
+    private func friendsTipRow(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 22, alignment: .center)
+                .foregroundStyle(JuicdTheme.brand)
+                .padding(.top, 2)
+            Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

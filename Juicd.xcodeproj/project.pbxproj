@@ -41,6 +41,7 @@
 		225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */; };
 		225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */; };
 		225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */; };
+		225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +79,7 @@
 		225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNativeAdPlaceholder.swift; sourceTree = "<group>"; };
 		225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseOddsService.swift; sourceTree = "<group>"; };
+		225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNotifications.swift; sourceTree = "<group>"; };
 		225E4B602F6F2CED002955B9 /* Juicd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Juicd.entitlements; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -160,6 +162,7 @@
 				225E4B012F6F2CED002955B9 /* JuicdApp.swift */,
 				225E4B032F6F2CED002955B9 /* Models */,
 				225E4B042F6F2CED002955B9 /* RootView.swift */,
+				225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */,
 				225E4B072F6F2CED002955B9 /* Services */,
 				225E4B0E2F6F2CED002955B9 /* ViewModels */,
 				225E4B162F6F2CED002955B9 /* Views */,
@@ -280,6 +283,7 @@
 				225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */,
 				225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */,
 				225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */,
+				225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

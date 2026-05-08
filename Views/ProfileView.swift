@@ -234,6 +234,17 @@ struct ProfileView: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(JuicdTheme.textSecondary)
                             }
+
+                            Divider().overlay(JuicdTheme.strokeSubtle)
+
+                            Button {
+                                NotificationCenter.default.post(name: .juicdReplayTutorial, object: nil)
+                            } label: {
+                                Label("Replay onboarding tutorial", systemImage: "rectangle.stack.fill.badge.play")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(JuicdTheme.brand2.opacity(0.85))
                         }
                     }
                 } else {

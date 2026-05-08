@@ -15,7 +15,7 @@ struct TourneyView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-            SectionColumn(spacing: 24) {
+            SectionColumn(spacing: 26) {
                 JuicdTabScreenAccent()
                 BrandHeader(
                     title: "Tourney",
@@ -40,7 +40,7 @@ struct TourneyView: View {
                 dailySection
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 18)
         }
         .scrollIndicators(.hidden)
         .background(JuicdScreenBackground())
@@ -49,25 +49,32 @@ struct TourneyView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showTourneyTips) {
             NavigationStack {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Tourney quick tips")
-                        .font(.title3.bold())
-                    tipRow(icon: "shuffle", text: "Tourney ranking is separate from Play.")
-                    tipRow(icon: "rosette", text: "Wins can unlock seasonal badges.")
-                    tipRow(icon: "flag.checkered", text: "One pick each round.")
-                    Spacer()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Tourney guide")
+                            .font(.title2.bold())
+                            .foregroundStyle(JuicdTheme.textPrimary)
+
+                        tipRow(icon: "calendar.badge.clock", text: "One closest-pick bracket per slate — choose the slate’s featured variants before lock.")
+                        tipRow(icon: "list.number", text: "Four rounds: the preview cards explain each prop style so you know what you’re predicting.")
+                        tipRow(icon: "target", text: "Submit one numeric pick per round; whoever is closer to the simulated outcome advances (ties resolved deterministically).")
+                        tipRow(icon: "slash.circle", text: "No wallet stake — rewards feed season points / badges instead of spending daily Play balance.")
+                        tipRow(icon: "arrow.triangle.branch", text: "Skill outcomes here do not move Play ranked MMR; keep Play for ladder climbs and Tourney for bracket flair.")
+                        tipRow(icon: "rosette", text: "Clearing the full bracket can unlock tier-themed badges on Profile.")
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .foregroundStyle(JuicdTheme.textSecondary)
-                .padding(20)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .scrollIndicators(.hidden)
                 .background(JuicdScreenBackground())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { showTourneyTips = false }
+                            .fontWeight(.semibold)
                     }
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -358,12 +365,17 @@ struct TourneyView: View {
     }
 
     private func tipRow(icon: String, text: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
-                .frame(width: 18)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 22, alignment: .center)
                 .foregroundStyle(JuicdTheme.brand)
+                .padding(.top, 2)
             Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.system(size: 14, weight: .semibold))
     }
 }

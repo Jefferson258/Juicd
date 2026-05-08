@@ -77,7 +77,7 @@ struct PlayView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.vertical, 18)
                 .padding(.bottom, 8)
             }
             // New identity when sport/stat filters change so scroll offset resets to the top (no stale position from the last league).
@@ -137,26 +137,32 @@ struct PlayView: View {
         .animation(.easeInOut(duration: 0.2), value: viewModel.builderToast)
         .sheet(isPresented: $showPlayTips) {
             NavigationStack {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Play quick tips")
-                        .font(.title3.bold())
-                    tipRow(icon: "bolt.fill", text: "Daily balance resets to 100.")
-                    tipRow(icon: "slider.horizontal.3", text: "Spend all or part of it.")
-                    tipRow(icon: "chart.line.uptrend.xyaxis", text: "Rank uses Play results only.")
-                    tipRow(icon: "scale.3d", text: "Low stake days are normalized.")
-                    Spacer()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Play guide")
+                            .font(.title2.bold())
+                            .foregroundStyle(JuicdTheme.textPrimary)
+
+                        tipRow(icon: "sparkles", text: "For You aggregates ribbons that actually have priced props; league pills filter to one sport and unlock stat/search chips.")
+                        tipRow(icon: "sportscourt.fill", text: "Tap any tile to build a slip — singles start there; Add leg stacks up to a small parlay with multiplied decimal odds.")
+                        tipRow(icon: "bolt.fill", text: "Stake comes from your daily balance (prototype tops out at 100 per slate). You can spend part or all of it on one slip.")
+                        tipRow(icon: "star.circle.fill", text: "Juicd boost tiles multiply decimal odds on that pick — great upside if you love the price.")
+                        tipRow(icon: "arrow.clockwise", text: "Sync refreshes the board. With Supabase keys set you pull the shared Edge Function board; otherwise a fallback API line may appear.")
+                        tipRow(icon: "chart.line.uptrend.xyaxis", text: "Ranked pools only care how your Play day went vs peers — low stakes get scaled so fairness holds.")
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .foregroundStyle(JuicdTheme.textSecondary)
-                .padding(20)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .scrollIndicators(.hidden)
                 .background(JuicdScreenBackground())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { showPlayTips = false }
+                            .fontWeight(.semibold)
                     }
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
         .juicdKeyboardDoneButton { searchFieldFocused = false }
         }
@@ -176,13 +182,18 @@ struct PlayView: View {
     }
 
     private func tipRow(icon: String, text: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
-                .frame(width: 18)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 22, alignment: .center)
                 .foregroundStyle(JuicdTheme.brand)
+                .padding(.top, 2)
             Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.system(size: 14, weight: .semibold))
     }
 
     private var sportFilterPills: some View {

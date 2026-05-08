@@ -80,9 +80,14 @@ private struct LoggedInTabShell: View {
         }
         .fullScreenCover(isPresented: $showTutorial) {
             TutorialView {
-                tutorialCompleted = true
                 showTutorial = false
+                if !tutorialCompleted {
+                    tutorialCompleted = true
+                }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .juicdReplayTutorial)) { _ in
+            showTutorial = true
         }
     }
 
