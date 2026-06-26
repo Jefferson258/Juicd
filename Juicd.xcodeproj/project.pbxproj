@@ -42,6 +42,8 @@
 		225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */; };
 		225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */; };
 		225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */; };
+		22QA00032F700001002955B9 /* JuicdUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22QA00012F700001002955B9 /* JuicdUITests.swift */; };
+		22QA00042F700001002955B9 /* JuicdUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,10 +84,33 @@
 		225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNotifications.swift; sourceTree = "<group>"; };
 		225E4B602F6F2CED002955B9 /* Juicd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Juicd.entitlements; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		22QA00012F700001002955B9 /* JuicdUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITests.swift; sourceTree = "<group>"; };
+		22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		22QA00062F700001002955B9 /* JuicdUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JuicdUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		22E1FDBB2F6F2A85004D740F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		22QA000B2F700001002955B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 22E1FDB62F6F2A85004D740F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22E1FDBD2F6F2A85004D740F;
+			remoteInfo = Juicd;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		22QA00092F700001002955B9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -166,6 +191,7 @@
 				225E4B072F6F2CED002955B9 /* Services */,
 				225E4B0E2F6F2CED002955B9 /* ViewModels */,
 				225E4B162F6F2CED002955B9 /* Views */,
+				22QA00052F700001002955B9 /* JuicdUITests */,
 				22E1FDBF2F6F2A85004D740F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -174,8 +200,18 @@
 			isa = PBXGroup;
 			children = (
 				22E1FDBE2F6F2A85004D740F /* Juicd.app */,
+				22QA00062F700001002955B9 /* JuicdUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		22QA00052F700001002955B9 /* JuicdUITests */ = {
+			isa = PBXGroup;
+			children = (
+				22QA00012F700001002955B9 /* JuicdUITests.swift */,
+				22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */,
+			);
+			path = JuicdUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -200,6 +236,24 @@
 			productReference = 22E1FDBE2F6F2A85004D740F /* Juicd.app */;
 			productType = "com.apple.product-type.application";
 		};
+		22QA00072F700001002955B9 /* JuicdUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22QA000F2F700001002955B9 /* Build configuration list for PBXNativeTarget "JuicdUITests" */;
+			buildPhases = (
+				22QA00082F700001002955B9 /* Sources */,
+				22QA00092F700001002955B9 /* Frameworks */,
+				22QA000A2F700001002955B9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				22QA000C2F700001002955B9 /* PBXTargetDependency */,
+			);
+			name = JuicdUITests;
+			productName = JuicdUITests;
+			productReference = 22QA00062F700001002955B9 /* JuicdUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -212,6 +266,10 @@
 				TargetAttributes = {
 					22E1FDBD2F6F2A85004D740F = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					22QA00072F700001002955B9 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 22E1FDBD2F6F2A85004D740F;
 					};
 				};
 			};
@@ -230,6 +288,7 @@
 			projectRoot = "";
 			targets = (
 				22E1FDBD2F6F2A85004D740F /* Juicd */,
+				22QA00072F700001002955B9 /* JuicdUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -240,6 +299,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				225E4B662F6F2CED002955B9 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		22QA000A2F700001002955B9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +357,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		22QA00082F700001002955B9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22QA00032F700001002955B9 /* JuicdUITests.swift in Sources */,
+				22QA00042F700001002955B9 /* JuicdUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		22QA000C2F700001002955B9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22E1FDBD2F6F2A85004D740F /* Juicd */;
+			targetProxy = 22QA000B2F700001002955B9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		22E1FDC72F6F2A87004D740F /* Debug */ = {
@@ -343,7 +432,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -401,7 +490,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -477,6 +566,45 @@
 			};
 			name = Release;
 		};
+		22QA000D2F700001002955B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8H2437SV33;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = juicd.JuicdUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Juicd;
+			};
+			name = Debug;
+		};
+		22QA000E2F700001002955B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8H2437SV33;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = juicd.JuicdUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Juicd;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -494,6 +622,15 @@
 			buildConfigurations = (
 				22E1FDCA2F6F2A87004D740F /* Debug */,
 				22E1FDCB2F6F2A87004D740F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		22QA000F2F700001002955B9 /* Build configuration list for PBXNativeTarget "JuicdUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22QA000D2F700001002955B9 /* Debug */,
+				22QA000E2F700001002955B9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

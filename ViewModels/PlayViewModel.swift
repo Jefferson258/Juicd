@@ -166,7 +166,7 @@ final class PlayViewModel: ObservableObject {
 
         boardUsesRemoteFeed = false
         guard OddsAPIConfig.isConfigured else {
-            oddsStatus = "Supabase offline. Add SUPABASE_URL and SUPABASE_ANON_KEY."
+            oddsStatus = "Local demo odds available"
             liveLine = nil
             rebuildRibbons()
             clampSportPillToAvailableOdds()

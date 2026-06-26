@@ -1,10 +1,118 @@
 import AuthenticationServices
 import SwiftUI
 
-struct SignInView: View {
-    @ObservedObject var viewModel: AuthViewModel
+// MARK: - Legal gate (required before first sign-in)
+
+private let juicdLegalAgreedKey = "Juicd.legal.hasAgreedToTerms"
+private let juicdTermsVersion = 2
+
+enum JuicdLegalAgreement {
+    static var hasAgreed: Bool {
+        UserDefaults.standard.integer(forKey: juicdLegalAgreedKey) >= juicdTermsVersion
+    }
+
+    static func markAgreed() {
+        UserDefaults.standard.set(juicdTermsVersion, forKey: juicdLegalAgreedKey)
+    }
+}
+
+private let juicdDisclaimerText = """
+By using Juicd you agree to the following:
+
+• You are 18 years of age or older. Juicd is not intended for minors.
+
+• Juicd is free and supported by advertising. We do not sell in-app purchases for points or wagering.
+
+• Juicd uses virtual points only. Points have no cash value — now or in the future — and cannot be withdrawn, exchanged for money, or used for real-money wagering.
+
+• Juicd is not a sportsbook, casino, or gambling service. Success in Juicd does not imply future success at real-money gaming or sports betting.
+
+• Contests and tournaments use virtual scoring only unless official rules state otherwise. Apple is not a sponsor of any contest.
+
+• Odds and picks are for entertainment. We do not guarantee accuracy of lines, stats, or outcomes.
+
+• Sponsored content may appear and is labeled. Third-party advertisers are responsible for their offers.
+
+• You agree to our Terms of Use and Privacy Policy (as updated from time to time). You are responsible for complying with laws in your location.
+"""
+
+private struct JuicdLegalAgreementView: View {
+    @Binding var hasAgreed: Bool
+    @State private var confirmed18 = false
+    @State private var confirmedTerms = false
+
+    private var canContinue: Bool { confirmed18 && confirmedTerms }
 
     var body: some View {
+        ZStack {
+            JuicdScreenBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Terms & eligibility")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text(juicdDisclaimerText)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Link("Terms of Use", destination: URL(string: "https://juicd.app/terms")!)
+                        .font(.system(size: 14, weight: .semibold))
+                    Link("Privacy Policy", destination: URL(string: "https://juicd.app/privacy")!)
+                        .font(.system(size: 14, weight: .semibold))
+                    Link("Contest Rules", destination: URL(string: "https://juicd.app/contest-rules")!)
+                        .font(.system(size: 14, weight: .semibold))
+
+                    Toggle(isOn: $confirmed18) {
+                        Text("I am 18 years of age or older")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .tint(JuicdTheme.brand)
+
+                    Toggle(isOn: $confirmedTerms) {
+                        Text("I have read and agree to the terms above")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .tint(JuicdTheme.brand)
+
+                    Button {
+                        JuicdLegalAgreement.markAgreed()
+                        hasAgreed = true
+                    } label: {
+                        Text("Continue")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(canContinue ? JuicdTheme.brand : .gray)
+                    .disabled(!canContinue)
+                }
+                .padding(24)
+            }
+        }
+    }
+}
+
+struct SignInView: View {
+    @ObservedObject var viewModel: AuthViewModel
+    @State private var hasAgreedToLegal = JuicdLegalAgreement.hasAgreed
+        || ProcessInfo.processInfo.arguments.contains("-acceptLegalTerms")
+
+    var body: some View {
+        SwiftUI.Group {
+            if !hasAgreedToLegal {
+                JuicdLegalAgreementView(hasAgreed: $hasAgreedToLegal)
+            } else {
+                signInContent
+            }
+        }
+    }
+
+    private var signInContent: some View {
         NavigationStack {
             ZStack {
                 JuicdScreenBackground()
@@ -76,6 +184,7 @@ struct SignInView: View {
                             }
                             .buttonStyle(.bordered)
                             .tint(JuicdTheme.textSecondary)
+                            .accessibilityIdentifier("Skip — local dev account")
 
                             Text("Dev skip signs in as “Player” (same saved profile each time). Use Sign in with Apple for a name from your Apple ID when available.")
                                 .font(.system(size: 12, weight: .medium))

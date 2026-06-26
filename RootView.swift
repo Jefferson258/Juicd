@@ -74,7 +74,10 @@ private struct LoggedInTabShell: View {
         .background(JuicdTheme.canvasDeep.ignoresSafeArea())
         .onAppear {
             configureAll(userId: userId)
-            if !tutorialCompleted {
+            if ProcessInfo.processInfo.arguments.contains("-skipTutorial") {
+                tutorialCompleted = true
+                showTutorial = false
+            } else if !tutorialCompleted {
                 showTutorial = true
             }
         }

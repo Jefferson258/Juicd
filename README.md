@@ -5,7 +5,7 @@ iOS prototype: **Play** tab (odds / parlays), **Dashboard** (daily balance + tie
 ## What to do
 
 1. **Run & build:** Open `Juicd.xcodeproj` in Xcode, pick a simulator or device, ⌘R.
-2. **Everything you configure outside code** (signing, Odds API key, Supabase later, App Store): follow **[SETUP.md](SETUP.md)** — that file is the step-by-step checklist.
+2. **Everything outside code** (App Store, TestFlight, Supabase, ads, LLC): **[LAUNCH_OUT_OF_CODE.md](LAUNCH_OUT_OF_CODE.md)**. Keys and services detail: **[SETUP.md](SETUP.md)**.
 3. **Long-form notes** (product detail, migrations, ops): **[README_REFERENCE.md](README_REFERENCE.md)** and **[JUICD_SETUP.md](JUICD_SETUP.md)**.
 
 ## Sign-in
