@@ -4,6 +4,8 @@ Step-by-step runbook to run Juicd locally, connect Supabase, optionally monetize
 
 **You have a personal Apple Developer account today.** LLC, banking, and ad payout setup: **[`../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md`](../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md)**.
 
+**Start here (your numbered steps + time estimates):** [YOUR_LAUNCH_CHECKLIST.md](YOUR_LAUNCH_CHECKLIST.md)  
+**You vs Agent by phase:** [LAUNCH_EXECUTION_SPLIT.md](LAUNCH_EXECUTION_SPLIT.md) · **Max access + credentials (incl. Odds API):** [MAX_ACCESS_SETUP_SPLIT.md](MAX_ACCESS_SETUP_SPLIT.md)  
 **Service & key setup:** [SETUP.md](SETUP.md)  
 **Ad sales / direct sponsors:** [ADVERTISERS_SETUP.md](ADVERTISERS_SETUP.md)  
 **Ad behavior reference:** [ADS.md](ADS.md)  
