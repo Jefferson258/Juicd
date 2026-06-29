@@ -1,5 +1,7 @@
 -- Juicd — friends & requests (production sketch; client prototype mirrors this in memory)
 -- Run in Supabase SQL editor or via CLI after `juicd` project is linked.
+-- Idempotent: safe to rerun (tables = create if not exists, indexes = create if not
+--   exists, RLS = enable [no-op if on] + drop policy if exists before create).
 
 -- Canonical friendship edge: lexicographic UUID order prevents duplicate rows (A,B) vs (B,A).
 create table if not exists public.juicd_friendships (
