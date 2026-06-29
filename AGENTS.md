@@ -2,7 +2,7 @@
 
 Juicd is a free-to-play sports prediction game using **virtual points only**
 (no real-money wagering). Daily tournaments, parlays, groups, MMR/tiers,
-leaderboards. Part of a 3-app launch; cross-repo hub is `~/Desktop/AGENTS.md`.
+leaderboards.
 
 ## Operating principles (non-negotiable)
 
@@ -31,7 +31,7 @@ settlement changes need owner + counsel sign-off before shipping.
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
 - Currently **build 4** on TestFlight with the Supabase backend wired in.
-- Build/upload: `~/Desktop/TestFlight/archive-and-upload.sh juicd`.
+- Build/upload: see TestFlight section in `LAUNCH_OUT_OF_CODE.md`.
 
 ## Supabase (`supabase/`)
 

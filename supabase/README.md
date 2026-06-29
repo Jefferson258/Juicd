@@ -15,18 +15,19 @@ Both migrations are **idempotent** — safe to run again on the same database:
 > Keep these patterns if you edit the SQL. Avoid bare `create policy` /
 > `create trigger` / `add constraint` without a guard so reruns stay clean.
 
-## Deploy (one command)
+## Deploy
 
-Once a Supabase project exists, from the repo root:
+Once a Supabase project exists, from this repo:
 
 ```bash
-export SUPABASE_ACCESS_TOKEN=sbp_xxx          # account token
-~/Desktop/scripts/deploy-juicd-backend.sh <project-ref>
+export SUPABASE_ACCESS_TOKEN=sbp_xxx          # account token — never commit
+supabase link --project-ref <project-ref>
+supabase db push
+supabase functions deploy play-board
+supabase functions deploy resolve-play-slip
 ```
 
-That links the project, runs `supabase db push` (migrations), and deploys both
-edge functions. Re-running is safe (idempotent migrations; function deploys
-overwrite).
+Re-running is safe (idempotent migrations; function deploys overwrite).
 
 ## After deploy: wire the app
 

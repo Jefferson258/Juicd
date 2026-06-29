@@ -36,7 +36,7 @@ Use `live` only after key is set and logs are clean.
 
 ---
 
-## Do once (shared with Corvim + Velour) — ~2–3 hours
+## Do once (Apple + tooling setup) — ~2–3 hours
 
 | Step | You | Time |
 |------|-----|------|
