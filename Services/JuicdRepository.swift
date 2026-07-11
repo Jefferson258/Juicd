@@ -63,6 +63,140 @@ final class InMemoryJuicdRepository: ObservableObject {
         if state.groups.isEmpty {
             seedGroups()
         }
+        if ProcessInfo.processInfo.arguments.contains("-seedDemoData") {
+            seedScreenshotDemoData()
+        }
+    }
+
+    /// Rich local demo state for App Store / visual QA screenshots (launch arg `-seedDemoData`).
+    func seedScreenshotDemoData() {
+        let slate = SlateDay.slateKey()
+        let meId = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        let friendIds = [
+            UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!,
+            UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!,
+            UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!,
+            UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!,
+        ]
+        let friendNames = ["Alex Rivera", "Jordan Lee", "Sam Okonkwo", "Casey Nguyen"]
+        let pendingId = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
+
+        // Wipe prior local state so screenshots aren't mixed with stale profiles.
+        state = PersistedState()
+        seedGroups()
+
+        var me = Profile(
+            id: meId,
+            displayName: "Player",
+            mmr: 1620,
+            currentTier: .gold,
+            seasonPointsWon: 1280,
+            allTimePointsWon: 3420,
+            availableDailyPoints: 64,
+            lastDailyPointsAwardDateISO: slate,
+            lastDailyMatch: DailyMatchSnapshot(
+                dayISO: slate,
+                placement: 2,
+                poolSize: 12,
+                mmrBefore: 1605,
+                mmrDelta: 15,
+                mmrAfter: 1620,
+                tierBefore: .silver,
+                tierAfter: .gold
+            )
+        )
+        state.profiles[meId] = me
+
+        for (id, name) in zip(friendIds, friendNames) {
+            let mmr: Double = [1480, 1555, 1610, 1395][friendIds.firstIndex(of: id)!]
+            state.profiles[id] = Profile(
+                id: id,
+                displayName: name,
+                mmr: mmr,
+                currentTier: MMRLogic.tier(for: mmr),
+                seasonPointsWon: [920, 1100, 640, 1580][friendIds.firstIndex(of: id)!],
+                allTimePointsWon: [2100, 2800, 1500, 3600][friendIds.firstIndex(of: id)!],
+                availableDailyPoints: [40, 75, 100, 22][friendIds.firstIndex(of: id)!],
+                lastDailyPointsAwardDateISO: slate,
+                lastDailyMatch: nil
+            )
+        }
+
+        var friendships: [Friendship] = []
+        for fid in friendIds {
+            let lower = meId.uuidString < fid.uuidString ? meId : fid
+            let higher = meId.uuidString < fid.uuidString ? fid : meId
+            friendships.append(Friendship(lowerUserId: lower, higherUserId: higher, createdAt: .now.addingTimeInterval(-86400 * 5)))
+        }
+        state.friendships = friendships
+        state.friendRequests = [
+            FriendRequest(id: UUID(), fromUserId: pendingId, toUserId: meId, createdAt: .now.addingTimeInterval(-3600))
+        ]
+        state.profiles[pendingId] = Profile(
+            id: pendingId,
+            displayName: "Riley Chen",
+            mmr: 1510,
+            currentTier: .silver,
+            seasonPointsWon: 220,
+            allTimePointsWon: 220,
+            availableDailyPoints: 100,
+            lastDailyPointsAwardDateISO: slate
+        )
+
+        let slips: [(Bool, Int, [String], Double, Int, Int)] = [
+            (true, 25, ["Jokić O 48.5 PRA", "Curry O 27.5 Pts"], 3.42, 48, 2),
+            (false, 15, ["Mahomes O 2.5 Pass TD"], 1.91, 0, 0),
+            (true, 20, ["Lakers ML", "Celtics -4.5"], 2.75, 35, 2),
+            (true, 10, ["Diggs O 71.5 Rec Yds"], 1.87, 12, 1),
+            (false, 30, ["Parlay · 3 legs"], 6.10, 0, 1),
+        ]
+        var entries: [PlayBoardEntry] = []
+        for (i, slip) in slips.enumerated() {
+            let (won, stake, legs, odds, seasonPts, legWins) = slip
+            entries.append(PlayBoardEntry(
+                id: UUID(),
+                userId: meId,
+                slateDayKey: slate,
+                createdAt: .now.addingTimeInterval(-3600 * Double(i + 1)),
+                stakePoints: stake,
+                legSummaries: legs,
+                combinedOdds: odds,
+                didWin: won,
+                seasonPointsEarned: seasonPts,
+                playLegWins: legWins,
+                playLegLosses: max(0, legs.count - legWins)
+            ))
+        }
+        entries.append(PlayBoardEntry(
+            id: UUID(),
+            userId: meId,
+            slateDayKey: "2026-07-08",
+            createdAt: .now.addingTimeInterval(-86400 * 2),
+            stakePoints: 40,
+            legSummaries: ["NBA night ladder · Round 1"],
+            combinedOdds: 2.1,
+            didWin: true,
+            seasonPointsEarned: 44,
+            playLegWins: 1,
+            playLegLosses: 0
+        ))
+        state.playBoardEntries = entries
+
+        state.rewards[meId] = [
+            RewardBadge(id: UUID(), title: "Hot Streak", description: "3 Play wins in a row", achievedAt: .now.addingTimeInterval(-86400), imageSystemName: "flame.fill"),
+            RewardBadge(id: UUID(), title: "Gold Climb", description: "Reached Gold this season", achievedAt: .now.addingTimeInterval(-7200), imageSystemName: "trophy.fill"),
+            RewardBadge(id: UUID(), title: "Bracket Clear", description: "Won a daily closest-pick tourney", achievedAt: .now.addingTimeInterval(-172800), imageSystemName: "checkmark.seal.fill"),
+        ]
+
+        if let g = state.groups.first {
+            state.memberships.append(GroupMembership(id: UUID(), groupId: g.id, userId: meId, joinedAt: .now.addingTimeInterval(-86400)))
+        }
+
+        me.seasonPointsWon = max(me.seasonPointsWon, entries.filter(\.didWin).map(\.seasonPointsEarned).reduce(0, +) + 200)
+        me.allTimePointsWon = max(me.allTimePointsWon, me.seasonPointsWon + 900)
+        state.profiles[meId] = me
+
+        persist()
     }
 
     // MARK: - Auth (prototype)

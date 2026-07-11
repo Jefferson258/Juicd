@@ -1,6 +1,6 @@
 # App Store listing — Juicd (copy-paste ready)
 
-**Do not submit until counsel signs off on contest/gambling posture.**  
+**Counsel approved entertainment positioning (Jul 2026).**  
 Pair with [APP_PRIVACY_QUESTIONNAIRE.md](APP_PRIVACY_QUESTIONNAIRE.md) and [../SETUP.md](../SETUP.md).
 
 ---
@@ -112,7 +112,7 @@ TERMS: https://juicd.app/terms
 
 Apple is not a sponsor of any tournament or promotion in the app.
 
-Counsel review pending for Texas entertainment positioning — submit only after legal sign-off.
+Counsel approved entertainment positioning (Jul 2026).
 ```
 
 ---
