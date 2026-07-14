@@ -16,7 +16,12 @@ final class JuicdUITests: XCTestCase {
         app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData"]
         app.launch()
 
-        let outputDir = "/Users/tjkade/Desktop/juicd/qa-screenshots"
+        // Resolve repo/qa-screenshots from this source file (portable; no Desktop hardcode).
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // JuicdUITests/
+            .deletingLastPathComponent() // juicd/
+            .appendingPathComponent("qa-screenshots")
+            .path
         try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
 
         func snap(_ name: String) throws {
