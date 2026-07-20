@@ -71,3 +71,15 @@ settlement changes need owner + counsel sign-off before shipping.
   wired URL+anon key, uploaded build 4.
 - Created an external "Beta Testers" TestFlight group (public link).
 - Set export-compliance flag; fixed bundle ID to `com.jefferson258.juicd`.
+
+## Marketing
+
+- Product playbook: `docs/MARKETING.md` (includes social + claim rules)
+- ASO paste copy: `docs/APP_STORE_LISTING.md`
+- Shared pipeline design: MarketingPilot (`~/Desktop/MarketingPilot`)
+
+## Current blockers (owner)
+
+- Odds API key for live data (free/dev tier only unless you approve spend)
+- Social handles (Instagram / TikTok / X) — see `docs/MARKETING.md`
+- `juicd.app` domain + Vercel token for the marketing site

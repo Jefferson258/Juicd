@@ -1,7 +1,7 @@
 # App Store listing — Juicd (copy-paste ready)
 
 **Counsel approved entertainment positioning (Jul 2026).**  
-Pair with [APP_PRIVACY_QUESTIONNAIRE.md](APP_PRIVACY_QUESTIONNAIRE.md) and [../SETUP.md](../SETUP.md).
+Pair with [MARKETING.md](MARKETING.md) (ASO + social), [APP_PRIVACY_QUESTIONNAIRE.md](APP_PRIVACY_QUESTIONNAIRE.md), and [../SETUP.md](../SETUP.md).
 
 ---
 
