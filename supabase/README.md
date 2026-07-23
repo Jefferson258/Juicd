@@ -27,7 +27,14 @@ supabase functions deploy play-board
 supabase functions deploy resolve-play-slip
 ```
 
-Re-running is safe (idempotent migrations; function deploys overwrite).
+  Re-running is safe (idempotent migrations; function deploys overwrite).
+
+## Analytics & errors (Supabase)
+
+Migration `20260721200000_juicd_analytics_logging.sql` adds insert-only
+`juicd_analytics_events` + `juicd_app_errors` (client POST via REST). Query in
+Supabase SQL Editor or use dashboard views — see LaunchPilot
+`docs/HOW_TO_VIEW_ANALYTICS.md` (not duplicated here).
 
 ## After deploy: wire the app
 

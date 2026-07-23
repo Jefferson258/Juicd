@@ -44,6 +44,10 @@ final class DashboardViewModel: ObservableObject {
             selectedPlaySlateKey = todayKey
         }
         playSlipsForSelectedSlate = repository.playBoardEntries(userId: userId, slateDayKey: selectedPlaySlateKey)
+        AnalyticsService.logDashboardSlipsView(
+            slateKey: selectedPlaySlateKey,
+            slipCount: playSlipsForSelectedSlate.count
+        )
     }
 
     func selectPlaySlate(_ slateKey: String) {
@@ -53,5 +57,9 @@ final class DashboardViewModel: ObservableObject {
             return
         }
         playSlipsForSelectedSlate = repository.playBoardEntries(userId: userId, slateDayKey: slateKey)
+        AnalyticsService.logDashboardSlipsView(
+            slateKey: slateKey,
+            slipCount: playSlipsForSelectedSlate.count
+        )
     }
 }

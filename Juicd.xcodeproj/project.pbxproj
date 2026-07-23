@@ -44,10 +44,26 @@
 		225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */; };
 		22QA00032F700001002955B9 /* JuicdUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22QA00012F700001002955B9 /* JuicdUITests.swift */; };
 		22QA00042F700001002955B9 /* JuicdUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */; };
+		22ANLT020F700200002955B9 /* JuicdAnalyticsLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANLT010F700200002955B9 /* JuicdAnalyticsLogicTests.swift */; };
+		22SOC0022F700100002955B9 /* SupabaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22SOC0012F700100002955B9 /* SupabaseAuthService.swift */; };
+		22SOC0042F700100002955B9 /* JuicdSocialService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22SOC0032F700100002955B9 /* JuicdSocialService.swift */; };
+		22ANL011F700200002955B9 /* AnalyticsEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL010F700200002955B9 /* AnalyticsEvent.swift */; };
+		22ANL021F700200002955B9 /* AnalyticsNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL020F700200002955B9 /* AnalyticsNaming.swift */; };
+		22ANL031F700200002955B9 /* AnalyticsPrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL030F700200002955B9 /* AnalyticsPrivacy.swift */; };
+		22ANL041F700200002955B9 /* AnalyticsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL040F700200002955B9 /* AnalyticsProvider.swift */; };
+		22ANL051F700200002955B9 /* AnalyticsDebugSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL050F700200002955B9 /* AnalyticsDebugSink.swift */; };
+		22ANL061F700200002955B9 /* AnalyticsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL060F700200002955B9 /* AnalyticsClient.swift */; };
+		22ANL071F700200002955B9 /* AnalyticsConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL070F700200002955B9 /* AnalyticsConfig.swift */; };
+		22ANL081F700200002955B9 /* TelemetryDeckProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL080F700200002955B9 /* TelemetryDeckProvider.swift */; };
+		22ANL091F700200002955B9 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL090F700200002955B9 /* AnalyticsService.swift */; };
+		22ANL101F700200002955B9 /* AnalyticsDebugOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */; };
+		22ANL111F700200002955B9 /* SupabaseAnalyticsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */; };
+		22ANL121F700200002955B9 /* AppErrorLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL120F700200002955B9 /* AppErrorLogger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		225E4B672F6F2CED002955B9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Juicd/Assets.xcassets; sourceTree = "<group>"; };
+		22ANLT010F700200002955B9 /* JuicdAnalyticsLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdAnalyticsLogicTests.swift; sourceTree = "<group>"; };
 		225E4B002F6F2CED002955B9 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		225E4B012F6F2CED002955B9 /* JuicdApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdApp.swift; sourceTree = "<group>"; };
 		225E4B022F6F2CED002955B9 /* JuicdModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdModels.swift; sourceTree = "<group>"; };
@@ -87,6 +103,20 @@
 		22QA00012F700001002955B9 /* JuicdUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITests.swift; sourceTree = "<group>"; };
 		22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		22QA00062F700001002955B9 /* JuicdUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JuicdUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		22SOC0012F700100002955B9 /* SupabaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthService.swift; sourceTree = "<group>"; };
+		22SOC0032F700100002955B9 /* JuicdSocialService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdSocialService.swift; sourceTree = "<group>"; };
+		22ANL010F700200002955B9 /* AnalyticsEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEvent.swift; sourceTree = "<group>"; };
+		22ANL020F700200002955B9 /* AnalyticsNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsNaming.swift; sourceTree = "<group>"; };
+		22ANL030F700200002955B9 /* AnalyticsPrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsPrivacy.swift; sourceTree = "<group>"; };
+		22ANL040F700200002955B9 /* AnalyticsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsProvider.swift; sourceTree = "<group>"; };
+		22ANL050F700200002955B9 /* AnalyticsDebugSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDebugSink.swift; sourceTree = "<group>"; };
+		22ANL060F700200002955B9 /* AnalyticsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsClient.swift; sourceTree = "<group>"; };
+		22ANL070F700200002955B9 /* AnalyticsConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsConfig.swift; sourceTree = "<group>"; };
+		22ANL080F700200002955B9 /* TelemetryDeckProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryDeckProvider.swift; sourceTree = "<group>"; };
+		22ANL090F700200002955B9 /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
+		22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDebugOverlay.swift; sourceTree = "<group>"; };
+		22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAnalyticsProvider.swift; sourceTree = "<group>"; };
+		22ANL120F700200002955B9 /* AppErrorLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorLogger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,10 +158,30 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		22ANLGRP0F700200002955B /* Analytics */ = {
+			isa = PBXGroup;
+			children = (
+				22ANL010F700200002955B9 /* AnalyticsEvent.swift */,
+				22ANL020F700200002955B9 /* AnalyticsNaming.swift */,
+				22ANL030F700200002955B9 /* AnalyticsPrivacy.swift */,
+				22ANL040F700200002955B9 /* AnalyticsProvider.swift */,
+				22ANL050F700200002955B9 /* AnalyticsDebugSink.swift */,
+				22ANL060F700200002955B9 /* AnalyticsClient.swift */,
+				22ANL070F700200002955B9 /* AnalyticsConfig.swift */,
+				22ANL080F700200002955B9 /* TelemetryDeckProvider.swift */,
+				22ANL090F700200002955B9 /* AnalyticsService.swift */,
+				22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */,
+				22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */,
+				22ANL120F700200002955B9 /* AppErrorLogger.swift */,
+			);
+			path = Analytics;
+			sourceTree = "<group>";
+		};
 		225E4B072F6F2CED002955B9 /* Services */ = {
 			isa = PBXGroup;
 			children = (
 				225E4B052F6F2CED002955B9 /* JuicdRepository.swift */,
+				22ANLGRP0F700200002955B /* Analytics */,
 				225E4B062F6F2CED002955B9 /* StubOddsProvider.swift */,
 				225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */,
 				225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */,
@@ -145,6 +195,8 @@
 				225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */,
 				225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */,
 				225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */,
+				22SOC0012F700100002955B9 /* SupabaseAuthService.swift */,
+				22SOC0032F700100002955B9 /* JuicdSocialService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -209,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				22QA00012F700001002955B9 /* JuicdUITests.swift */,
+				22ANLT010F700200002955B9 /* JuicdAnalyticsLogicTests.swift */,
 				22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */,
 			);
 			path = JuicdUITests;
@@ -352,6 +405,20 @@
 				225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */,
 				225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */,
 				225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */,
+				22SOC0022F700100002955B9 /* SupabaseAuthService.swift in Sources */,
+				22SOC0042F700100002955B9 /* JuicdSocialService.swift in Sources */,
+				22ANL011F700200002955B9 /* AnalyticsEvent.swift in Sources */,
+				22ANL021F700200002955B9 /* AnalyticsNaming.swift in Sources */,
+				22ANL031F700200002955B9 /* AnalyticsPrivacy.swift in Sources */,
+				22ANL041F700200002955B9 /* AnalyticsProvider.swift in Sources */,
+				22ANL051F700200002955B9 /* AnalyticsDebugSink.swift in Sources */,
+				22ANL061F700200002955B9 /* AnalyticsClient.swift in Sources */,
+				22ANL071F700200002955B9 /* AnalyticsConfig.swift in Sources */,
+				22ANL081F700200002955B9 /* TelemetryDeckProvider.swift in Sources */,
+				22ANL091F700200002955B9 /* AnalyticsService.swift in Sources */,
+				22ANL101F700200002955B9 /* AnalyticsDebugOverlay.swift in Sources */,
+				22ANL111F700200002955B9 /* SupabaseAnalyticsProvider.swift in Sources */,
+				22ANL121F700200002955B9 /* AppErrorLogger.swift in Sources */,
 				225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -365,6 +432,7 @@
 			files = (
 				22QA00032F700001002955B9 /* JuicdUITests.swift in Sources */,
 				22QA00042F700001002955B9 /* JuicdUITestsLaunchTests.swift in Sources */,
+				22ANLT020F700200002955B9 /* JuicdAnalyticsLogicTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -507,13 +575,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Juicd/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3eXh0a2xiZmZxd2NidHVldGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTEwMTUsImV4cCI6MjA5ODI2NzAxNX0.w3BhjNv4OURAX6BXnFZGlFA5g5jGtSqcEt2SsGBlrR0";
-				INFOPLIST_KEY_SUPABASE_URL = "https://hwyxtklbffqwcbtuetit.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -543,13 +610,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Juicd/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3eXh0a2xiZmZxd2NidHVldGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTEwMTUsImV4cCI6MjA5ODI2NzAxNX0.w3BhjNv4OURAX6BXnFZGlFA5g5jGtSqcEt2SsGBlrR0";
-				INFOPLIST_KEY_SUPABASE_URL = "https://hwyxtklbffqwcbtuetit.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -576,7 +642,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -595,7 +661,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;

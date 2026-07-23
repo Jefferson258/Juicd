@@ -83,37 +83,60 @@ function simulatedBoard(slateKey: string): Ribbon[] {
   });
 }
 
-async function liveBoardFromOddsApi(apiKey: string, slateKey: string): Promise<Ribbon[]> {
-  const url = new URL("https://api.the-odds-api.com/v4/sports/basketball_nba/odds/");
+/** Prefer in-season boards; NBA is often empty in summer. */
+const LIVE_SPORT_CANDIDATES: Array<{ sport: string; leagueTag: string; label: string }> = [
+  { sport: "basketball_nba", leagueTag: "NBA", label: "NBA" },
+  { sport: "basketball_nba_summer_league", leagueTag: "NBA", label: "NBA Summer League" },
+  { sport: "baseball_mlb", leagueTag: "MLB", label: "MLB" },
+  { sport: "americanfootball_nfl", leagueTag: "NFL", label: "NFL" },
+];
+
+async function fetchSportEvents(
+  apiKey: string,
+  sport: string,
+): Promise<any[] | null> {
+  const url = new URL(`https://api.the-odds-api.com/v4/sports/${sport}/odds/`);
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("regions", "us");
   url.searchParams.set("markets", "h2h");
   url.searchParams.set("oddsFormat", "decimal");
 
   const resp = await fetch(url.toString());
-  if (!resp.ok) return simulatedBoard(slateKey);
+  if (!resp.ok) return null;
   const events = await resp.json();
-  if (!Array.isArray(events) || events.length === 0) return simulatedBoard(slateKey);
-  const e = events[0];
-  const outcome = e?.bookmakers?.[0]?.markets?.find((m: any) => m.key === "h2h")?.outcomes?.[0];
-  if (!outcome?.name || !outcome?.price) return simulatedBoard(slateKey);
+  if (!Array.isArray(events) || events.length === 0) return [];
+  return events;
+}
 
-  const liveRibbon: Ribbon = {
-    id: "live_api",
-    title: "Live API",
-    subtitle: "Shared live line from Odds API",
-    props: [{
-      id: makeId(slateKey, "live_api", "0"),
-      leagueTag: "NBA",
-      athleteOrTeam: outcome.name,
-      matchup: `${e?.away_team ?? "Away"} @ ${e?.home_team ?? "Home"}`,
-      propDescription: "Moneyline",
-      lineText: "H2H",
-      pickLabel: outcome.name,
-      oddsDecimal: Number(Number(outcome.price).toFixed(2)),
-    }],
-  };
-  return [liveRibbon, ...simulatedBoard(slateKey)];
+async function liveBoardFromOddsApi(apiKey: string, slateKey: string): Promise<Ribbon[]> {
+  for (const candidate of LIVE_SPORT_CANDIDATES) {
+    const events = await fetchSportEvents(apiKey, candidate.sport);
+    if (!events || events.length === 0) continue;
+
+    const e = events[0];
+    const outcome = e?.bookmakers?.[0]?.markets?.find((m: any) => m.key === "h2h")
+      ?.outcomes?.[0];
+    if (!outcome?.name || !outcome?.price) continue;
+
+    const liveRibbon: Ribbon = {
+      id: "live_api",
+      title: "Live API",
+      subtitle: `Shared live line · ${candidate.label}`,
+      props: [{
+        id: makeId(slateKey, "live_api", candidate.sport, "0"),
+        leagueTag: candidate.leagueTag,
+        athleteOrTeam: outcome.name,
+        matchup: `${e?.away_team ?? "Away"} @ ${e?.home_team ?? "Home"}`,
+        propDescription: "Moneyline",
+        lineText: "H2H",
+        pickLabel: outcome.name,
+        oddsDecimal: Number(Number(outcome.price).toFixed(2)),
+      }],
+    };
+    return [liveRibbon, ...simulatedBoard(slateKey)];
+  }
+
+  return simulatedBoard(slateKey);
 }
 
 Deno.serve(async (req) => {

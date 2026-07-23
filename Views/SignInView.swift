@@ -173,20 +173,27 @@ struct SignInView: View {
                             .signInWithAppleButtonStyle(.white)
                             .frame(height: 52)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .disabled(viewModel.isBusy)
 
                             Button {
                                 viewModel.signInDevBypass()
                             } label: {
-                                Text("Skip — local dev account")
+                                Text("Continue as Player")
                                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
                             }
                             .buttonStyle(.bordered)
                             .tint(JuicdTheme.textSecondary)
+                            .disabled(viewModel.isBusy)
                             .accessibilityIdentifier("Skip — local dev account")
 
-                            Text("Dev skip signs in as “Player” (same saved profile each time). Use Sign in with Apple for a name from your Apple ID when available.")
+                            if viewModel.isBusy {
+                                ProgressView()
+                                    .tint(JuicdTheme.brand)
+                            }
+
+                            Text("Sign-in creates a cloud account so friends, groups, and leaderboards sync across TestFlight devices. Your session is saved on this phone — don’t sign out if you want to keep the same friend code.")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .multilineTextAlignment(.center)

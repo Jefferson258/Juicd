@@ -56,6 +56,13 @@ settlement changes need owner + counsel sign-off before shipping.
   See `supabase/README.md`. **Do not** run destructive SQL on
   `hwyxtklbffqwcbtuetit` without explicit approval.
 
+## Analytics & error logging
+
+Client events POST to `juicd_analytics_events`; failures to `juicd_app_errors`
+when Supabase is configured (`SupabaseAnalyticsProvider`, `AppErrorLogger`).
+Apply migration `20260721200000_juicd_analytics_logging.sql`, then query via
+Supabase SQL Editor — see LaunchPilot `docs/HOW_TO_VIEW_ANALYTICS.md`.
+
 ## Going to real data (high priority, but gated)
 
 1. Owner provides an **Odds API key** (free/dev tier; never pay without asking).

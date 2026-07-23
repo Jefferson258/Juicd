@@ -149,6 +149,10 @@ private struct JuicdCustomTabBar: View {
         let isSelected = selectedTab == tag
         return Button {
             selectedTab = tag
+            AnalyticsService.logTabSelected(title.lowercased())
+            if title == "Friends" {
+                AnalyticsService.logFriendsView()
+            }
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: icon)

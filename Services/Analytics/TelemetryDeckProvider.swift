@@ -1,0 +1,48 @@
+//
+//  TelemetryDeckProvider.swift
+//  Juicd
+//
+//  Compiles and does nothing (init returns nil) until BOTH are true:
+//   1. The owner creates a free TelemetryDeck account + app ID at
+//      telemetrydeck.com and sets JUICD_ANALYTICS_APP_ID (env/xcconfig — not
+//      a secret, but keep it out of git anyway) and
+//      JUICD_ANALYTICS_PROVIDER=telemetrydeck.
+//   2. The TelemetryDeck Swift package is added to Juicd.xcodeproj:
+//      File > Add Package Dependencies… > https://github.com/TelemetryDeck/SwiftClient
+//      (do this in Xcode's GUI, not by hand-editing project.pbxproj).
+//
+//  Until then `#if canImport(TelemetryDeck)` is false, this file compiles to
+//  an always-nil initializer, and the app silently keeps using only the debug
+//  sink. No build ever breaks because the package is missing. See LaunchPilot
+//  docs/ANALYTICS.md "What's owner-blocked".
+//
+
+import Foundation
+
+#if canImport(TelemetryDeck)
+import TelemetryDeck
+
+final class TelemetryDeckProvider: AnalyticsProvider {
+    let identifier = "telemetrydeck"
+
+    init?(appID: String) {
+        guard !appID.isEmpty else { return nil }
+        let config = TelemetryDeck.Config(appID: appID)
+        TelemetryDeck.initialize(config: config)
+    }
+
+    func track(_ event: AnalyticsEvent) {
+        var payload: [String: String] = [:]
+        for (key, value) in event.params {
+            payload[key] = value.stringValue
+        }
+        TelemetryDeck.signal(event.name, parameters: payload)
+    }
+}
+#else
+final class TelemetryDeckProvider: AnalyticsProvider {
+    let identifier = "telemetrydeck"
+    init?(appID: String) { return nil }
+    func track(_ event: AnalyticsEvent) {}
+}
+#endif

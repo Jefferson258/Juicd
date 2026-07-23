@@ -201,9 +201,35 @@ final class InMemoryJuicdRepository: ObservableObject {
 
     // MARK: - Auth (prototype)
 
-    func signIn(displayName: String) -> Profile {
+    /// - Parameter preferredId: When set (Supabase `auth.users.id`), create/reuse that UUID so social tables match.
+    func signIn(displayName: String, preferredId: UUID? = nil) -> Profile {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         let safeName = trimmed.isEmpty ? "Demo Player" : trimmed
+
+        if let preferredId {
+            if var existing = state.profiles[preferredId] {
+                existing.displayName = safeName
+                state.profiles[preferredId] = existing
+                persist()
+                return existing
+            }
+            let start = MMRLogic.startingMMR
+            let profile = Profile(
+                id: preferredId,
+                displayName: safeName,
+                mmr: start,
+                currentTier: MMRLogic.tier(for: start),
+                seasonPointsWon: 0,
+                allTimePointsWon: 0,
+                availableDailyPoints: 0,
+                lastDailyPointsAwardDateISO: nil,
+                lastDailyMatch: nil
+            )
+            state.profiles[profile.id] = profile
+            state.rewards[profile.id] = []
+            persist()
+            return profile
+        }
 
         // Create a new local user if none exists.
         if let existing = state.profiles.values.first(where: { $0.displayName.caseInsensitiveCompare(safeName) == .orderedSame }) {

@@ -120,46 +120,57 @@ final class PlayViewModel: ObservableObject {
         oddsRefreshGeneration &+= 1
         let generation = oddsRefreshGeneration
 
-        if SupabaseConfig.isConfigured,
-           let serverBoard = await SupabaseOddsService.fetchPlayBoard() {
+        if SupabaseConfig.isConfigured {
+            if let serverBoard = await SupabaseOddsService.fetchPlayBoard() {
+                guard generation == oddsRefreshGeneration else { return }
+                liveLine = nil
+                isLoadingOdds = false
+                oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source)"
+                let mapped = serverBoard.ribbons.map { ribbon in
+                    PlayPropRibbon(
+                        id: ribbon.id,
+                        title: ribbon.title,
+                        subtitle: ribbon.subtitle,
+                        props: ribbon.props.compactMap { dto in
+                            guard dto.oddsDecimal > 1.001 else { return nil }
+                            let fallbackId = StableUUID.from(
+                                "\(serverBoard.slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
+                            )
+                            return PlayPropBet(
+                                id: UUID(uuidString: dto.id) ?? fallbackId,
+                                leagueTag: dto.leagueTag,
+                                athleteOrTeam: dto.athleteOrTeam,
+                                matchup: dto.matchup,
+                                propDescription: dto.propDescription,
+                                lineText: dto.lineText,
+                                pickLabel: dto.pickLabel,
+                                oddsDecimal: dto.oddsDecimal
+                            )
+                        }
+                    )
+                }
+                let trimmed = Self.ribbonsDroppingEmpty(mapped)
+                if trimmed.isEmpty {
+                    boardUsesRemoteFeed = false
+                    oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
+                    AnalyticsService.logOddsSync(ok: false, source: "supabase_empty")
+                    rebuildRibbons()
+                } else {
+                    boardUsesRemoteFeed = true
+                    ribbons = trimmed
+                    AnalyticsService.logOddsSync(ok: true, source: "supabase_\(serverBoard.mode)")
+                }
+                clampSportPillToAvailableOdds()
+                return
+            }
             guard generation == oddsRefreshGeneration else { return }
-            liveLine = nil
-            isLoadingOdds = false
-            oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source)"
-            let mapped = serverBoard.ribbons.map { ribbon in
-                PlayPropRibbon(
-                    id: ribbon.id,
-                    title: ribbon.title,
-                    subtitle: ribbon.subtitle,
-                    props: ribbon.props.compactMap { dto in
-                        guard dto.oddsDecimal > 1.001 else { return nil }
-                        let fallbackId = StableUUID.from(
-                            "\(serverBoard.slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
-                        )
-                        return PlayPropBet(
-                            id: UUID(uuidString: dto.id) ?? fallbackId,
-                            leagueTag: dto.leagueTag,
-                            athleteOrTeam: dto.athleteOrTeam,
-                            matchup: dto.matchup,
-                            propDescription: dto.propDescription,
-                            lineText: dto.lineText,
-                            pickLabel: dto.pickLabel,
-                            oddsDecimal: dto.oddsDecimal
-                        )
-                    }
-                )
-            }
-            let trimmed = Self.ribbonsDroppingEmpty(mapped)
-            if trimmed.isEmpty {
-                boardUsesRemoteFeed = false
-                oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
-                rebuildRibbons()
-            } else {
-                boardUsesRemoteFeed = true
-                ribbons = trimmed
-            }
-            clampSportPillToAvailableOdds()
-            return
+            AnalyticsService.logOddsSync(ok: false, source: "supabase_fetch")
+            AppErrorLogger.log(
+                severity: .warning,
+                message: "play-board fetch returned nil",
+                screen: "play",
+                extra: ["source": .string("supabase_fetch")]
+            )
         }
 
         guard generation == oddsRefreshGeneration else { return }
@@ -186,8 +197,16 @@ final class PlayViewModel: ObservableObject {
         clampSportPillToAvailableOdds()
         if let line {
             oddsStatus = "Fallback live (client) · \(line.sportKey)"
+            AnalyticsService.logOddsSync(ok: true, source: "odds_api")
         } else {
             oddsStatus = "Couldn’t load odds."
+            AnalyticsService.logOddsSync(ok: false, source: "odds_api")
+            AppErrorLogger.log(
+                severity: .warning,
+                message: "Odds API returned no line",
+                screen: "play",
+                extra: ["source": .string("odds_api")]
+            )
         }
     }
 
@@ -378,6 +397,8 @@ final class PlayViewModel: ObservableObject {
             return map.isEmpty ? nil : map
         }()
 
+        let legCount = legs.count
+        let stake = stakePoints
         if let outcome = repository.submitPlayParlay(
             userId: userId,
             stakePoints: stakePoints,
@@ -385,6 +406,8 @@ final class PlayViewModel: ObservableObject {
             forcedLegOutcomesByLegId: serverOutcomeMap
         ) {
             profile = repository.profile(userId: userId)
+            AnalyticsService.logSlipSubmitted(legCount: legCount, stakePoints: stake)
+            AnalyticsService.logSlipResolved(won: outcome.didWin, legCount: legCount)
             if outcome.didWin {
                 builderToast = "Hit! +\(outcome.seasonPointsEarned) season pts"
             } else {
@@ -397,6 +420,12 @@ final class PlayViewModel: ObservableObject {
             }
         } else {
             builderToast = "Couldn’t place bet."
+            AppErrorLogger.log(
+                severity: .error,
+                message: "submitPlayParlay returned nil",
+                screen: "play",
+                extra: ["leg_count": .int(legCount)]
+            )
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.builderToast = nil
             }

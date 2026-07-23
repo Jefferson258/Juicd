@@ -12,7 +12,7 @@ struct FriendsView: View {
                     JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Friends",
-                        subtitle: "Requests, crew, leaderboard.",
+                        subtitle: "Requests, groups, leaderboards — live across devices.",
                         centered: true,
                         kicker: "Social"
                     )
@@ -28,6 +28,63 @@ struct FriendsView: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(JuicdTheme.brand)
+                    }
+
+                    if let code = viewModel.friendCode, !code.isEmpty {
+                        Card(title: "Your friend code", systemImage: "qrcode") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(code)
+                                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(JuicdTheme.brand)
+                                    .textSelection(.enabled)
+                                    .accessibilityLabel(code)
+                                    .accessibilityIdentifier("friend-code")
+                                Text("Share this code or your display name. Friends search either.")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                            }
+                        }
+                    }
+
+                    Card(title: "Groups", systemImage: "person.3.fill") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if viewModel.groups.isEmpty {
+                                Text("No groups yet — create one and share the invite code.")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(JuicdTheme.textSecondary)
+                            } else {
+                                ForEach(viewModel.groups) { g in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(g.name)
+                                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        Text("Invite code \(g.inviteCode)")
+                                            .font(.caption.weight(.semibold).monospaced())
+                                            .foregroundStyle(JuicdTheme.textTertiary)
+                                            .textSelection(.enabled)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+
+                            JuicdInputField {
+                                TextField("New group name", text: $viewModel.newGroupName)
+                                    .textInputAutocapitalization(.words)
+                            }
+                            Button("Create group") { viewModel.createGroup() }
+                                .buttonStyle(.borderedProminent)
+                                .tint(JuicdTheme.brand)
+                                .disabled(viewModel.isBusy)
+
+                            JuicdInputField {
+                                TextField("Join with invite code", text: $viewModel.joinGroupCode)
+                                    .textInputAutocapitalization(.characters)
+                                    .autocorrectionDisabled()
+                            }
+                            Button("Join group") { viewModel.joinGroup() }
+                                .buttonStyle(.bordered)
+                                .tint(JuicdTheme.brand)
+                                .disabled(viewModel.isBusy)
+                        }
                     }
 
                     if !viewModel.incomingRequests.isEmpty {
@@ -89,14 +146,14 @@ struct FriendsView: View {
 
                     Card(title: "Add friends", systemImage: "person.badge.plus") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Label("Search by display name", systemImage: "magnifyingglass")
+                            Label("Search by display name or friend code", systemImage: "magnifyingglass")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(JuicdTheme.textTertiary)
 
                             JuicdInputField {
-                                TextField("Search players", text: $viewModel.searchQuery)
+                                TextField("Name or 6-letter code", text: $viewModel.searchQuery)
                                     .focused($friendsSearchFocused)
-                                    .textInputAutocapitalization(.words)
+                                    .textInputAutocapitalization(.never)
                                     .disableAutocorrection(true)
                                     .onChange(of: viewModel.searchQuery) { _, _ in
                                         viewModel.runSearch()
@@ -132,7 +189,7 @@ struct FriendsView: View {
 
                     Card(title: "Friends Leaderboard", systemImage: "chart.bar.fill") {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Highest placement first", systemImage: "arrow.up.forward")
+                            Label("Friends + you by MMR", systemImage: "arrow.up.forward")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(JuicdTheme.textTertiary)
 
@@ -171,6 +228,56 @@ struct FriendsView: View {
                         }
                     }
 
+                    if !viewModel.seasonLeaderboard.isEmpty {
+                        Card(title: "Season ladder", systemImage: "trophy.fill") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(viewModel.seasonLeaderboard.prefix(15)) { row in
+                                    HStack {
+                                        Text("#\(row.rank)")
+                                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                            .foregroundStyle(JuicdTheme.textTertiary)
+                                            .frame(width: 36, alignment: .leading)
+                                        Text(row.display_name)
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        Spacer()
+                                        Text("\(row.season_points_won ?? 0) pts")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(JuicdTheme.textTertiary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                        }
+                    }
+
+                    if !viewModel.allTimeLeaderboard.isEmpty {
+                        Card(title: "All-time ladder", systemImage: "crown.fill") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(viewModel.allTimeLeaderboard.prefix(15)) { row in
+                                    HStack {
+                                        Text("#\(row.rank)")
+                                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                            .foregroundStyle(JuicdTheme.textTertiary)
+                                            .frame(width: 36, alignment: .leading)
+                                        Text(row.display_name)
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        Spacer()
+                                        Text("\(row.all_time_points_won ?? 0) pts")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(JuicdTheme.textTertiary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                        }
+                    }
+
+                    if let status = viewModel.statusMessage {
+                        Text(status)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.brand)
+                    }
+
                     if let err = viewModel.errorMessage {
                         Text(err)
                             .font(.caption.weight(.semibold))
@@ -197,11 +304,11 @@ struct FriendsView: View {
                             .font(.title2.bold())
                             .foregroundStyle(JuicdTheme.textPrimary)
 
-                        friendsTipRow(icon: "person.badge.plus", text: "Search by display name and send a request. Incoming requests land at the top — accept to link crews or decline to clear the queue.")
-                        friendsTipRow(icon: "paperplane.fill", text: "Outgoing shows pending invites you can cancel if you mistyped a name or changed your mind.")
-                        friendsTipRow(icon: "chart.bar.fill", text: "The leaderboard ranks accepted friends by competitive placement (MMR-driven tier). Tap a row to open their mini profile.")
-                        friendsTipRow(icon: "arrow.left.arrow.right", text: "Friend lists are separate from Play slips and Tourney brackets — social compare only, no wallet transfers.")
-                        friendsTipRow(icon: "bolt.fill", text: "Daily Play balance and ranked pools stay on the Play tab; Dashboard shows how your skill ladder moves after slates resolve.")
+                        friendsTipRow(icon: "qrcode", text: "Your friend code is unique. Share it (or your display name) so other TestFlight testers can find you.")
+                        friendsTipRow(icon: "person.badge.plus", text: "Search by name or friend code, send a request, then accept on the other phone.")
+                        friendsTipRow(icon: "person.3.fill", text: "Create a group to get an invite code — other testers join with that code.")
+                        friendsTipRow(icon: "chart.bar.fill", text: "Friends leaderboard uses synced MMR. Season / all-time ladders are global across all signed-in players.")
+                        friendsTipRow(icon: "icloud.fill", text: "Stay signed in on each device so the same cloud account (and friend code) persists.")
                     }
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .leading)

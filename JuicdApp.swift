@@ -25,8 +25,14 @@ struct JuicdApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(repository: repository)
-                .preferredColorScheme(ColorScheme.dark)
+            ZStack(alignment: .topTrailing) {
+                RootView(repository: repository)
+                AnalyticsDebugOverlay()
+            }
+            .preferredColorScheme(ColorScheme.dark)
+            .onAppear {
+                AnalyticsService.logAppOpen()
+            }
         }
     }
 }
