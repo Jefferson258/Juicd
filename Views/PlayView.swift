@@ -367,7 +367,7 @@ struct PlayView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
-                Task { await viewModel.refreshLiveOddsLine() }
+                Task { await viewModel.refreshLiveOddsLine(bypassClientCache: true) }
             } label: {
                 HStack(spacing: 6) {
                     if viewModel.isLoadingOdds {

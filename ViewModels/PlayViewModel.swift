@@ -19,6 +19,8 @@ final class PlayViewModel: ObservableObject {
 
     /// Bumps on each odds refresh start; completions from older generations are discarded (avoids overlapping `Task`s corrupting board state).
     private var oddsRefreshGeneration: UInt64 = 0
+    /// Coalesces concurrent refreshes (configure + Play `.task` often fire together).
+    private var inFlightOddsRefresh: Task<Void, Never>?
 
     @Published private(set) var isSubmittingPlayParlay = false
 
@@ -113,19 +115,44 @@ final class PlayViewModel: ObservableObject {
         _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         profile = repository.profile(userId: userId)
         rebuildRibbons()
-        Task { await refreshLiveOddsLine() }
+        Task { await refreshLiveOddsLine(bypassClientCache: false) }
     }
 
-    func refreshLiveOddsLine() async {
+    /// - Parameter bypassClientCache: when true (manual Sync), skip the 3‑minute client
+    ///   soft cache. Edge still applies its own Odds TTL so Sync does not burn API quota.
+    func refreshLiveOddsLine(bypassClientCache: Bool = false) async {
+        if let existing = inFlightOddsRefresh, !bypassClientCache {
+            await existing.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            await self.performOddsRefresh(bypassClientCache: bypassClientCache)
+        }
+        inFlightOddsRefresh = task
+        await task.value
+        if inFlightOddsRefresh == task {
+            inFlightOddsRefresh = nil
+        }
+    }
+
+    private func performOddsRefresh(bypassClientCache: Bool) async {
         oddsRefreshGeneration &+= 1
         let generation = oddsRefreshGeneration
 
         if SupabaseConfig.isConfigured {
-            if let serverBoard = await SupabaseOddsService.fetchPlayBoard() {
+            if let serverBoard = await SupabaseOddsService.fetchPlayBoard(bypassClientCache: bypassClientCache) {
                 guard generation == oddsRefreshGeneration else { return }
                 liveLine = nil
                 isLoadingOdds = false
-                oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source)"
+                let cacheTag: String = {
+                    if serverBoard.cached == true {
+                        let age = serverBoard.ageSeconds.map { "\($0)s" } ?? "?"
+                        return "cached \(age)"
+                    }
+                    return "fresh"
+                }()
+                oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source) · \(cacheTag)"
                 let mapped = serverBoard.ribbons.map { ribbon in
                     PlayPropRibbon(
                         id: ribbon.id,

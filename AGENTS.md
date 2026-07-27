@@ -30,7 +30,7 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 4** on TestFlight with the Supabase backend wired in.
+- Currently **build 8** on TestFlight (cache/TTL client + Edge snapshot).
 - Build/upload: see TestFlight section in `LAUNCH_OUT_OF_CODE.md`.
 
 ## Supabase (`supabase/`)
@@ -49,7 +49,12 @@ settlement changes need owner + counsel sign-off before shipping.
 - **RPCs (4):** `juicd_record_prop_action`, `juicd_join_group_by_code`,
   `juicd_my_group_ids`, `juicd_handle_new_user` (auto-creates a profile row).
 - **Edge functions:** `play-board`, `resolve-play-slip` (deployed).
-- **Runtime:** `juicd_runtime_config.odds_mode` and `outcome_mode` = `simulated`.
+- **Odds board cache (Jul 26):** `play-board` reads `juicd_play_board_snapshots`
+  first. Fresh within `odds_board_ttl_seconds` (default **1800**) → no Odds API.
+  Stampede lock via `refresh_started_at`. Client soft-cache **180s** + in-flight
+  dedupe; Sync bypasses client cache only (Edge TTL still applies).
+- **Runtime:** check `juicd_runtime_config.odds_mode` / `outcome_mode` in SQL —
+  do **not** flip to live without owner OK (live burns Odds quota; cache mitigates).
   The app currently uses an in-memory repo; the DB is the production backing
   store ahead of client wiring.
 - All migrations are **idempotent** (verified rerunnable). Keep them additive.
