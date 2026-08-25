@@ -53,10 +53,10 @@ settlement changes need owner + counsel sign-off before shipping.
   first. Fresh within `odds_board_ttl_seconds` (default **1800**) → no Odds API.
   Stampede lock via `refresh_started_at`. Client soft-cache **180s** + in-flight
   dedupe; Sync bypasses client cache only (Edge TTL still applies).
-- **Runtime:** check `juicd_runtime_config.odds_mode` / `outcome_mode` in SQL —
-  do **not** flip to live without owner OK (live burns Odds quota; cache mitigates).
-  The app currently uses an in-memory repo; the DB is the production backing
-  store ahead of client wiring.
+- **Runtime:** `odds_mode=live` (Odds API + Edge snapshot cache); `outcome_mode`
+  still **simulated**. Cache TTL default **1800s** mitigates quota burn. Do not
+  flip `outcome_mode` to live without owner + counsel OK. Re-pause risk: free
+  Supabase projects go inactive — restore via Management API `/restore` if needed.
 - All migrations are **idempotent** (verified rerunnable). Keep them additive.
   See `supabase/README.md`. **Do not** run destructive SQL on
   `hwyxtklbffqwcbtuetit` without explicit approval.
