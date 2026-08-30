@@ -177,6 +177,12 @@ function refreshInFlight(row: SnapshotRow | null): boolean {
   return Date.now() - started < REFRESH_LOCK_MS;
 }
 
+function bearerToken(req: Request): string | null {
+  const header = req.headers.get("Authorization") ?? "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
 function boardResponse(
   mode: string,
   source: string,
@@ -201,6 +207,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  if (req.method !== "GET") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -216,6 +228,12 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const force = url.searchParams.get("force") === "1" ||
     url.searchParams.get("force") === "true";
+  if (force && bearerToken(req) !== serviceRole) {
+    return new Response(JSON.stringify({ error: "internal_refresh_required" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const admin = createClient(supabaseUrl, serviceRole);
   const slateKey = isoDay();

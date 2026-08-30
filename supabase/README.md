@@ -62,3 +62,13 @@ supabase projects api-keys --project-ref <project-ref>
 `juicd_runtime_config` seeds `odds_mode = simulated` and
 `outcome_mode = simulated`. Leave these as `simulated` for the beta (no
 real-money / live-odds behavior). Flip to `live` only after legal sign-off.
+
+## Staging integrity harness
+
+`staging/INTEGRITY_HARDENING.sql` and `staging/VALIDATION.md` are intentionally
+outside `migrations/` and must be applied only to a disposable staging
+project. They exercise fail-closed client-write and settlement-input guards
+without changing the live schema. The app refuses to settle a configured
+backend slip when the response is missing or does not cover every submitted
+leg exactly once; local deterministic settlement remains available only when
+the backend is not configured.

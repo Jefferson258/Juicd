@@ -403,14 +403,27 @@ final class PlayViewModel: ObservableObject {
         let serverOutcomeMap: [UUID: Bool]? = await {
             guard SupabaseConfig.isConfigured else { return nil }
             guard let remote = await SupabaseOddsService.resolvePlaySlip(userId: userId, legs: legs) else { return nil }
-            var map: [UUID: Bool] = [:]
-            for legOutcome in remote.outcomes {
-                if let id = UUID(uuidString: legOutcome.legId) {
-                    map[id] = legOutcome.didWin
-                }
-            }
-            return map.isEmpty ? nil : map
+            return SupabaseOddsService.validatedOutcomeMap(remote, for: legs)
         }()
+
+        // Once a backend is configured, a local RNG must not settle a
+        // user-facing slip. This fail-closed path keeps the server response
+        // authoritative until durable server-side balance/ledger settlement
+        // is approved and implemented.
+        if SupabaseConfig.isConfigured && serverOutcomeMap == nil {
+            builderToast = "Settlement service unavailable — try again."
+            AppErrorLogger.log(
+                severity: .error,
+                message: "authoritative settlement unavailable",
+                screen: "play",
+                extra: ["leg_count": .int(legs.count)]
+            )
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.builderToast = nil
+            }
+            clampStakeToBalance()
+            return
+        }
 
         let legCount = legs.count
         let stake = stakePoints

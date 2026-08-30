@@ -69,3 +69,5 @@ fastlane/README.md
 
 # Logs
 *.log
+*.testlog
+test-results/

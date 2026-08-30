@@ -55,10 +55,12 @@ final class InMemoryJuicdRepository: ObservableObject {
     private let storageKey = "juicd_persisted_state_v2"
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let persistenceEnabled: Bool
 
     @Published private(set) var state: PersistedState
 
     private init() {
+        self.persistenceEnabled = true
         self.state = Self.load()
         if state.groups.isEmpty {
             seedGroups()
@@ -67,6 +69,16 @@ final class InMemoryJuicdRepository: ObservableObject {
             seedScreenshotDemoData()
         }
     }
+
+    /// Creates an isolated repository for deterministic local rule tests.
+    /// Production callers should use `shared`, which retains the persisted app state.
+    @MainActor
+    init(initialState: PersistedState) {
+        self.persistenceEnabled = false
+        self.state = initialState
+    }
+
+    nonisolated deinit {}
 
     /// Rich local demo state for App Store / visual QA screenshots (launch arg `-seedDemoData`).
     func seedScreenshotDemoData() {
@@ -269,6 +281,8 @@ final class InMemoryJuicdRepository: ObservableObject {
             || state.rewards[userId] != nil
             || state.dailyBets.values.contains { $0.userId == userId }
             || state.activeDailyByUser[userId] != nil
+            || state.dailyRankParticipationByDay.values.contains { $0.contains(userId) }
+            || state.dailyRankResolvedByDay.values.contains { $0.contains(userId) }
             || (state.dailyClosestByKey ?? [:]).keys.contains { $0.hasPrefix("\(userId.uuidString)|") }
             || (state.playBoardEntries ?? []).contains { $0.userId == userId }
             || (state.friendRequests ?? []).contains { $0.fromUserId == userId || $0.toUserId == userId }
@@ -1001,7 +1015,7 @@ final class InMemoryJuicdRepository: ObservableObject {
         return (w, resolved.count - w)
     }
 
-    private func resolveLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
+    func resolveLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
         var rng = SeededRNG(seed: Self.stableHashFNV1a64(seedKey))
         var outcomes: [(legId: UUID, didWin: Bool)] = []
         outcomes.reserveCapacity(parlayLegs.count)
@@ -1015,7 +1029,7 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     /// Softer per-leg win rates so multi-leg Play parlays are not almost always losses in local/dev.
-    private func resolvePlayParlayLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
+    func resolvePlayParlayLegs(parlayLegs: [BetLeg], seedKey: String) -> [(legId: UUID, didWin: Bool)] {
         var rng = SeededRNG(seed: Self.stableHashFNV1a64(seedKey))
         var outcomes: [(legId: UUID, didWin: Bool)] = []
         outcomes.reserveCapacity(parlayLegs.count)
@@ -1608,6 +1622,7 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     private func persist() {
+        guard persistenceEnabled else { return }
         do {
             let data = try encoder.encode(state)
             UserDefaults.standard.set(data, forKey: storageKey)

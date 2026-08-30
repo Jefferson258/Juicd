@@ -85,8 +85,23 @@ final class JuicdUITests: XCTestCase {
 
     /// Cloud anonymous sign-in (no `-seedDemoData`) — asserts Friends shows a real friend code.
     func testAnonymousCloudFriendCodeScreenshot() throws {
+        let stagingURL = ProcessInfo.processInfo.environment["JUICD_STAGING_SUPABASE_URL"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let stagingKey = ProcessInfo.processInfo.environment["JUICD_STAGING_SUPABASE_ANON_KEY"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        try XCTSkipUnless(
+            !stagingURL.isEmpty && !stagingKey.isEmpty,
+            "Cloud UI test requires explicit staging Supabase URL and anon key"
+        )
+        try XCTSkipUnless(
+            !stagingURL.contains("hwyxtklbffqwcbtuetit.supabase.co"),
+            "Cloud UI test refuses the production Supabase project"
+        )
+
         let app = XCUIApplication()
         app.launchArguments += ["-skipTutorial", "-acceptLegalTerms"]
+        app.launchEnvironment["JUICD_TEST_SUPABASE_URL"] = stagingURL
+        app.launchEnvironment["JUICD_TEST_SUPABASE_ANON_KEY"] = stagingKey
         app.launch()
 
         let outputDir = URL(fileURLWithPath: #filePath)

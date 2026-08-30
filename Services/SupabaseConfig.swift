@@ -2,12 +2,16 @@ import Foundation
 
 enum SupabaseConfig {
     static var projectURLString: String {
-        (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String)?
+        let configured = ProcessInfo.processInfo.environment["JUICD_TEST_SUPABASE_URL"]
+            ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String)
+        return configured?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     static var anonKey: String {
-        (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String)?
+        let configured = ProcessInfo.processInfo.environment["JUICD_TEST_SUPABASE_ANON_KEY"]
+            ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String)
+        return configured?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 

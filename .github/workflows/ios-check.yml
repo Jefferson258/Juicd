@@ -2,11 +2,37 @@ name: iOS checks
 
 on:
   push:
+    paths:
+      - ".github/workflows/ios-check.yml"
+      - "**/*.swift"
+      - "**/*.plist"
+      - "**/*.entitlements"
+      - "**/*.storyboard"
+      - "**/*.xib"
+      - "**/*.xcassets/**"
+      - "**/*.xcodeproj/**"
+      - "Package.swift"
+      - "Package.resolved"
   pull_request:
+    paths:
+      - ".github/workflows/ios-check.yml"
+      - "**/*.swift"
+      - "**/*.plist"
+      - "**/*.entitlements"
+      - "**/*.storyboard"
+      - "**/*.xib"
+      - "**/*.xcassets/**"
+      - "**/*.xcodeproj/**"
+      - "Package.swift"
+      - "Package.resolved"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ios-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ios:
@@ -14,19 +40,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Build iOS app
-        run: >
-          xcodebuild
-          -project Juicd.xcodeproj
-          -scheme Juicd
-          -configuration Debug
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Juicd.xcodeproj \
+            -scheme Juicd \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/JuicdBuild.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/juicd-build.log"
 
       - name: Select available iPhone Simulator
         id: simulator
@@ -35,9 +63,8 @@ jobs:
           set -euo pipefail
           udid="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $2; exit}')"
           if [[ -z "$udid" ]]; then
-            echo "::notice::No available iPhone Simulator; skipping Juicd iOS tests."
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::No available iPhone Simulator; refusing a false-green Juicd iOS check."
+            exit 1
           fi
           echo "Using iPhone Simulator $udid"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
@@ -45,36 +72,51 @@ jobs:
 
       - name: Test analytics UI path
         if: steps.simulator.outputs.available == 'true'
-        run: >
-          perl -e 'alarm 180; exec @ARGV' --
-          xcodebuild
-          -project Juicd.xcodeproj
-          -scheme Juicd
-          -configuration Debug
-          -destination "id=${{ steps.simulator.outputs.udid }}"
-          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          -parallel-testing-enabled NO
-          -only-testing:JuicdUITests/JuicdAnalyticsLogicTests
-          test
+        run: |
+          set -o pipefail
+          perl -e 'alarm 180; exec @ARGV' -- \
+            xcodebuild \
+              -project Juicd.xcodeproj \
+              -scheme Juicd \
+              -configuration Debug \
+              -destination "id=${{ steps.simulator.outputs.udid }}" \
+              -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData" \
+              -resultBundlePath "$RUNNER_TEMP/JuicdAnalyticsTests.xcresult" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              -parallel-testing-enabled NO \
+              -only-testing:JuicdUITests/JuicdAnalyticsLogicTests \
+              test 2>&1 | tee "$RUNNER_TEMP/juicd-analytics-tests.log"
 
       - name: Test remaining iOS targets
         if: steps.simulator.outputs.available == 'true'
-        run: >
-          perl -e 'alarm 900; exec @ARGV' --
-          xcodebuild
-          -project Juicd.xcodeproj
-          -scheme Juicd
-          -configuration Debug
-          -destination "id=${{ steps.simulator.outputs.udid }}"
-          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          -parallel-testing-enabled NO
-          -skip-testing:JuicdUITests/JuicdAnalyticsLogicTests
-          test
+        run: |
+          set -o pipefail
+          perl -e 'alarm 900; exec @ARGV' -- \
+            xcodebuild \
+              -project Juicd.xcodeproj \
+              -scheme Juicd \
+              -configuration Debug \
+              -destination "id=${{ steps.simulator.outputs.udid }}" \
+              -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData" \
+              -resultBundlePath "$RUNNER_TEMP/JuicdTests.xcresult" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              -parallel-testing-enabled NO \
+              -skip-testing:JuicdUITests/JuicdAnalyticsLogicTests \
+              -skip-testing:JuicdUITests/JuicdUITests/testAnonymousCloudFriendCodeScreenshot \
+              test 2>&1 | tee "$RUNNER_TEMP/juicd-tests.log"
 
       - name: Report unsupported targets
         if: always()
         run: echo "::notice::Juicd has no watchOS or other non-iOS targets; this workflow covers its iOS app and JuicdUITests scheme."
+
+      - name: Upload iOS diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: juicd-ios-diagnostics
+          path: |
+            ${{ runner.temp }}/Juicd*.xcresult
+            ${{ runner.temp }}/juicd-*.log
+          if-no-files-found: warn

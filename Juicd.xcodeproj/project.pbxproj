@@ -59,6 +59,7 @@
 		22ANL101F700200002955B9 /* AnalyticsDebugOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */; };
 		22ANL111F700200002955B9 /* SupabaseAnalyticsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */; };
 		22ANL121F700200002955B9 /* AppErrorLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL120F700200002955B9 /* AppErrorLogger.swift */; };
+		22CORE0022F700300002955B9 /* JuicdCoreRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -117,6 +118,8 @@
 		22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDebugOverlay.swift; sourceTree = "<group>"; };
 		22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAnalyticsProvider.swift; sourceTree = "<group>"; };
 		22ANL120F700200002955B9 /* AppErrorLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorLogger.swift; sourceTree = "<group>"; };
+		22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdCoreRulesTests.swift; sourceTree = "<group>"; };
+		22CORE0062F700300002955B9 /* JuicdCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JuicdCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,10 +140,24 @@
 			remoteGlobalIDString = 22E1FDBD2F6F2A85004D740F;
 			remoteInfo = Juicd;
 		};
+		22CORE00B2F700300002955B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 22E1FDB62F6F2A85004D740F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22E1FDBD2F6F2A85004D740F;
+			remoteInfo = Juicd;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		22QA00092F700001002955B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22CORE0092F700300002955B9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -244,6 +261,7 @@
 				225E4B0E2F6F2CED002955B9 /* ViewModels */,
 				225E4B162F6F2CED002955B9 /* Views */,
 				22QA00052F700001002955B9 /* JuicdUITests */,
+				22CORE0052F700300002955B9 /* JuicdCoreTests */,
 				22E1FDBF2F6F2A85004D740F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -253,6 +271,7 @@
 			children = (
 				22E1FDBE2F6F2A85004D740F /* Juicd.app */,
 				22QA00062F700001002955B9 /* JuicdUITests.xctest */,
+				22CORE0062F700300002955B9 /* JuicdCoreTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -265,6 +284,14 @@
 				22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */,
 			);
 			path = JuicdUITests;
+			sourceTree = "<group>";
+		};
+		22CORE0052F700300002955B9 /* JuicdCoreTests */ = {
+			isa = PBXGroup;
+			children = (
+				22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */,
+			);
+			path = JuicdCoreTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -307,6 +334,24 @@
 			productReference = 22QA00062F700001002955B9 /* JuicdUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		22CORE0072F700300002955B9 /* JuicdCoreTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22CORE00F2F700300002955B9 /* Build configuration list for PBXNativeTarget "JuicdCoreTests" */;
+			buildPhases = (
+				22CORE0082F700300002955B9 /* Sources */,
+				22CORE0092F700300002955B9 /* Frameworks */,
+				22CORE00A2F700300002955B9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				22CORE00C2F700300002955B9 /* PBXTargetDependency */,
+			);
+			name = JuicdCoreTests;
+			productName = JuicdCoreTests;
+			productReference = 22CORE0062F700300002955B9 /* JuicdCoreTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -321,6 +366,10 @@
 						CreatedOnToolsVersion = 26.3;
 					};
 					22QA00072F700001002955B9 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 22E1FDBD2F6F2A85004D740F;
+					};
+					22CORE0072F700300002955B9 = {
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = 22E1FDBD2F6F2A85004D740F;
 					};
@@ -342,6 +391,7 @@
 			targets = (
 				22E1FDBD2F6F2A85004D740F /* Juicd */,
 				22QA00072F700001002955B9 /* JuicdUITests */,
+				22CORE0072F700300002955B9 /* JuicdCoreTests */,
 			);
 		};
 /* End PBXProject section */
@@ -359,6 +409,13 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		22QA000A2F700001002955B9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22CORE00A2F700300002955B9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -436,6 +493,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		22CORE0082F700300002955B9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22CORE0022F700300002955B9 /* JuicdCoreRulesTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -443,6 +508,11 @@
 			isa = PBXTargetDependency;
 			target = 22E1FDBD2F6F2A85004D740F /* Juicd */;
 			targetProxy = 22QA000B2F700001002955B9 /* PBXContainerItemProxy */;
+		};
+		22CORE00C2F700300002955B9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22E1FDBD2F6F2A85004D740F /* Juicd */;
+			targetProxy = 22CORE00B2F700300002955B9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -677,6 +747,45 @@
 			};
 			name = Release;
 		};
+		22CORE00D2F700300002955B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 8H2437SV33;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefferson258.juicdCoreTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Juicd.app/Juicd";
+			};
+			name = Debug;
+		};
+		22CORE00E2F700300002955B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 8H2437SV33;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefferson258.juicdCoreTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Juicd.app/Juicd";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -703,6 +812,15 @@
 			buildConfigurations = (
 				22QA000D2F700001002955B9 /* Debug */,
 				22QA000E2F700001002955B9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		22CORE00F2F700300002955B9 /* Build configuration list for PBXNativeTarget "JuicdCoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22CORE00D2F700300002955B9 /* Debug */,
+				22CORE00E2F700300002955B9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

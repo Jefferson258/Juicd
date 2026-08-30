@@ -16,13 +16,21 @@
 import XCTest
 
 final class JuicdAnalyticsLogicTests: XCTestCase {
+    private var launchedApp: XCUIApplication?
 
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
+    override func tearDownWithError() throws {
+        launchedApp?.terminate()
+        launchedApp = nil
+        try super.tearDownWithError()
+    }
+
     private func launchSeededAnalyticsApp() -> XCUIApplication {
         let app = XCUIApplication()
+        launchedApp = app
         app.launchArguments += [
             "-skipTutorial",
             "-acceptLegalTerms",
@@ -30,6 +38,10 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
             "-showAnalyticsDebugOverlay",
         ]
         app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: 15),
+            "Seeded analytics app should reach the foreground"
+        )
         return app
     }
 
@@ -47,13 +59,31 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
     private func waitForAnalyticsEvent(
         _ name: String,
         in app: XCUIApplication,
+        afterEventCount baselineCount: String,
         timeout: TimeInterval = 8
     ) -> Bool {
+        let countLabel = app.staticTexts["analytics-debug-count"]
         let lastEvent = app.staticTexts["analytics-debug-last-event"]
-        guard lastEvent.waitForExistence(timeout: timeout) else { return false }
-        let predicate = NSPredicate(format: "label == %@", name)
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: lastEvent)
-        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+        guard countLabel.waitForExistence(timeout: 3),
+              lastEvent.waitForExistence(timeout: 3) else {
+            return false
+        }
+
+        // Both labels are published by the same main-queue update. Waiting for
+        // the count to change prevents a stale same-named event from satisfying
+        // the assertion after a second tab tap.
+        let countChanged = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label != %@", baselineCount),
+            object: countLabel
+        )
+        let eventRecorded = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", name),
+            object: lastEvent
+        )
+        return XCTWaiter().wait(
+            for: [countChanged, eventRecorded],
+            timeout: timeout
+        ) == .completed
     }
 
     /// Launches the app, taps through Play → Dashboard → Tourney, then reads the
@@ -68,10 +98,18 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
         skipButton.tap()
 
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 12), "Tab bar should appear after dev skip sign-in")
+        let dashboardBaseline = app.staticTexts["analytics-debug-count"].label
         tapTab("Dashboard", in: app)
-        XCTAssertTrue(waitForAnalyticsEvent("tab_view", in: app), "Dashboard tab_view should reach the debug overlay")
+        XCTAssertTrue(
+            waitForAnalyticsEvent("tab_view", in: app, afterEventCount: dashboardBaseline),
+            "Dashboard tab_view should reach the debug overlay"
+        )
+        let tourneyBaseline = app.staticTexts["analytics-debug-count"].label
         tapTab("Tourney", in: app)
-        XCTAssertTrue(waitForAnalyticsEvent("tab_view", in: app), "Tourney tab_view should reach the debug overlay")
+        XCTAssertTrue(
+            waitForAnalyticsEvent("tab_view", in: app, afterEventCount: tourneyBaseline),
+            "Tourney tab_view should reach the debug overlay"
+        )
 
         let countLabel = app.staticTexts["analytics-debug-count"]
         XCTAssertTrue(countLabel.waitForExistence(timeout: 8), "analytics-debug-count element should exist")
@@ -91,8 +129,12 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
         skipButton.tap()
 
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 12), "Tab bar should appear after dev skip sign-in")
+        let friendsBaseline = app.staticTexts["analytics-debug-count"].label
         tapTab("Friends", in: app)
-        XCTAssertTrue(waitForAnalyticsEvent("friends_view", in: app), "Friends event should reach the debug overlay")
+        XCTAssertTrue(
+            waitForAnalyticsEvent("friends_view", in: app, afterEventCount: friendsBaseline),
+            "Friends event should reach the debug overlay"
+        )
         XCTAssertEqual(app.staticTexts["analytics-debug-last-event"].label, "friends_view")
     }
 }

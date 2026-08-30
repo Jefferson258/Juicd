@@ -34,6 +34,20 @@
                ReferencedContainer = "container:Juicd.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "22CORE0072F700300002955B9"
+               BuildableName = "JuicdCoreTests.xctest"
+               BlueprintName = "JuicdCoreTests"
+               ReferencedContainer = "container:Juicd.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -51,6 +65,17 @@
                BlueprintIdentifier = "22QA00072F700001002955B9"
                BuildableName = "JuicdUITests.xctest"
                BlueprintName = "JuicdUITests"
+               ReferencedContainer = "container:Juicd.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "22CORE0072F700300002955B9"
+               BuildableName = "JuicdCoreTests.xctest"
+               BlueprintName = "JuicdCoreTests"
                ReferencedContainer = "container:Juicd.xcodeproj">
             </BuildableReference>
          </TestableReference>

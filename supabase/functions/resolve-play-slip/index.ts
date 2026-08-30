@@ -1,11 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-type ResolveLeg = {
-  legId: string;
-  choiceLabel: string;
-  oddsDecimalAtSubmit: number;
-};
+import { isUuid, validateLegs, type ResolveLeg } from "./validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,39 +18,6 @@ function bearerToken(req: Request): string | null {
   const header = req.headers.get("Authorization") ?? "";
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || null;
-}
-
-function isUuid(value: unknown): value is string {
-  return typeof value === "string"
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function validateLegs(value: unknown): ResolveLeg[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return null;
-
-  const seenLegIds = new Set<string>();
-  const validated: ResolveLeg[] = [];
-  for (const candidate of value) {
-    if (!candidate || typeof candidate !== "object") return null;
-    const leg = candidate as Record<string, unknown>;
-    const legId = leg.legId;
-    const choiceLabel = leg.choiceLabel;
-    const odds = leg.oddsDecimalAtSubmit;
-    if (!isUuid(legId)
-      || seenLegIds.has(legId.toLowerCase())
-      || typeof choiceLabel !== "string"
-      || choiceLabel.trim().length === 0
-      || choiceLabel.length > 256
-      || typeof odds !== "number"
-      || !Number.isFinite(odds)
-      || odds <= 1
-      || odds > 1000) {
-      return null;
-    }
-    seenLegIds.add(legId.toLowerCase());
-    validated.push({ legId, choiceLabel, oddsDecimalAtSubmit: odds });
-  }
-  return validated;
 }
 
 function fnv1a(str: string): number {

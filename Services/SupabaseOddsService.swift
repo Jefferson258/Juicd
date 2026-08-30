@@ -39,23 +39,91 @@ struct SupabaseResolveSlipResponse: Decodable {
     var outcomes: [LegOutcomeDTO]
 }
 
+/// Pure cache rules kept separate from URLSession so expiry and stale fallback
+/// behavior can be tested without a network or a live Supabase project.
+struct SupabasePlayBoardCachePolicy {
+    let clientTTLSeconds: TimeInterval
+    let maxStaleFallbackSeconds: TimeInterval
+
+    func isFresh(savedAt: Date, now: Date) -> Bool {
+        let age = now.timeIntervalSince(savedAt)
+        return age >= 0 && age < clientTTLSeconds
+    }
+
+    func staleResponse(
+        _ response: SupabasePlayBoardResponse,
+        savedAt: Date,
+        now: Date
+    ) -> SupabasePlayBoardResponse? {
+        let age = now.timeIntervalSince(savedAt)
+        guard age >= 0, age <= maxStaleFallbackSeconds else { return nil }
+        var response = response
+        response.cached = true
+        response.ageSeconds = Int(age.rounded(.down))
+        return response
+    }
+}
+
 enum SupabaseOddsService {
     /// Client soft-TTL: skip Edge if we have a fresh board in memory/disk.
     /// Manual Sync should pass `bypassClientCache: true` (Edge TTL still applies).
-    private static let clientTTLSeconds: TimeInterval = 180
+    static let cachePolicy = SupabasePlayBoardCachePolicy(
+        clientTTLSeconds: 180,
+        maxStaleFallbackSeconds: 3600
+    )
     /// A failed refresh may use a stale board briefly, but never indefinitely.
     /// Older odds can make a virtual-points pick inconsistent with the slate.
-    private static let maxStaleFallbackSeconds: TimeInterval = 3600
     private static let diskCacheKey = "juicd_play_board_client_cache_v1"
 
     private static var memoryCache: (savedAt: Date, response: SupabasePlayBoardResponse)?
+    private static var inFlightFetch: Task<SupabasePlayBoardResponse?, Never>?
     private static let cacheLock = NSLock()
 
+    /// Accept a settlement response only when it contains exactly one
+    /// authoritative outcome for every submitted leg. A partial response must
+    /// never be interpreted as losses by the local repository.
+    static func validatedOutcomeMap(
+        _ response: SupabaseResolveSlipResponse,
+        for legs: [BetLeg]
+    ) -> [UUID: Bool]? {
+        guard !legs.isEmpty, response.outcomes.count == legs.count else { return nil }
+
+        let expectedIds = Set(legs.map(\.id))
+        var result: [UUID: Bool] = [:]
+        for outcome in response.outcomes {
+            guard let id = UUID(uuidString: outcome.legId),
+                  expectedIds.contains(id),
+                  result[id] == nil else {
+                return nil
+            }
+            result[id] = outcome.didWin
+        }
+        return result.count == expectedIds.count ? result : nil
+    }
+
     static func fetchPlayBoard(bypassClientCache: Bool = false) async -> SupabasePlayBoardResponse? {
-        if !bypassClientCache, let cached = loadClientCache(), isClientFresh(cached.savedAt) {
+        if !bypassClientCache, let cached = loadClientCache(),
+           cachePolicy.isFresh(savedAt: cached.savedAt, now: .now) {
             return cached.response
         }
 
+        cacheLock.lock()
+        if let inFlightFetch {
+            cacheLock.unlock()
+            return await inFlightFetch.value
+        }
+        let task = Task { await performFetch() }
+        inFlightFetch = task
+        cacheLock.unlock()
+
+        let result = await task.value
+        cacheLock.lock()
+        inFlightFetch = nil
+        cacheLock.unlock()
+        return result
+    }
+
+    private static func performFetch() async -> SupabasePlayBoardResponse? {
         guard let url = SupabaseConfig.edgeBaseURL?.appendingPathComponent("play-board") else {
             logFetchFailure(message: "play-board URL unavailable", source: "supabase_config")
             return nil
@@ -94,20 +162,9 @@ enum SupabaseOddsService {
         UserDefaults.standard.removeObject(forKey: diskCacheKey)
     }
 
-    private static func isClientFresh(_ savedAt: Date) -> Bool {
-        let age = Date().timeIntervalSince(savedAt)
-        return age >= 0 && age < clientTTLSeconds
-    }
-
     private static func boundedStaleFallback() -> SupabasePlayBoardResponse? {
         guard let cached = loadClientCache() else { return nil }
-        let age = Date().timeIntervalSince(cached.savedAt)
-        guard age >= 0, age <= maxStaleFallbackSeconds else { return nil }
-
-        var response = cached.response
-        response.cached = true
-        response.ageSeconds = Int(age.rounded(.down))
-        return response
+        return cachePolicy.staleResponse(cached.response, savedAt: cached.savedAt, now: .now)
     }
 
     private static func loadClientCache() -> (savedAt: Date, response: SupabasePlayBoardResponse)? {
