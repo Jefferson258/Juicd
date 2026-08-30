@@ -78,8 +78,6 @@ final class InMemoryJuicdRepository: ObservableObject {
         self.state = initialState
     }
 
-    nonisolated deinit {}
-
     /// Rich local demo state for App Store / visual QA screenshots (launch arg `-seedDemoData`).
     func seedScreenshotDemoData() {
         let slate = SlateDay.slateKey()
