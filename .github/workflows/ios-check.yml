@@ -1,0 +1,61 @@
+name: iOS checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build iOS app
+        run: >
+          xcodebuild
+          -project Juicd.xcodeproj
+          -scheme Juicd
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          build
+
+      - name: Select available iPhone Simulator
+        id: simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          udid="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $2; exit}')"
+          if [[ -z "$udid" ]]; then
+            echo "::notice::No available iPhone Simulator; skipping Juicd iOS tests."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Using iPhone Simulator $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Test iOS targets
+        if: steps.simulator.outputs.available == 'true'
+        run: >
+          xcodebuild
+          -project Juicd.xcodeproj
+          -scheme Juicd
+          -configuration Debug
+          -destination "id=${{ steps.simulator.outputs.udid }}"
+          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          test
+
+      - name: Report unsupported targets
+        if: always()
+        run: echo "::notice::Juicd has no watchOS or other non-iOS targets; this workflow covers its iOS app and JuicdUITests scheme."
