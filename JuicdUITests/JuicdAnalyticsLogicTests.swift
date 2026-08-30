@@ -34,6 +34,11 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
     }
 
     private func tapTab(_ title: String, in app: XCUIApplication) {
+        let tab = app.tabBars.buttons[title]
+        if tab.waitForExistence(timeout: 8) {
+            tab.tap()
+            return
+        }
         let button = app.buttons[title]
         XCTAssertTrue(button.waitForExistence(timeout: 8), "Missing tab \(title)")
         button.tap()
