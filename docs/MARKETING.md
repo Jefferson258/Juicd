@@ -47,7 +47,8 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 ### Claim rules
 
 **Do say:** entertainment only; virtual points; no cash value; not a sportsbook; 18+.  
-**Do not say:** betting, wager, sportsbook, real money, cash out, "get paid."  
+**Do not say:** betting, wager, sportsbook, real money, cash out, guaranteed
+winnings, risk-free winnings, win money, earn money, "get paid."
 **Odds:** runtime is **simulated** until intentionally flipped — do not claim live
 sportsbook odds in ads or social.
 
