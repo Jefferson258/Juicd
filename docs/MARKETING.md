@@ -17,8 +17,9 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
   production SDK, consent/privacy labels, and legal copy are verified.
 - The website still has a placeholder App Store URL, incomplete screenshot
   slots, and no support link.
-- Social handles are not recorded. The planned marketing-draft and claim-check
-  commands do not exist yet; current output is manual documentation/templates.
+- Social handles are not recorded. `MarketingPilot/scripts/marketing-draft` now
+  creates a draft packet and deterministic preflight; social publishing remains
+  owner-gated.
 
 ---
 
