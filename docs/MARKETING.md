@@ -15,8 +15,8 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
   claim live odds until a read-only production check is recorded.
 - Ads remain development placeholders; mark advertising as planned until the
   production SDK, consent/privacy labels, and legal copy are verified.
-- The website still has a placeholder App Store URL, incomplete screenshot
-  slots, and no support link.
+- The website download link now uses App Store Connect app ID `6785327494`;
+  incomplete screenshot slots and no support link remain.
 - Social handles are not recorded. `MarketingPilot/scripts/marketing-draft` now
   creates a draft packet and deterministic preflight; social publishing remains
   owner-gated.
@@ -30,7 +30,7 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 | App Store listing copy | Counsel-aligned draft; verify odds/ads truth first | Also `kits/appstore/products/juicd/metadata.md` |
 | Screenshots | QA + ASC framed | Confirm parlay shot exists before final ASC push |
 | Marketing site | Builds; hero + legal note in first viewport | Contest rules page required |
-| App Store URL in site | **Placeholder** `idXXXXXXXXX` | Update `juicd-website/src/constants.ts` when live |
+| App Store URL in site | **Wired** `id6785327494` | Verify the public listing URL after approval |
 | Instagram / TikTok / X | **Not created** | Owner — see Social |
 | In-app ads | Dev placeholders only | Not brand social |
 | Paid acquisition | Not started | Owner only |
