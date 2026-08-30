@@ -71,7 +71,11 @@ Privacy Policy URL: `https://juicd.app/privacy`
 
 ## Account deletion
 
-Required if accounts exist. Document path in review notes and implement Supabase user deletion.
+The Profile tab provides **Delete account**. It calls the authenticated
+`delete-account` Edge Function, which deletes the caller's Supabase Auth user
+and account-linked game data. Analytics/error rows may remain only without the
+user link where the schema uses `ON DELETE SET NULL`. This flow must be
+deployed and smoke-tested before release; the service-role key is server-only.
 
 ---
 

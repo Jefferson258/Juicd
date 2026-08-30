@@ -43,9 +43,10 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           echo "available=true" >> "$GITHUB_OUTPUT"
 
-      - name: Test iOS targets
+      - name: Test analytics UI path
         if: steps.simulator.outputs.available == 'true'
         run: >
+          perl -e 'alarm 180; exec @ARGV' --
           xcodebuild
           -project Juicd.xcodeproj
           -scheme Juicd
@@ -54,6 +55,24 @@ jobs:
           -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
           CODE_SIGNING_ALLOWED=NO
           CODE_SIGNING_REQUIRED=NO
+          -parallel-testing-enabled NO
+          -only-testing:JuicdUITests/JuicdAnalyticsLogicTests
+          test
+
+      - name: Test remaining iOS targets
+        if: steps.simulator.outputs.available == 'true'
+        run: >
+          perl -e 'alarm 900; exec @ARGV' --
+          xcodebuild
+          -project Juicd.xcodeproj
+          -scheme Juicd
+          -configuration Debug
+          -destination "id=${{ steps.simulator.outputs.udid }}"
+          -derivedDataPath "$RUNNER_TEMP/JuicdDerivedData"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          -parallel-testing-enabled NO
+          -skip-testing:JuicdUITests/JuicdAnalyticsLogicTests
           test
 
       - name: Report unsupported targets

@@ -130,5 +130,6 @@ Counsel approved entertainment positioning (Jul 2026).
 - [ ] No IAP products configured in App Store Connect
 - [ ] `odds_mode` = `simulated` in production Supabase
 - [ ] App Privacy labels include ads (when AdMob ships) + Sign in with Apple
-- [ ] Account deletion flow works if accounts are created
+- [ ] Deploy and smoke-test the authenticated Profile → Delete account flow
+      with a disposable account before submission
 - [ ] Remove or gate “Skip — local dev account” for production if Apple objects

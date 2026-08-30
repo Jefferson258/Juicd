@@ -72,16 +72,41 @@ enum TheOddsAPIService {
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                AppErrorLogger.log(
+                    severity: .warning,
+                    message: "Odds API returned an unsuccessful response",
+                    screen: "play",
+                    extra: [
+                        "source": .string("odds_api"),
+                        "status_code": .int(http.statusCode),
+                    ]
+                )
                 return loadDiskCache()?.line
             }
             let events = try JSONDecoder().decode([OddsAPIEventDTO].self, from: data)
-            guard let first = events.first else { return loadDiskCache()?.line }
+            guard let first = events.first else {
+                AppErrorLogger.log(
+                    severity: .warning,
+                    message: "Odds API returned no events",
+                    screen: "play",
+                    extra: ["source": .string("odds_api")]
+                )
+                return loadDiskCache()?.line
+            }
             let title = "\(first.away_team) @ \(first.home_team)"
             guard
                 let book = first.bookmakers?.first,
                 let market = book.markets?.first(where: { $0.key == "h2h" }),
                 let outcome = market.outcomes?.first
-            else { return loadDiskCache()?.line }
+            else {
+                AppErrorLogger.log(
+                    severity: .warning,
+                    message: "Odds API response contained no usable line",
+                    screen: "play",
+                    extra: ["source": .string("odds_api")]
+                )
+                return loadDiskCache()?.line
+            }
 
             let line = LiveOddsLine(
                 eventTitle: title,
@@ -92,6 +117,12 @@ enum TheOddsAPIService {
             saveDiskCache(line)
             return line
         } catch {
+            AppErrorLogger.log(
+                severity: .warning,
+                message: "Odds API request failed: \(error.localizedDescription)",
+                screen: "play",
+                extra: ["source": .string("odds_api")]
+            )
             return loadDiskCache()?.line
         }
     }

@@ -259,6 +259,46 @@ final class InMemoryJuicdRepository: ObservableObject {
         state.profiles[userId]
     }
 
+    /// Removes all locally persisted data owned by a user after a successful
+    /// server-side account deletion. Shared group records are retained when
+    /// they may still be referenced by other local users.
+    @discardableResult
+    func clearUserData(userId: UUID) -> Bool {
+        let hadData = state.profiles[userId] != nil
+            || state.ledger.contains { $0.userId == userId }
+            || state.rewards[userId] != nil
+            || state.dailyBets.values.contains { $0.userId == userId }
+            || state.activeDailyByUser[userId] != nil
+            || (state.dailyClosestByKey ?? [:]).keys.contains { $0.hasPrefix("\(userId.uuidString)|") }
+            || (state.playBoardEntries ?? []).contains { $0.userId == userId }
+            || (state.friendRequests ?? []).contains { $0.fromUserId == userId || $0.toUserId == userId }
+            || (state.friendships ?? []).contains { $0.lowerUserId == userId || $0.higherUserId == userId }
+            || state.memberships.contains { $0.userId == userId }
+            || state.weeklySubmissions.contains { $0.userId == userId }
+
+        state.profiles.removeValue(forKey: userId)
+        state.ledger.removeAll { $0.userId == userId }
+        state.rewards.removeValue(forKey: userId)
+        state.dailyBets = state.dailyBets.filter { $0.value.userId != userId }
+        state.activeDailyByUser.removeValue(forKey: userId)
+        state.dailyRankParticipationByDay = state.dailyRankParticipationByDay.mapValues {
+            $0.filter { $0 != userId }
+        }.filter { !$0.value.isEmpty }
+        state.dailyRankResolvedByDay = state.dailyRankResolvedByDay.mapValues {
+            $0.filter { $0 != userId }
+        }.filter { !$0.value.isEmpty }
+
+        let userPrefix = "\(userId.uuidString)|"
+        state.dailyClosestByKey = state.dailyClosestByKey?.filter { !$0.key.hasPrefix(userPrefix) }
+        state.playBoardEntries?.removeAll { $0.userId == userId }
+        state.friendRequests?.removeAll { $0.fromUserId == userId || $0.toUserId == userId }
+        state.friendships?.removeAll { $0.lowerUserId == userId || $0.higherUserId == userId }
+        state.memberships.removeAll { $0.userId == userId }
+        state.weeklySubmissions.removeAll { $0.userId == userId }
+        persist()
+        return hadData
+    }
+
     // MARK: - Daily points
 
     /// Playable balance refilled each day — **does not** affect rank tier or season score.

@@ -8,12 +8,20 @@
 //
 
 import Foundation
+import os
 
 final class SupabaseAnalyticsProvider: AnalyticsProvider {
     let identifier = "supabase"
 
     /// One UUID per process lifetime (not persisted across launches).
     private static let processSessionId = UUID().uuidString
+    private static let maxAttempts = 3
+    private static let retryDelaysNanoseconds: [UInt64] = [500_000_000, 1_500_000_000]
+    private static let logger = Logger(subsystem: "com.juicd.analytics", category: "Supabase")
+
+    private struct HTTPFailure: Error {
+        let statusCode: Int
+    }
 
     func track(_ event: AnalyticsEvent) {
         guard SupabaseConfig.isConfigured, let base = SupabaseConfig.projectURL else { return }
@@ -39,13 +47,37 @@ final class SupabaseAnalyticsProvider: AnalyticsProvider {
         guard let payload = try? JSONSerialization.data(withJSONObject: body) else { return }
         req.httpBody = payload
 
-        URLSession.shared.dataTask(with: req) { _, response, _ in
-            #if DEBUG
-            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-                print("[SupabaseAnalyticsProvider] POST failed status=\(http.statusCode) event=\(event.name)")
+        Task {
+            await Self.send(req, eventName: event.name)
+        }
+    }
+
+    private static func send(_ request: URLRequest, eventName: String) async {
+        for attempt in 1...maxAttempts {
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    throw HTTPFailure(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
+                }
+                return
+            } catch {
+                let shouldRetry: Bool = {
+                    if let failure = error as? HTTPFailure {
+                        return failure.statusCode == 408 || failure.statusCode == 429 || failure.statusCode >= 500
+                    }
+                    return (error as? URLError) != nil
+                }()
+                guard shouldRetry, attempt < maxAttempts else {
+                    logger.error("analytics POST failed after \(attempt) attempts event=\(eventName, privacy: .public)")
+                    return
+                }
+                do {
+                    try await Task.sleep(nanoseconds: retryDelaysNanoseconds[attempt - 1])
+                } catch {
+                    return
+                }
             }
-            #endif
-        }.resume()
+        }
     }
 
     // MARK: - Metadata

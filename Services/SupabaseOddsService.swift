@@ -43,6 +43,9 @@ enum SupabaseOddsService {
     /// Client soft-TTL: skip Edge if we have a fresh board in memory/disk.
     /// Manual Sync should pass `bypassClientCache: true` (Edge TTL still applies).
     private static let clientTTLSeconds: TimeInterval = 180
+    /// A failed refresh may use a stale board briefly, but never indefinitely.
+    /// Older odds can make a virtual-points pick inconsistent with the slate.
+    private static let maxStaleFallbackSeconds: TimeInterval = 3600
     private static let diskCacheKey = "juicd_play_board_client_cache_v1"
 
     private static var memoryCache: (savedAt: Date, response: SupabasePlayBoardResponse)?
@@ -53,7 +56,10 @@ enum SupabaseOddsService {
             return cached.response
         }
 
-        guard let url = SupabaseConfig.edgeBaseURL?.appendingPathComponent("play-board") else { return nil }
+        guard let url = SupabaseConfig.edgeBaseURL?.appendingPathComponent("play-board") else {
+            logFetchFailure(message: "play-board URL unavailable", source: "supabase_config")
+            return nil
+        }
         // Client Sync never forces Edge Odds refresh — Edge TTL owns Odds quota.
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
@@ -64,16 +70,20 @@ enum SupabaseOddsService {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: req)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                logFetchFailure(
+                    message: "play-board returned an unsuccessful response",
+                    source: "supabase_http",
+                    statusCode: (response as? HTTPURLResponse)?.statusCode
+                )
+                return boundedStaleFallback()
+            }
             let decoded = try JSONDecoder().decode(SupabasePlayBoardResponse.self, from: data)
             saveClientCache(decoded, raw: data)
             return decoded
         } catch {
-            // Prefer last known board over nil when offline / flake.
-            if let cached = loadClientCache() {
-                return cached.response
-            }
-            return nil
+            logFetchFailure(message: "play-board request failed: \(error.localizedDescription)", source: "supabase_request")
+            return boundedStaleFallback()
         }
     }
 
@@ -85,7 +95,19 @@ enum SupabaseOddsService {
     }
 
     private static func isClientFresh(_ savedAt: Date) -> Bool {
-        Date().timeIntervalSince(savedAt) < clientTTLSeconds
+        let age = Date().timeIntervalSince(savedAt)
+        return age >= 0 && age < clientTTLSeconds
+    }
+
+    private static func boundedStaleFallback() -> SupabasePlayBoardResponse? {
+        guard let cached = loadClientCache() else { return nil }
+        let age = Date().timeIntervalSince(cached.savedAt)
+        guard age >= 0, age <= maxStaleFallbackSeconds else { return nil }
+
+        var response = cached.response
+        response.cached = true
+        response.ageSeconds = Int(age.rounded(.down))
+        return response
     }
 
     private static func loadClientCache() -> (savedAt: Date, response: SupabasePlayBoardResponse)? {
@@ -118,6 +140,19 @@ enum SupabaseOddsService {
         }
     }
 
+    private static func logFetchFailure(message: String, source: String, statusCode: Int? = nil) {
+        var extra: [String: AnalyticsValue] = ["source": .string(source)]
+        if let statusCode {
+            extra["status_code"] = .int(statusCode)
+        }
+        AppErrorLogger.log(
+            severity: .warning,
+            message: String(message.prefix(300)),
+            screen: "play",
+            extra: extra
+        )
+    }
+
     private struct DiskEnvelope: Codable {
         var savedAt: Double
         var payload: Data
@@ -128,6 +163,9 @@ enum SupabaseOddsService {
         legs: [BetLeg]
     ) async -> SupabaseResolveSlipResponse? {
         guard let url = SupabaseConfig.edgeBaseURL?.appendingPathComponent("resolve-play-slip") else { return nil }
+        guard let session = await SupabaseAuthService.restoreSession(), session.userId == userId else {
+            return nil
+        }
 
         struct ResolveLegRequest: Encodable {
             var legId: String
@@ -155,7 +193,7 @@ enum SupabaseOddsService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
-        req.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
+        req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONEncoder().encode(payload)
 
         do {

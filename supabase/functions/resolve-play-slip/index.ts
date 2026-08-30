@@ -1,3 +1,4 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type ResolveLeg = {
@@ -10,6 +11,52 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type",
 };
+
+function json(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function bearerToken(req: Request): string | null {
+  const header = req.headers.get("Authorization") ?? "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function validateLegs(value: unknown): ResolveLeg[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return null;
+
+  const seenLegIds = new Set<string>();
+  const validated: ResolveLeg[] = [];
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== "object") return null;
+    const leg = candidate as Record<string, unknown>;
+    const legId = leg.legId;
+    const choiceLabel = leg.choiceLabel;
+    const odds = leg.oddsDecimalAtSubmit;
+    if (!isUuid(legId)
+      || seenLegIds.has(legId.toLowerCase())
+      || typeof choiceLabel !== "string"
+      || choiceLabel.trim().length === 0
+      || choiceLabel.length > 256
+      || typeof odds !== "number"
+      || !Number.isFinite(odds)
+      || odds <= 1
+      || odds > 1000) {
+      return null;
+    }
+    seenLegIds.add(legId.toLowerCase());
+    validated.push({ legId, choiceLabel, oddsDecimalAtSubmit: odds });
+  }
+  return validated;
+}
 
 function fnv1a(str: string): number {
   let h = 2166136261;
@@ -33,39 +80,47 @@ function impliedProbability(oddsDecimal: number): number {
   return Math.max(0.05, Math.min(0.95, p));
 }
 
-Deno.serve(async (req) => {
+function outcomeForLeg(slateKey: string, leg: ResolveLeg): { legId: string; didWin: boolean } {
+  const p = impliedProbability(leg.oddsDecimalAtSubmit);
+  const roll = random01(`${slateKey}|${leg.choiceLabel}|${leg.oddsDecimalAtSubmit.toFixed(4)}`);
+  return { legId: leg.legId, didWin: roll < p };
+}
+
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "POST required" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "method_not_allowed" }, 405);
   }
+
+  const token = bearerToken(req);
+  if (!token) return json({ error: "authentication_required" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!supabaseUrl || !serviceRole) {
-    return new Response(JSON.stringify({ error: "Missing Supabase env vars" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "server_configuration_missing" }, 500);
   }
   const admin = createClient(supabaseUrl, serviceRole);
 
-  const body = await req.json().catch(() => null);
-  const legs = (body?.legs ?? []) as ResolveLeg[];
-  if (!Array.isArray(legs) || legs.length === 0) {
-    return new Response(JSON.stringify({ error: "legs required" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  const { data: authData, error: authError } = await admin.auth.getUser(token);
+  if (authError || !authData.user) return json({ error: "invalid_session" }, 401);
+
+  const body = await req.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body || typeof body.userId !== "string" || !isUuid(body.userId)) {
+    return json({ error: "user_id_required" }, 400);
   }
+  if (body.userId.toLowerCase() !== authData.user.id.toLowerCase()) {
+    return json({ error: "identity_mismatch" }, 403);
+  }
+
+  const legs = validateLegs(body.legs);
+  if (!legs) return json({ error: "invalid_legs" }, 400);
 
   const slateKey = isoDay();
   const normalizedSlip = legs
-    .map((l) => `${l.choiceLabel}|${Number(l.oddsDecimalAtSubmit).toFixed(4)}`)
+    .map((l) => `${l.choiceLabel}|${l.oddsDecimalAtSubmit.toFixed(4)}`)
     .sort()
     .join(";");
   const slipKey = `${slateKey}|${normalizedSlip}`;
@@ -77,29 +132,26 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (existing?.outcomes) {
-    return new Response(JSON.stringify({
+    // Cached rows predate the request's generated leg IDs. Recompute the same
+    // deterministic simulated result while returning the current IDs so a
+    // repeated equivalent slip cannot resolve every leg as an unknown loss.
+    const outcomes = legs.map((leg) => outcomeForLeg(slateKey, leg));
+    return json({
       slateKey,
-      outcomes: existing.outcomes,
+      outcomes,
       cached: true,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const outcomes = legs.map((leg) => {
-    const p = impliedProbability(Number(leg.oddsDecimalAtSubmit));
-    const roll = random01(`${slateKey}|${leg.choiceLabel}|${Number(leg.oddsDecimalAtSubmit).toFixed(4)}`);
-    return { legId: leg.legId, didWin: roll < p };
-  });
+  const outcomes = legs.map((leg) => outcomeForLeg(slateKey, leg));
 
-  await admin.from("juicd_play_slip_outcomes").upsert({
+  const { error: upsertError } = await admin.from("juicd_play_slip_outcomes").upsert({
     slip_key: slipKey,
     slate_key: slateKey,
     outcomes,
   });
 
-  return new Response(JSON.stringify({ slateKey, outcomes, cached: false }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  if (upsertError) return json({ error: "outcome_persistence_failed" }, 503);
+  return json({ slateKey, outcomes, cached: false });
 });
 

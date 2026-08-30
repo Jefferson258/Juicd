@@ -84,6 +84,37 @@ enum SupabaseAuthService {
         clearSession()
     }
 
+    /// Permanently delete the authenticated account through the server-side
+    /// Edge Function. The service-role key never enters the app.
+    static func deleteAccount() async throws {
+        guard let session = await restoreSession() ?? currentSession else {
+            throw URLError(.userAuthenticationRequired)
+        }
+        guard let url = SupabaseConfig.edgeBaseURL?.appendingPathComponent("delete-account") else {
+            throw URLError(.badURL)
+        }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = Data("{}".utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Account deletion failed."
+            throw NSError(
+                domain: "JuicdAccountDeletion",
+                code: (response as? HTTPURLResponse)?.statusCode ?? -1,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+        // The account is already gone server-side. Clear the local session
+        // without requiring a second request with an invalid token.
+        signOut()
+    }
+
     static func upsertProfile(displayName: String, userId: UUID, accessToken: String) async throws {
         guard let base = SupabaseConfig.projectURL else { throw URLError(.badURL) }
         var comps = URLComponents(url: base.appendingPathComponent("rest/v1/juicd_profiles"), resolvingAgainstBaseURL: false)!

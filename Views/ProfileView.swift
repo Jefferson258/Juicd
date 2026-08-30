@@ -3,6 +3,7 @@ import UserNotifications
 
 struct ProfileView: View {
     @ObservedObject var viewModel: ProfileViewModel
+    let onDeleteAccount: () async throws -> Void
 
     @AppStorage("juicd_notify_daily_updates") private var notifyDailyUpdates = false
     @AppStorage("juicd_notify_tournament_updates") private var notifyTournamentUpdates = false
@@ -15,6 +16,10 @@ struct ProfileView: View {
     @State private var showSeasonInfo = false
     @State private var showSeasonMetrics = false
     @State private var showCareerMetrics = false
+    @State private var showDeleteAccountConfirmation = false
+    @State private var showDeleteAccountError = false
+    @State private var accountDeletionError = ""
+    @State private var isDeletingAccount = false
 
     private let columns = [GridItem(.adaptive(minimum: 92), spacing: 14)]
 
@@ -116,6 +121,36 @@ struct ProfileView: View {
                                 .onChange(of: notifySeasonalUpdates) { _, on in
                                     if on { requestNotificationAuthorizationIfNeeded() }
                                 }
+                        }
+                    }
+
+                    Card(title: "Account & data", systemImage: "person.crop.circle.badge.minus") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Delete your Juicd account and account-linked game data through the authenticated server flow. Some shared or operational records may be retained without your account link as described in the Privacy Policy.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                showDeleteAccountConfirmation = true
+                            } label: {
+                                HStack {
+                                    Text("Delete account")
+                                    Spacer()
+                                    if isDeletingAccount {
+                                        ProgressView()
+                                            .tint(JuicdTheme.brand)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            .disabled(isDeletingAccount)
+
+                            Link("Read the Privacy Policy", destination: URL(string: "https://juicd.app/privacy")!)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(JuicdTheme.brand)
                         }
                     }
 
@@ -278,6 +313,28 @@ struct ProfileView: View {
                 stats: career,
                 footnote: "Career totals include all time. Returned from bets sums payouts and daily bracket rewards from the ledger."
             )
+        }
+        .alert("Delete Juicd account?", isPresented: $showDeleteAccountConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete permanently", role: .destructive) {
+                Task { @MainActor in
+                    isDeletingAccount = true
+                    defer { isDeletingAccount = false }
+                    do {
+                        try await onDeleteAccount()
+                    } catch {
+                        accountDeletionError = error.localizedDescription
+                        showDeleteAccountError = true
+                    }
+                }
+            }
+        } message: {
+            Text("This permanently removes your authenticated account and account-linked Juicd data. This cannot be undone.")
+        }
+        .alert("Account deletion could not be completed", isPresented: $showDeleteAccountError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\(accountDeletionError)\n\nIf the problem continues, use the support contact listed in the Privacy Policy.")
         }
     }
 

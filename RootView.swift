@@ -14,7 +14,11 @@ struct RootView: View {
     @ViewBuilder
     var body: some View {
         if let userId = authVM.profile?.id {
-            LoggedInTabShell(repository: repository, userId: userId)
+            LoggedInTabShell(
+                repository: repository,
+                userId: userId,
+                onDeleteAccount: { try await authVM.deleteAccount() }
+            )
         } else {
             SignInView(viewModel: authVM)
         }
@@ -26,6 +30,7 @@ struct RootView: View {
 private struct LoggedInTabShell: View {
     @ObservedObject var repository: InMemoryJuicdRepository
     let userId: UUID
+    let onDeleteAccount: () async throws -> Void
 
     @StateObject private var playVM: PlayViewModel
     @StateObject private var dashboardVM: DashboardViewModel
@@ -37,9 +42,10 @@ private struct LoggedInTabShell: View {
     @State private var showTutorial = false
     @State private var selectedTab = 0
 
-    init(repository: InMemoryJuicdRepository, userId: UUID) {
+    init(repository: InMemoryJuicdRepository, userId: UUID, onDeleteAccount: @escaping () async throws -> Void) {
         self.repository = repository
         self.userId = userId
+        self.onDeleteAccount = onDeleteAccount
         _playVM = StateObject(wrappedValue: PlayViewModel(repository: repository))
         _dashboardVM = StateObject(wrappedValue: DashboardViewModel(repository: repository))
         _tourneyVM = StateObject(wrappedValue: TourneyViewModel(repository: repository))
@@ -62,7 +68,7 @@ private struct LoggedInTabShell: View {
                 FriendsView(viewModel: friendsVM)
                     .opacity(selectedTab == 3 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 3)
-                ProfileView(viewModel: profileVM)
+                ProfileView(viewModel: profileVM, onDeleteAccount: onDeleteAccount)
                     .opacity(selectedTab == 4 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 4)
             }

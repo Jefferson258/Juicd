@@ -22,7 +22,13 @@ enum SupabaseConfig {
     }
 
     static var isConfigured: Bool {
-        projectURL != nil && !anonKey.isEmpty
+        // Screenshot and analytics UI tests use seeded local demo data. Keep
+        // those launches deterministic and network-free even though the app
+        // plist contains the production Supabase endpoint.
+        if ProcessInfo.processInfo.arguments.contains("-seedDemoData") {
+            return false
+        }
+        return projectURL != nil && !anonKey.isEmpty
     }
 }
 

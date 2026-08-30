@@ -43,6 +43,29 @@ final class AuthViewModel: ObservableObject {
         AnalyticsService.logSignOut()
     }
 
+    /// Permanently deletes the server-backed account. Offline/local prototype
+    /// profiles are not silently treated as deleted because they have no
+    /// backend deletion semantics.
+    func deleteAccount() async throws {
+        guard SupabaseConfig.isConfigured else {
+            throw NSError(
+                domain: "JuicdAccountDeletion",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Account deletion is unavailable until Juicd’s backend is configured."]
+            )
+        }
+        guard !isBusy else { return }
+        isBusy = true
+        defer { isBusy = false }
+        let deletingUserId = SupabaseAuthService.currentSession?.userId ?? profile?.id
+        try await SupabaseAuthService.deleteAccount()
+        if let deletingUserId {
+            repository.clearUserData(userId: deletingUserId)
+        }
+        profile = nil
+        friendCode = nil
+    }
+
     // MARK: - Private
 
     private func restoreIfPossible() async {

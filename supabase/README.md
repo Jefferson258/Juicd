@@ -1,7 +1,8 @@
 # Juicd Supabase backend
 
 - **`migrations/`** — schema (friends/requests, odds runtime, board snapshots).
-- **`functions/`** — Edge Functions: `play-board`, `resolve-play-slip`.
+- **`functions/`** — Edge Functions: `play-board`, `resolve-play-slip`, and
+  authenticated `delete-account`.
 
 ## Idempotency (safe to rerun)
 
@@ -25,9 +26,15 @@ supabase link --project-ref <project-ref>
 supabase db push
 supabase functions deploy play-board
 supabase functions deploy resolve-play-slip
+supabase functions deploy delete-account
 ```
 
   Re-running is safe (idempotent migrations; function deploys overwrite).
+
+`delete-account` validates the caller's bearer token inside the function, then
+uses the runtime-injected service-role key to delete that exact Auth user.
+Deploy and smoke-test it with a disposable account before enabling the in-app
+action. Never put the service-role key in the iOS target.
 
 ## Analytics & errors (Supabase)
 

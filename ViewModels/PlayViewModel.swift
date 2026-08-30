@@ -192,12 +192,6 @@ final class PlayViewModel: ObservableObject {
             }
             guard generation == oddsRefreshGeneration else { return }
             AnalyticsService.logOddsSync(ok: false, source: "supabase_fetch")
-            AppErrorLogger.log(
-                severity: .warning,
-                message: "play-board fetch returned nil",
-                screen: "play",
-                extra: ["source": .string("supabase_fetch")]
-            )
         }
 
         guard generation == oddsRefreshGeneration else { return }
@@ -228,12 +222,6 @@ final class PlayViewModel: ObservableObject {
         } else {
             oddsStatus = "Couldn’t load odds."
             AnalyticsService.logOddsSync(ok: false, source: "odds_api")
-            AppErrorLogger.log(
-                severity: .warning,
-                message: "Odds API returned no line",
-                screen: "play",
-                extra: ["source": .string("odds_api")]
-            )
         }
     }
 

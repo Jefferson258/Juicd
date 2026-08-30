@@ -11,9 +11,10 @@
 //
 
 import Foundation
+import Combine
 import os
 
-final class AnalyticsDebugSink: AnalyticsProvider {
+final class AnalyticsDebugSink: ObservableObject, AnalyticsProvider {
     let identifier = "debug"
 
     private let maxBufferedEvents: Int
@@ -23,6 +24,12 @@ final class AnalyticsDebugSink: AnalyticsProvider {
 
     private let lock = NSLock()
     private var buffer: [AnalyticsEvent] = []
+
+    /// Published snapshots let the debug overlay react to events without a
+    /// polling timer. The buffer itself remains locked because analytics can
+    /// be recorded from background work.
+    @Published private(set) var eventCount = 0
+    @Published private(set) var lastEventName = "none"
 
     init(
         maxBufferedEvents: Int = 200,
@@ -43,6 +50,19 @@ final class AnalyticsDebugSink: AnalyticsProvider {
             buffer.removeFirst(buffer.count - maxBufferedEvents)
         }
         lock.unlock()
+
+        // Always publish on the main queue. Read the locked buffer when the
+        // update executes so queued updates cannot publish an older event
+        // after a newer one.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            let count = self.buffer.count
+            let lastName = self.buffer.last?.name ?? "none"
+            self.lock.unlock()
+            self.eventCount = count
+            self.lastEventName = lastName
+        }
 
         let paramsDescription = event.params
             .sorted { $0.key < $1.key }
@@ -69,16 +89,14 @@ final class AnalyticsDebugSink: AnalyticsProvider {
         return buffer
     }
 
-    var eventCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return buffer.count
-    }
-
     func clear() {
         lock.lock()
         buffer.removeAll()
         lock.unlock()
+        DispatchQueue.main.async { [weak self] in
+            self?.eventCount = 0
+            self?.lastEventName = "none"
+        }
     }
 
     // MARK: - File sink (best-effort; never throws into caller)

@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os
 
 enum AppErrorLogger {
     enum Severity: String {
@@ -15,6 +16,14 @@ enum AppErrorLogger {
         case warning
         case error
         case fatal
+    }
+
+    private static let maxAttempts = 3
+    private static let retryDelaysNanoseconds: [UInt64] = [500_000_000, 1_500_000_000]
+    private static let logger = Logger(subsystem: "com.juicd.analytics", category: "AppError")
+
+    private struct HTTPFailure: Error {
+        let statusCode: Int
     }
 
     /// Fire-and-forget insert + analytics dual-write; never throws to callers.
@@ -61,13 +70,37 @@ enum AppErrorLogger {
         guard let payload = try? JSONSerialization.data(withJSONObject: body) else { return }
         req.httpBody = payload
 
-        URLSession.shared.dataTask(with: req) { _, response, _ in
-            #if DEBUG
-            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-                print("[AppErrorLogger] POST failed status=\(http.statusCode) screen=\(screen ?? "-")")
+        Task {
+            await Self.send(req, screen: screen)
+        }
+    }
+
+    private static func send(_ request: URLRequest, screen: String?) async {
+        for attempt in 1...maxAttempts {
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    throw HTTPFailure(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
+                }
+                return
+            } catch {
+                let shouldRetry: Bool = {
+                    if let failure = error as? HTTPFailure {
+                        return failure.statusCode == 408 || failure.statusCode == 429 || failure.statusCode >= 500
+                    }
+                    return (error as? URLError) != nil
+                }()
+                guard shouldRetry, attempt < maxAttempts else {
+                    logger.error("app error POST failed after \(attempt) attempts screen=\(screen ?? "-", privacy: .public)")
+                    return
+                }
+                do {
+                    try await Task.sleep(nanoseconds: retryDelaysNanoseconds[attempt - 1])
+                } catch {
+                    return
+                }
             }
-            #endif
-        }.resume()
+        }
     }
 
     /// Alias kept for existing call sites.

@@ -21,92 +21,73 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func launchSeededAnalyticsApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-skipTutorial",
+            "-acceptLegalTerms",
+            "-seedDemoData",
+            "-showAnalyticsDebugOverlay",
+        ]
+        app.launch()
+        return app
+    }
+
+    private func tapTab(_ title: String, in app: XCUIApplication) {
+        let button = app.buttons[title]
+        XCTAssertTrue(button.waitForExistence(timeout: 8), "Missing tab \(title)")
+        button.tap()
+    }
+
+    private func waitForAnalyticsEvent(
+        _ name: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 8
+    ) -> Bool {
+        let lastEvent = app.staticTexts["analytics-debug-last-event"]
+        guard lastEvent.waitForExistence(timeout: timeout) else { return false }
+        let predicate = NSPredicate(format: "label == %@", name)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: lastEvent)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
     /// Launches the app, taps through Play → Dashboard → Tourney, then reads the
     /// always-present `analytics-debug-count` / `analytics-debug-last-event`
     /// accessibility elements to prove `app_open`, `sign_in`, and `tab_view`
     /// events were recorded by the network-free debug sink.
     func testAnalyticsDebugOverlayRecordsAppOpenSignInAndTabViewEvents() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-showAnalyticsDebugOverlay"]
-        app.launch()
+        let app = launchSeededAnalyticsApp()
 
         let skipButton = app.buttons["Skip — local dev account"]
         XCTAssertTrue(skipButton.waitForExistence(timeout: 12), "Sign-in skip button should appear")
         skipButton.tap()
 
-        for label in ["Agree", "I Agree", "Continue", "Skip", "Got it"] {
-            if app.buttons[label].waitForExistence(timeout: 1) {
-                app.buttons[label].tap()
-            }
-        }
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 12), "Tab bar should appear after dev skip sign-in")
+        tapTab("Dashboard", in: app)
+        XCTAssertTrue(waitForAnalyticsEvent("tab_view", in: app), "Dashboard tab_view should reach the debug overlay")
+        tapTab("Tourney", in: app)
+        XCTAssertTrue(waitForAnalyticsEvent("tab_view", in: app), "Tourney tab_view should reach the debug overlay")
 
-        let playTab = app.tabBars.buttons["Play"]
-        let playBtn = app.buttons["Play"]
-        XCTAssertTrue(
-            playTab.waitForExistence(timeout: 12) || playBtn.waitForExistence(timeout: 2),
-            "Tab bar should appear after dev skip sign-in"
-        )
-
-        func tapTab(_ title: String) {
-            let tab = app.tabBars.buttons[title]
-            if tab.waitForExistence(timeout: 3) {
-                tab.tap()
-                return
-            }
-            let btn = app.buttons[title]
-            XCTAssertTrue(btn.waitForExistence(timeout: 3), "Missing tab \(title)")
-            btn.tap()
-        }
-
-        tapTab("Dashboard")
-        sleep(1)
-        tapTab("Tourney")
-        sleep(1)
-
-        let countLabel = app.descendants(matching: .any)["analytics-debug-count"]
-        XCTAssertTrue(countLabel.waitForExistence(timeout: 5), "analytics-debug-count element should exist")
+        let countLabel = app.staticTexts["analytics-debug-count"]
+        XCTAssertTrue(countLabel.waitForExistence(timeout: 8), "analytics-debug-count element should exist")
         let count = Int(countLabel.label) ?? 0
-        // app_open (1) + sign_in via dev skip (1) + tab_view x2 (Dashboard, Tourney) = at least 3.
-        XCTAssertGreaterThanOrEqual(count, 3, "Expected at least 3 analytics events after app open + sign-in + 2 tab taps, got \(count)")
-
-        let lastEventLabel = app.descendants(matching: .any)["analytics-debug-last-event"]
-        XCTAssertTrue(lastEventLabel.waitForExistence(timeout: 2))
-        XCTAssertEqual(lastEventLabel.label, "tab_view", "Last recorded event should be the most recent tab_view")
+        // app_open + sign_in + tab_view x2, plus any legitimate screen events.
+        XCTAssertGreaterThanOrEqual(count, 4, "Expected at least 4 analytics events after app open + sign-in + 2 tab taps, got \(count)")
+        XCTAssertEqual(app.staticTexts["analytics-debug-last-event"].label, "tab_view")
     }
 
     /// Friends gets its own dedicated event (in addition to the generic `tab_view`)
     /// because it's a key social feature the owner wants to watch adoption of on its own.
     func testAnalyticsDebugOverlayRecordsFriendsViewEvent() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-showAnalyticsDebugOverlay"]
-        app.launch()
+        let app = launchSeededAnalyticsApp()
 
         let skipButton = app.buttons["Skip — local dev account"]
         XCTAssertTrue(skipButton.waitForExistence(timeout: 12), "Sign-in skip button should appear")
         skipButton.tap()
 
-        for label in ["Agree", "I Agree", "Continue", "Skip", "Got it"] {
-            if app.buttons[label].waitForExistence(timeout: 1) {
-                app.buttons[label].tap()
-            }
-        }
-
-        func tapTab(_ title: String) {
-            let tab = app.tabBars.buttons[title]
-            if tab.waitForExistence(timeout: 5) {
-                tab.tap()
-                return
-            }
-            let btn = app.buttons[title]
-            XCTAssertTrue(btn.waitForExistence(timeout: 3), "Missing tab \(title)")
-            btn.tap()
-        }
-
-        tapTab("Friends")
-        sleep(1)
-
-        let lastEventLabel = app.descendants(matching: .any)["analytics-debug-last-event"]
-        XCTAssertTrue(lastEventLabel.waitForExistence(timeout: 5))
-        XCTAssertEqual(lastEventLabel.label, "friends_view", "Tapping the Friends tab should log friends_view (after tab_view)")
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 12), "Tab bar should appear after dev skip sign-in")
+        tapTab("Friends", in: app)
+        XCTAssertTrue(waitForAnalyticsEvent("friends_view", in: app), "Friends event should reach the debug overlay")
+        XCTAssertEqual(app.staticTexts["analytics-debug-last-event"].label, "friends_view")
     }
 }
