@@ -8,13 +8,25 @@ Counsel approved **entertainment / virtual-points** positioning (Jul 2026) —
 keep every channel aligned. Orchestration design:
 MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 
+## Audit update — 2026-08-30
+
+- The app's current repository says `odds_mode=live`, while backend and listing
+  docs say simulated. This is unresolved documentation/runtime drift. Do not
+  claim live odds until a read-only production check is recorded.
+- Ads remain development placeholders; mark advertising as planned until the
+  production SDK, consent/privacy labels, and legal copy are verified.
+- The website still has a placeholder App Store URL, incomplete screenshot
+  slots, and no support link.
+- Social handles are not recorded. The planned marketing-draft and claim-check
+  commands do not exist yet; current output is manual documentation/templates.
+
 ---
 
 ## Current marketing surfaces
 
 | Surface | Status | Notes |
 |---------|--------|-------|
-| App Store listing copy | Counsel-aligned draft | Also `kits/appstore/products/juicd/metadata.md` |
+| App Store listing copy | Counsel-aligned draft; verify odds/ads truth first | Also `kits/appstore/products/juicd/metadata.md` |
 | Screenshots | QA + ASC framed | Confirm parlay shot exists before final ASC push |
 | Marketing site | Builds; hero + legal note in first viewport | Contest rules page required |
 | App Store URL in site | **Placeholder** `idXXXXXXXXX` | Update `juicd-website/src/constants.ts` when live |
@@ -62,7 +74,7 @@ Pin or highlight: **Contest rules** + Privacy.
 
 ### Week-0 content
 
-1. UI posts: Play board, slip, tourney, dashboard, friends.  
+1. Current UI posts: Play board, slip, tourney, dashboard, friends.
 2. One explainer Reel: "Virtual points only — here's what that means."  
 3. One gameplay Reel: build → submit → leaderboard (no cash language).  
 4. Soft CTA: TestFlight / App Store. No ads until you decide.
@@ -94,7 +106,9 @@ Pin or highlight: **Contest rules** + Privacy.
 ## Automation (with LaunchPilot)
 
 Draft → claim-check against forbidden words → PR / `jobs/…/marketing/` folder.
-**Never auto-post.** Never buy ads. See MarketingPilot `docs/PIPELINE.md`.
+**Never auto-post.** Never buy ads. `MarketingPilot/scripts/marketing-draft`
+now creates the draft packet and deterministic preflight; see
+MarketingPilot `docs/PIPELINE.md`.
 
 After handles exist, send `@` names so the agent can update brand docs and
 optional site links.

@@ -17,6 +17,11 @@ Virtual sports picks & tourneys
 
 Free entertainment with virtual points only. Build picks, climb leaderboards, and compete with friends — no real-money wagering.
 
+> **Current-feature check (2026-08-30):** Repository documentation conflicts
+> on whether `odds_mode` is live or simulated. Do not claim live odds until a
+> read-only production check is recorded. Keep this listing aligned with the
+> verified runtime and submitted build.
+
 ## Description
 
 Juicd is a free sports entertainment app. Build virtual picks, track season progress, and compete on leaderboards — using points that have no cash value.
@@ -36,8 +41,10 @@ Track rank tiers, season progress, and past slates.
 **Friends**  
 Compare leaderboard position with people you follow.
 
-**Ads-supported**  
-Juicd is free and supported by advertising. No in-app purchases.
+**Monetization status**
+The current build contains development ad placeholders; production advertising
+is not verified. Do not promise ad-supported behavior in marketing until the
+SDK, consent/privacy labels, and legal copy are complete.
 
 For entertainment purposes only. Must be 18+.
 
@@ -96,9 +103,12 @@ IMPORTANT — NOT REAL-MONEY GAMBLING
 
 Juicd is a free entertainment app. All points, balances, and prizes are VIRTUAL and have NO CASH VALUE. Users cannot deposit money, withdraw funds, or redeem points for anything of monetary value. There are no in-app purchases.
 
-REVENUE: Advertising only (AdMob or similar when wired). No IAP.
+REVENUE: Production advertising is not verified; current build has development
+placeholders. No IAP.
 
-BETA ODDS: Shared board odds use SIMULATED data by default (Supabase runtime config odds_mode=simulated). No live sportsbook integration in this build.
+BETA ODDS: Verify the Supabase runtime value before submission. Do not describe
+the board as live until the value and current Edge Function behavior are
+confirmed.
 
 SIGN-IN: Sign in with Apple is available. A "Skip — local dev account" option exists for TestFlight; remove or hide before App Store if required.
 
@@ -128,8 +138,9 @@ Counsel approved entertainment positioning (Jul 2026).
 - [ ] Counsel approved Terms, Privacy, and Contest Rules
 - [ ] In-app copy says “virtual points / no cash value” on pay-adjacent screens
 - [ ] No IAP products configured in App Store Connect
-- [ ] `odds_mode` = `simulated` in production Supabase
-- [ ] App Privacy labels include ads (when AdMob ships) + Sign in with Apple
+- [ ] Record the verified `odds_mode` and align all listing/site copy
+- [ ] App Privacy labels match the submitted build's actual advertising and
+      analytics behavior
 - [ ] Deploy and smoke-test the authenticated Profile → Delete account flow
       with a disposable account before submission
 - [ ] Remove or gate “Skip — local dev account” for production if Apple objects
