@@ -57,3 +57,5 @@ settlement still needs owner + counsel sign-off.
 deno test supabase/functions/resolve-play-slip/validation_test.ts
 deno test supabase/functions/resolve-play-slip/settlement_test.ts
 ```
+
+Verified locally 2026-08-31 with Deno 2.9.6: 5 passed. The SQL harness was **not** applied to `hwyxtklbffqwcbtuetit`. RLS negative cases still need a disposable staging project.
