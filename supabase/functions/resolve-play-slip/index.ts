@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isUuid, validateLegs, type ResolveLeg } from "./validation.ts";
+import { parlayDidWin } from "./settlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,11 +99,14 @@ Deno.serve(async (req: Request) => {
     // deterministic simulated result while returning the current IDs so a
     // repeated equivalent slip cannot resolve every leg as an unknown loss.
     const outcomes = legs.map((leg) => outcomeForLeg(slateKey, leg));
-    return json({
+    return await maybeAuthoritativeSettle(
+      admin,
+      authData.user.id,
+      body,
       slateKey,
       outcomes,
-      cached: true,
-    });
+      true,
+    );
   }
 
   const outcomes = legs.map((leg) => outcomeForLeg(slateKey, leg));
@@ -114,6 +118,47 @@ Deno.serve(async (req: Request) => {
   });
 
   if (upsertError) return json({ error: "outcome_persistence_failed" }, 503);
-  return json({ slateKey, outcomes, cached: false });
+  return await maybeAuthoritativeSettle(
+    admin,
+    authData.user.id,
+    body,
+    slateKey,
+    outcomes,
+    false,
+  );
 });
+
+async function maybeAuthoritativeSettle(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  body: Record<string, unknown>,
+  slateKey: string,
+  outcomes: { legId: string; didWin: boolean }[],
+  cached: boolean,
+): Promise<Response> {
+  if (Deno.env.get("JUICD_AUTHORITATIVE_SETTLEMENT") !== "1") {
+    return json({ slateKey, outcomes, cached });
+  }
+
+  const slipId = body.slipId;
+  if (typeof slipId !== "string" || !isUuid(slipId)) {
+    return json({ error: "slip_id_required" }, 400);
+  }
+
+  const { data, error } = await admin.rpc("juicd_staging_settle_slip", {
+    p_user_id: userId,
+    p_slip_id: slipId,
+    p_outcomes: outcomes,
+    p_slate_key: slateKey,
+  });
+
+  if (error) return json({ error: "authoritative_settlement_failed", detail: error.message }, 503);
+  return json({
+    slateKey,
+    outcomes,
+    cached,
+    didWin: parlayDidWin(outcomes),
+    settlement: data,
+  });
+}
 

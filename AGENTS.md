@@ -49,6 +49,11 @@ settlement changes need owner + counsel sign-off before shipping.
 - **RPCs (4):** `juicd_record_prop_action`, `juicd_join_group_by_code`,
   `juicd_my_group_ids`, `juicd_handle_new_user` (auto-creates a profile row).
 - **Edge functions:** `play-board`, `resolve-play-slip` (deployed).
+  Staging-only atomic settlement lives in
+  `supabase/staging/AUTHORITATIVE_SETTLEMENT.sql` and is off unless
+  `JUICD_AUTHORITATIVE_SETTLEMENT=1` **and**
+  `staging_authoritative_settlement=on` on a disposable project. Never apply
+  that SQL or env var to `hwyxtklbffqwcbtuetit`.
 - **Odds board cache (Jul 26):** `play-board` reads `juicd_play_board_snapshots`
   first. Fresh within `odds_board_ttl_seconds` (default **1800**) → no Odds API.
   Stampede lock via `refresh_started_at`. Client soft-cache **180s** + in-flight

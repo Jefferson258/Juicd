@@ -34,8 +34,26 @@ eventual settlement model.
 - A valid settlement response must cover every submitted leg exactly once;
   incomplete or unknown-leg responses are refused by the iOS client.
 
-The current `resolve-play-slip` function still produces deterministic
-virtual-point outcomes and does not atomically settle balances, slips, and the
-ledger. Do not describe it as authoritative settlement or flip
-`outcome_mode` to live. Designing and shipping that path remains an
-owner/counsel product and integrity decision.
+Production `resolve-play-slip` still returns deterministic virtual-point
+outcomes only. Atomic wallet/ledger writes exist as a **staging-gated** RPC
+and stay off unless the disposable-project flag and env var below are set.
+Do not flip `outcome_mode` to live without owner + counsel sign-off.
+
+## Staging-only authoritative settlement
+
+`AUTHORITATIVE_SETTLEMENT.sql` adds `juicd_staging_settle_slip`. Apply it only
+on a disposable project after `INTEGRITY_HARDENING.sql`.
+
+1. Confirm the project ref is **not** `hwyxtklbffqwcbtuetit`.
+2. Set `juicd_runtime_config.staging_authoritative_settlement` to `on`.
+3. Set Edge secret/env `JUICD_AUTHORITATIVE_SETTLEMENT=1` on that project only.
+4. `resolve-play-slip` then requires `slipId` and calls the RPC (service role).
+5. Without the env var, production behavior is unchanged: outcomes only.
+
+Do not deploy this env var or SQL to production. Live-event (`outcome_mode`)
+settlement still needs owner + counsel sign-off.
+
+```bash
+deno test supabase/functions/resolve-play-slip/validation_test.ts
+deno test supabase/functions/resolve-play-slip/settlement_test.ts
+```
