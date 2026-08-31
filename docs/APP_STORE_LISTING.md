@@ -17,10 +17,10 @@ Virtual sports picks & tourneys
 
 Free entertainment with virtual points only. Build picks, climb leaderboards, and compete with friends — no real-money wagering.
 
-> **Current-feature check (2026-08-30):** Repository documentation conflicts
-> on whether `odds_mode` is live or simulated. Do not claim live odds until a
-> read-only production check is recorded. Keep this listing aligned with the
-> verified runtime and submitted build.
+> **Current-feature check (2026-08-30):** Production `odds_mode=live`,
+> `outcome_mode=simulated`. Same-day board snapshot source was `odds_api`
+> (Live API moneyline + simulated filler props). Listing copy stays
+> entertainment / virtual-points; do not describe Juicd as a sportsbook.
 
 ## Description
 
@@ -138,7 +138,7 @@ Counsel approved entertainment positioning (Jul 2026).
 - [ ] Counsel approved Terms, Privacy, and Contest Rules
 - [ ] In-app copy says “virtual points / no cash value” on pay-adjacent screens
 - [ ] No IAP products configured in App Store Connect
-- [ ] Record the verified `odds_mode` and align all listing/site copy
+- [x] Record the verified `odds_mode` (`live`) and `outcome_mode` (`simulated`) — 2026-08-30 read-only production check
 - [ ] App Privacy labels match the submitted build's actual advertising and
       analytics behavior
 - [ ] Deploy and smoke-test the authenticated Profile → Delete account flow

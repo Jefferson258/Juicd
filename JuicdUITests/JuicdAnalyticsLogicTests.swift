@@ -46,11 +46,6 @@ final class JuicdAnalyticsLogicTests: XCTestCase {
     }
 
     private func tapTab(_ title: String, in app: XCUIApplication) {
-        let identifierTab = app.buttons["tab-\(title.lowercased())"]
-        if identifierTab.waitForExistence(timeout: 8) {
-            identifierTab.tap()
-            return
-        }
         let tab = app.tabBars.buttons[title]
         if tab.waitForExistence(timeout: 8) {
             tab.tap()

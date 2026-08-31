@@ -172,7 +172,6 @@ private struct JuicdCustomTabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .accessibilityIdentifier("tab-\(title.lowercased())")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

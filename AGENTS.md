@@ -77,6 +77,10 @@ Supabase SQL Editor — see LaunchPilot `docs/HOW_TO_VIEW_ANALYTICS.md`.
    (`outcome_mode` separately, with care). This is a behavior change — confirm
    with the owner before flipping.
 
+**Status 2026-08-30:** steps 1–4 for `odds_mode` are already done in production.
+Leave `outcome_mode=simulated`. Do not re-flip or force-refresh the board
+without an explicit ask (Odds API quota).
+
 ## What's been done
 
 - Created the Supabase project, applied all migrations, deployed edge functions,
@@ -92,6 +96,8 @@ Supabase SQL Editor — see LaunchPilot `docs/HOW_TO_VIEW_ANALYTICS.md`.
 
 ## Current blockers (owner)
 
-- Odds API key for live data (free/dev tier only unless you approve spend)
+- Device smoke: confirm TestFlight still shows the Live API ribbon (real
+  matchup), not only `NBA Player N` placeholders. Production `odds_mode` is
+  already `live`; `outcome_mode` stays `simulated`.
 - Social handles (Instagram / TikTok / X) — see `docs/MARKETING.md`
 - `juicd.app` domain + Vercel token for the marketing site

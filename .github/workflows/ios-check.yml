@@ -26,12 +26,6 @@ on:
       - "Package.swift"
       - "Package.resolved"
   workflow_dispatch:
-    inputs:
-      run_analytics_ui:
-        description: "Run the simulator-hosted analytics UI test (may require manual rerun)"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -77,7 +71,7 @@ jobs:
           echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: Test analytics UI path
-        if: steps.simulator.outputs.available == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_analytics_ui == true
+        if: steps.simulator.outputs.available == 'true'
         run: |
           set -o pipefail
           perl -e 'alarm 180; exec @ARGV' -- \
@@ -93,10 +87,6 @@ jobs:
               -parallel-testing-enabled NO \
               -only-testing:JuicdUITests/JuicdAnalyticsLogicTests \
               test 2>&1 | tee "$RUNNER_TEMP/juicd-analytics-tests.log"
-
-      - name: Report analytics UI test policy
-        if: steps.simulator.outputs.available == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_analytics_ui != true)
-        run: echo "::notice::Skipping simulator-hosted analytics UI test in ordinary CI; run workflow_dispatch with run_analytics_ui=true for manual verification."
 
       - name: Test remaining iOS targets
         if: steps.simulator.outputs.available == 'true'

@@ -59,9 +59,22 @@ supabase projects api-keys --project-ref <project-ref>
 
 ## Runtime config
 
-`juicd_runtime_config` seeds `odds_mode = simulated` and
-`outcome_mode = simulated`. Leave these as `simulated` for the beta (no
-real-money / live-odds behavior). Flip to `live` only after legal sign-off.
+Migrations **seed** `odds_mode = simulated` and `outcome_mode = simulated`
+(`insert … on conflict do nothing` will not overwrite a later manual flip).
+
+**Production check (2026-08-30, read-only REST on `hwyxtklbffqwcbtuetit`):**
+
+| key | value | notes |
+|---|---|---|
+| `odds_mode` | `live` | since 2026-06-29; Edge secret `ODDS_API_KEY` is set |
+| `outcome_mode` | `simulated` | do not flip without owner + counsel |
+| `odds_board_ttl_seconds` | `1800` | |
+
+Same-day snapshot `slate_key=2026-08-30` had `source=odds_api` and a Live API
+moneyline ribbon (real NBA matchup) plus the usual simulated filler ribbons.
+Public copy may say a shared sports-data line exists; do **not** claim
+sportsbook / real-money odds. Do **not** call `play-board?force=1` casually —
+that burns Odds API quota.
 
 ## Staging integrity harness
 

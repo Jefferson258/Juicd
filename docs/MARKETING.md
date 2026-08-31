@@ -10,9 +10,10 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 
 ## Audit update — 2026-08-30
 
-- The app's current repository says `odds_mode=live`, while backend and listing
-  docs say simulated. This is unresolved documentation/runtime drift. Do not
-  claim live odds until a read-only production check is recorded.
+- Production `odds_mode` is **live** (verified read-only 2026-08-30). Edge
+  snapshots use `source=odds_api`. `outcome_mode` remains **simulated**.
+  Do not claim sportsbook or real-money odds; a shared sports-data line is
+  the accurate product claim.
 - Ads remain development placeholders; mark advertising as planned until the
   production SDK, consent/privacy labels, and legal copy are verified.
 - The website download link now uses App Store Connect app ID `6785327494`;
@@ -49,8 +50,9 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 **Do say:** entertainment only; virtual points; no cash value; not a sportsbook; 18+.  
 **Do not say:** betting, wager, sportsbook, real money, cash out, guaranteed
 winnings, risk-free winnings, win money, earn money, "get paid."
-**Odds:** runtime is **simulated** until intentionally flipped — do not claim live
-sportsbook odds in ads or social.
+**Odds:** production `odds_mode` is **live** (sports-data lines via The Odds
+API + Edge cache). `outcome_mode` is still **simulated**. Do not claim
+sportsbook, live betting lines as a book, or real-money odds in ads or social.
 
 ---
 
