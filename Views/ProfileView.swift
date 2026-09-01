@@ -225,7 +225,7 @@ struct ProfileView: View {
 
                             Divider().overlay(JuicdTheme.strokeSubtle)
 
-                            Toggle("Show dev ad placeholders (Play tab)", isOn: $adsEnabled)
+                            Toggle("Show ads on Play tab", isOn: $adsEnabled)
                                 .font(.system(size: 14, weight: .semibold))
                                 .tint(JuicdTheme.brand)
                                 .onChange(of: adsEnabled) { _, on in
@@ -234,7 +234,9 @@ struct ProfileView: View {
                                         forceRevision += 1
                                     }
                                 }
-                            Text("Rare native-style slots between ribbons. Off by default. See ADS.md for frequency math.")
+                            Text(JuicdAdsConfig.usesTestAds
+                                 ? "Uses Google test banners until production AdMob IDs are in Info.plist. Spawn buttons below still show fake placeholder creatives."
+                                 : "Loads AdMob banners in the Play feed. Off by default.")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .fixedSize(horizontal: false, vertical: true)

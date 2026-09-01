@@ -14,8 +14,9 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
   snapshots use `source=odds_api`. `outcome_mode` remains **simulated**.
   Do not claim sportsbook or real-money odds; a shared sports-data line is
   the accurate product claim.
-- Ads remain development placeholders; mark advertising as planned until the
-  production SDK, consent/privacy labels, and legal copy are verified.
+- Ads: Google Mobile Ads SDK is wired (Play banners, test IDs until production
+  units are pasted). Do not claim live advertising in the listing until
+  production IDs are in the binary and privacy labels are set.
 - The website download link now uses App Store Connect app ID `6785327494`;
   incomplete screenshot slots and no support link remain.
 - Social handles are not recorded. `MarketingPilot/scripts/marketing-draft` now

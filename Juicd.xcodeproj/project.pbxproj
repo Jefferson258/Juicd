@@ -39,6 +39,11 @@
 		225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */; };
 		225E4B612F6F2CED002955B9 /* JuicdAdsDev.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */; };
 		225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */; };
+		22GAD0022F800100002955B9 /* JuicdAdsConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22GAD0012F800100002955B9 /* JuicdAdsConfig.swift */; };
+		22GAD0042F800100002955B9 /* JuicdMobileAds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22GAD0032F800100002955B9 /* JuicdMobileAds.swift */; };
+		22GAD0062F800100002955B9 /* JuicdBannerAdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22GAD0052F800100002955B9 /* JuicdBannerAdView.swift */; };
+		22GAD0082F800100002955B9 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 22GAD0072F800100002955B9 /* GoogleMobileAds */; };
+		22CORE0032F800100002955B9 /* JuicdAdsConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CORE0022F800100002955B9 /* JuicdAdsConfigTests.swift */; };
 		225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */; };
 		225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */; };
 		225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */; };
@@ -96,6 +101,10 @@
 		225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaySportFilter.swift; sourceTree = "<group>"; };
 		225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdAdsDev.swift; sourceTree = "<group>"; };
 		225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNativeAdPlaceholder.swift; sourceTree = "<group>"; };
+		22GAD0012F800100002955B9 /* JuicdAdsConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdAdsConfig.swift; sourceTree = "<group>"; };
+		22GAD0032F800100002955B9 /* JuicdMobileAds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdMobileAds.swift; sourceTree = "<group>"; };
+		22GAD0052F800100002955B9 /* JuicdBannerAdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdBannerAdView.swift; sourceTree = "<group>"; };
+		22CORE0022F800100002955B9 /* JuicdAdsConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdAdsConfigTests.swift; sourceTree = "<group>"; };
 		225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseOddsService.swift; sourceTree = "<group>"; };
 		225E4B6C2F6F2CED002955B9 /* JuicdNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdNotifications.swift; sourceTree = "<group>"; };
@@ -127,6 +136,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				22GAD0082F800100002955B9 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -210,6 +220,8 @@
 				225E4B542F6F2CED002955B9 /* JuicdSeason.swift */,
 				225E4B562F6F2CED002955B9 /* PlaySportFilter.swift */,
 				225E4B632F6F2CED002955B9 /* JuicdAdsDev.swift */,
+				22GAD0012F800100002955B9 /* JuicdAdsConfig.swift */,
+				22GAD0032F800100002955B9 /* JuicdMobileAds.swift */,
 				225E4B692F6F2CED002955B9 /* SupabaseConfig.swift */,
 				225E4B6B2F6F2CED002955B9 /* SupabaseOddsService.swift */,
 				22SOC0012F700100002955B9 /* SupabaseAuthService.swift */,
@@ -243,6 +255,7 @@
 				225E4B142F6F2CED002955B9 /* ProfileView.swift */,
 				225E4B152F6F2CED002955B9 /* SignInView.swift */,
 				225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */,
+				22GAD0052F800100002955B9 /* JuicdBannerAdView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -290,6 +303,7 @@
 			isa = PBXGroup;
 			children = (
 				22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */,
+				22CORE0022F800100002955B9 /* JuicdAdsConfigTests.swift */,
 			);
 			path = JuicdCoreTests;
 			sourceTree = "<group>";
@@ -311,6 +325,7 @@
 			);
 			name = Juicd;
 			packageProductDependencies = (
+				22GAD0072F800100002955B9 /* GoogleMobileAds */,
 			);
 			productName = Juicd;
 			productReference = 22E1FDBE2F6F2A85004D740F /* Juicd.app */;
@@ -384,6 +399,9 @@
 			);
 			mainGroup = 22E1FDB52F6F2A85004D740F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				22GADPKG2F800100002955B9 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22E1FDBF2F6F2A85004D740F /* Products */;
 			projectDirPath = "";
@@ -459,6 +477,9 @@
 				225E4B532F6F2CED002955B9 /* JuicdSeason.swift in Sources */,
 				225E4B552F6F2CED002955B9 /* PlaySportFilter.swift in Sources */,
 				225E4B612F6F2CED002955B9 /* JuicdAdsDev.swift in Sources */,
+				22GAD0022F800100002955B9 /* JuicdAdsConfig.swift in Sources */,
+				22GAD0042F800100002955B9 /* JuicdMobileAds.swift in Sources */,
+				22GAD0062F800100002955B9 /* JuicdBannerAdView.swift in Sources */,
 				225E4B642F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift in Sources */,
 				225E4B682F6F2CED002955B9 /* SupabaseConfig.swift in Sources */,
 				225E4B6A2F6F2CED002955B9 /* SupabaseOddsService.swift in Sources */,
@@ -498,6 +519,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				22CORE0022F700300002955B9 /* JuicdCoreRulesTests.swift in Sources */,
+				22CORE0032F800100002955B9 /* JuicdAdsConfigTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -826,6 +848,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		22GADPKG2F800100002955B9 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		22GAD0072F800100002955B9 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 22GADPKG2F800100002955B9 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 22E1FDB62F6F2A85004D740F /* Project object */;
 }

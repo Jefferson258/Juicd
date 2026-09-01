@@ -6,5 +6,11 @@
 	<string>https://hwyxtklbffqwcbtuetit.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3eXh0a2xiZmZxd2NidHVldGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTEwMTUsImV4cCI6MjA5ODI2NzAxNX0.w3BhjNv4OURAX6BXnFZGlFA5g5jGtSqcEt2SsGBlrR0</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-1484242722888691~4589222474</string>
+	<key>GADDelayAppMeasurementInit</key>
+	<true/>
+	<key>JUICD_ADMOB_BANNER_UNIT_ID</key>
+	<string>ca-app-pub-1484242722888691/1963059137</string>
 </dict>
 </plist>

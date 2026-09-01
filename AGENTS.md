@@ -31,6 +31,9 @@ settlement changes need owner + counsel sign-off before shipping.
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
 - Currently **build 8** on TestFlight (cache/TTL client + Edge snapshot).
+- Ads: Google Mobile Ads SDK wired (Play-tab banners). Uses Google **test** IDs
+  until production App ID + banner unit are pasted into `Juicd/Info.plist`.
+  Toggle is off by default. Payouts still need the LLC bank + AdMob payments.
 - Build/upload: see TestFlight section in `LAUNCH_OUT_OF_CODE.md`.
 
 ## Supabase (`supabase/`)

@@ -6,6 +6,7 @@ struct JuicdApp: App {
     @StateObject private var repository = InMemoryJuicdRepository.shared
 
     init() {
+        JuicdMobileAds.start()
         // Opaque bar, no blur/material — avoids “liquid glass” if any system tab UI appears.
         // Main chrome uses a SwiftUI custom bar (see RootView) like Corvim.
         let tab = UITabBarAppearance()

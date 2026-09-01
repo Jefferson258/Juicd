@@ -7,8 +7,8 @@ struct PlayView: View {
     @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
     @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
-    /// When set, inserts at most one dev ad at `insertIndex` (0...n) among ribbons.
-    @State private var adInsertion: (creative: JuicdDevAdCreative, insertIndex: Int)?
+    /// When set, inserts at most one ad at `insertIndex` (0...n) among ribbons.
+    @State private var adInsertion: AdInsertion?
 
     /// After user taps dismiss on the ad, no new random ad until ribbons change (spawn still works).
     @State private var adDismissedForCurrentRibbonFeed = false
@@ -65,7 +65,14 @@ struct PlayView: View {
                             case .ribbon(let ribbon):
                                 ribbonBlock(ribbon)
                                     .id(ribbon.id)
-                            case .ad(let creative, let rowId):
+                            case .adMob(let rowId):
+                                JuicdBannerAdView {
+                                    JuicdAdsDev.recordImpression()
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 50)
+                                .id(rowId)
+                            case .placeholder(let creative, let rowId):
                                 JuicdNativeAdPlaceholder(creative: creative) {
                                     JuicdAdsDev.recordImpression()
                                 } onDismiss: {
@@ -624,16 +631,28 @@ struct PlayView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Dev ad placement (Play feed)
+    // MARK: - Ad placement (Play feed)
+
+    private enum AdInsertion {
+        case admob(insertIndex: Int)
+        case placeholder(JuicdDevAdCreative, insertIndex: Int)
+
+        var insertIndex: Int {
+            switch self {
+            case .admob(let i), .placeholder(_, let i): return i
+            }
+        }
+    }
 
     private enum PlayFeedRow: Identifiable {
         case ribbon(PlayPropRibbon)
-        case ad(JuicdDevAdCreative, rowId: String)
+        case adMob(rowId: String)
+        case placeholder(JuicdDevAdCreative, rowId: String)
 
         var id: String {
             switch self {
             case .ribbon(let r): return r.id
-            case .ad(_, let rowId): return rowId
+            case .adMob(let rowId), .placeholder(_, let rowId): return rowId
             }
         }
     }
@@ -642,19 +661,21 @@ struct PlayView: View {
         guard let insertion = adInsertion else {
             return ribbons.map { .ribbon($0) }
         }
-        let creative = insertion.creative
         let index = insertion.insertIndex
-        let rowId = "ad-\(creative.id)-\(index)"
         var rows: [PlayFeedRow] = []
-        for (i, r) in ribbons.enumerated() {
-            if i == index {
-                rows.append(.ad(creative, rowId: rowId))
+        func appendAd() {
+            switch insertion {
+            case .admob:
+                rows.append(.adMob(rowId: "ad-admob-\(index)"))
+            case .placeholder(let creative, _):
+                rows.append(.placeholder(creative, rowId: "ad-\(creative.id)-\(index)"))
             }
+        }
+        for (i, r) in ribbons.enumerated() {
+            if i == index { appendAd() }
             rows.append(.ribbon(r))
         }
-        if index == ribbons.count {
-            rows.append(.ad(creative, rowId: rowId))
-        }
+        if index == ribbons.count { appendAd() }
         return rows
     }
 
@@ -672,7 +693,7 @@ struct PlayView: View {
         }
         if !forceCreativeId.isEmpty,
            let c = JuicdDevAdCreative.all.first(where: { $0.id == forceCreativeId }) {
-            adInsertion = (c, 0)
+            adInsertion = .placeholder(c, insertIndex: 0)
             return
         }
         if adDismissedForCurrentRibbonFeed {
@@ -683,11 +704,14 @@ struct PlayView: View {
             adInsertion = nil
             return
         }
+        if JuicdAdsConfig.usesTestAds {
+            adInsertion = .admob(insertIndex: Int.random(in: 0...ribbonCount))
+            return
+        }
         guard JuicdAdsDev.shouldShowAd(adsEnabled: true) else {
             adInsertion = nil
             return
         }
-        let idx = Int.random(in: 0...ribbonCount)
-        adInsertion = (JuicdDevAdCreative.random(), idx)
+        adInsertion = .admob(insertIndex: Int.random(in: 0...ribbonCount))
     }
 }

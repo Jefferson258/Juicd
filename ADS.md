@@ -1,89 +1,68 @@
-# Juicd — Ads (dev placeholders)
+# Juicd — Ads
 
-This document describes the **in-app dev ad prototype**: where it appears, how often, fake campaign data, and how to replace it with a real network (e.g. Google Mobile Ads).
+Play-tab ads: **Google AdMob banners** (SDK wired) plus optional fake placeholder creatives for layout testing.
 
 ---
 
 ## What was implemented
 
-1. **`JuicdAdsDev`** ([`Services/JuicdAdsDev.swift`](Services/JuicdAdsDev.swift))  
-   - Constants: eligibility probability and cooldown between **recorded** impressions.  
-   - `shouldShowAd(adsEnabled:)` — decides whether the current Play feed build may include **one** sponsored row.  
-   - `recordImpression()` — called when the ad cell is first shown (viewable row).
-
-2. **`JuicdDevAdCreative`** — five **fictional** sponsors (sports drink, streaming mock, odds concept, fantasy, podcast). Used only for layout/copy testing.
-
-3. **`JuicdNativeAdPlaceholder`** ([`Views/JuicdNativeAdPlaceholder.swift`](Views/JuicdNativeAdPlaceholder.swift))  
-   - Native-style card: “Sponsored”, headline, body, fake CTA. Clearly **not** a betting tile. **Top-trailing** `xmark.circle.fill` dismisses the ad for the current ribbon feed (clears any forced creative; random ads stay off until you change sport/filter or similar so the ribbon list identity changes).
-
-4. **Play tab** ([`Views/PlayView.swift`](Views/PlayView.swift))  
-   - When ads are enabled, the feed may insert **at most one** ad at a **random index** among ribbon blocks (index `0...n`, so it can sit before the first ribbon or after the last).
-
-5. **Profile → Prototype tools**  
-   - Toggle **`juicd_ads_enabled`** (default **off**): “Show dev ad placeholders (Play tab)”.
-   - **Spawn** buttons (one per fake sponsor): set a **forced creative id** and bump a **revision** counter so the **Play** tab rebuilds placement immediately—shows that ad **before the first ribbon** without the 4% roll. Does **not** require the main ad toggle to be on. **Clear forced preview** clears the id; turning the main ad toggle **off** also clears the forced id.
-
-No third-party SDK is linked yet; nothing loads from an ad network.
+1. **`JuicdAdsConfig`** — reads `GADApplicationIdentifier` and `JUICD_ADMOB_BANNER_UNIT_ID` from Info.plist. Empty / missing → Google **test** IDs.
+2. **`JuicdMobileAds.start()`** — initializes the Google Mobile Ads SDK at launch (`JuicdApp`). Requests are tagged **non-personalized** (`npa=1`) so we do not need ATT yet.
+3. **`JuicdBannerAdView`** — adaptive banner in the Play feed.
+4. **`JuicdAdsDev`** — frequency helpers + fake creatives (spawn from Profile).
+5. **`JuicdNativeAdPlaceholder`** — still used when you spawn a fake sponsor from Profile.
+6. **Profile → Prototype tools** — toggle **Show ads on Play tab** (default **off**). With test IDs, the toggle shows one real test banner so the SDK can be verified.
 
 ---
 
-## Frequency math (why ads feel rare)
+## Credentials to paste later (no Google password)
 
-Let:
+From [AdMob](https://admob.google.com/) → Apps → Juicd iOS (`com.jefferson258.juicd`):
 
-- \(A\) = ads toggle **on** (user must enable in Profile).  
-- \(C\) = **cooldown** passed: last recorded impression was at least **`minSecondsBetweenImpressions`** ago (default **120 s**).  
-- \(R\) = **random pass**: a single draw succeeds with probability **`sessionEligibilityProbability`** (default **0.04** = **4%**).
+1. **App ID** — `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY`
+2. **Banner ad unit ID** — `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ`
 
-On each **Play feed rebuild** (ribbon list identity changes, or toggle turns on), an ad **slot** is considered **only if**:
+Put them in `Juicd/Info.plist`:
 
-\[
-\text{show attempt} = A \land C \land R
-\]
+| Key | Value |
+|-----|--------|
+| `GADApplicationIdentifier` | App ID |
+| `JUICD_ADMOB_BANNER_UNIT_ID` | Banner unit ID |
 
-So **conditional on** the toggle being on and cooldown clear:
+**Pasted Sep 1, 2026** (publisher `pub-1484242722888691`):
 
-- **P(eligible this rebuild)** = **4%** per rebuild.  
-- After an impression is recorded, **no new ad** is eligible until **120 seconds** pass (then the next rebuild can roll again).
+| Key | Value |
+|-----|--------|
+| `GADApplicationIdentifier` | `ca-app-pub-1484242722888691~4589222474` |
+| `JUICD_ADMOB_BANNER_UNIT_ID` | `ca-app-pub-1484242722888691/1963059137` |
 
-**Rough expectations** (toggle on, user changes filters / sport often so rebuilds happen):
-
-- If you get **10** independent rebuilds per session and cooldown is always satisfied: **expected** ad opportunities ≈ \(10 \times 0.04 = 0.4\) slots per session (many sessions show **zero** ads).  
-- Cooldown **reduces** repeated impressions when the user stays on Play and scrolls without changing ribbons.
-
-Constants live in code as `JuicdAdsDev.sessionEligibilityProbability` and `JuicdAdsDev.minSecondsBetweenImpressions` — tune there, then update this doc to match.
+Payouts (W-9, LLC bank) are still required before Google will fully approve the account and pay out. Fill may be empty until payment setup is done. Never click your own ads. Never use Google’s sample test IDs (`ca-app-pub-3940256099942544…`) in a shipped store build.
 
 ---
 
-## Dev campaign list (fake data)
+## Frequency
 
-| id | Sponsor (fictional) | Theme |
-|----|---------------------|--------|
-| `voltade` | VoltaDe Sports Drink | Hydration |
-| `gridiron_plus` | Gridiron+ | Streaming mock |
-| `lineup_labs` | Lineup Labs | Odds comparison concept |
-| `bench_warmer` | Bench Warmer Fantasy | Casual fantasy |
-| `prime_time_audio` | Prime Time Audio | Podcast network mock |
+- **Test IDs:** one banner per Play feed rebuild while the Profile toggle is on (so you can see it).
+- **Production IDs:** same 4% + 120s cooldown as the old placeholder (`JuicdAdsDev.shouldShowAd`).
 
 ---
 
-## Replacing with real ads
+## App Store / privacy (when shipping with ads)
 
-See **[SETUP.md](SETUP.md)** §8 (Google Mobile Ads / consent / App Store). At a high level:
-
-1. Add the **Google Mobile Ads SDK** (or another mediation stack) via SPM or CocoaPods.  
-2. Use **test ad unit IDs** in Debug; never ship real units in source for public repos — use **Info.plist** / **xcconfig** (gitignored).  
-3. For EEA/UK, integrate **UMP** (user consent) before loading personalized ads.  
-4. Swap `JuicdNativeAdPlaceholder` for a **GADNativeAd** (or banner) view wrapper; keep **one slot** per feed and your own caps if you want parity with the dev math.  
-5. App Store Connect: declare **Advertising** and, if applicable, **tracking**.
+- App Privacy: advertising data; tracking **no** while we stay non-personalized / no ATT.
+- Privacy Policy already mentions AdMob/ATT for when that is enabled.
 
 ---
 
-## Files touched
+## Files
 
 | File | Role |
 |------|------|
-| [`Services/JuicdAdsDev.swift`](Services/JuicdAdsDev.swift) | Policy + dev creatives |
-| [`Views/JuicdNativeAdPlaceholder.swift`](Views/JuicdNativeAdPlaceholder.swift) | SwiftUI placeholder |
-| [`Views/PlayView.swift`](Views/PlayView.swift) | Feed insertion + `.task` / toggle reaction |
-| [`Views/ProfileView.swift`](Views/ProfileView.swift) | `@AppStorage` toggle |
+| `Services/JuicdAdsConfig.swift` | Test vs production IDs |
+| `Services/JuicdMobileAds.swift` | SDK start + npa request |
+| `Views/JuicdBannerAdView.swift` | SwiftUI banner wrapper |
+| `Services/JuicdAdsDev.swift` | Policy + fake creatives |
+| `Views/JuicdNativeAdPlaceholder.swift` | Spawn-preview card |
+| `Views/PlayView.swift` | Feed insertion |
+| `Views/ProfileView.swift` | Toggle |
+| `Juicd/Info.plist` | App ID + banner unit |
