@@ -39,9 +39,10 @@ action. Never put the service-role key in the iOS target.
 ## Analytics & errors (Supabase)
 
 Migration `20260721200000_juicd_analytics_logging.sql` adds insert-only
-`juicd_analytics_events` + `juicd_app_errors` (client POST via REST). Query in
-Supabase SQL Editor or use dashboard views — see LaunchPilot
-`docs/HOW_TO_VIEW_ANALYTICS.md` (not duplicated here).
+`juicd_analytics_events` + `juicd_app_errors` (client POST via REST). Profile
+“Report an issue” also writes `juicd_issue_reports` (migration
+`20260902120000_juicd_issue_reports.sql`) and a breadcrumb on `juicd_app_errors`.
+Query in Supabase SQL Editor — see LaunchPilot `docs/HOW_TO_VIEW_ANALYTICS.md`.
 
 ## After deploy: wire the app
 

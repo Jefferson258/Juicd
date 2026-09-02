@@ -64,6 +64,9 @@
 		22ANL101F700200002955B9 /* AnalyticsDebugOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */; };
 		22ANL111F700200002955B9 /* SupabaseAnalyticsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */; };
 		22ANL121F700200002955B9 /* AppErrorLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ANL120F700200002955B9 /* AppErrorLogger.swift */; };
+		22ISS0022F900100002955B9 /* IssueReportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ISS0012F900100002955B9 /* IssueReportService.swift */; };
+		22ISS0042F900100002955B9 /* ReportIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ISS0032F900100002955B9 /* ReportIssueSheet.swift */; };
+		22ISS0062F900100002955B9 /* IssueReportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ISS0052F900100002955B9 /* IssueReportServiceTests.swift */; };
 		22CORE0022F700300002955B9 /* JuicdCoreRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -127,6 +130,9 @@
 		22ANL100F700200002955B9 /* AnalyticsDebugOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDebugOverlay.swift; sourceTree = "<group>"; };
 		22ANL110F700200002955B9 /* SupabaseAnalyticsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAnalyticsProvider.swift; sourceTree = "<group>"; };
 		22ANL120F700200002955B9 /* AppErrorLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppErrorLogger.swift; sourceTree = "<group>"; };
+		22ISS0012F900100002955B9 /* IssueReportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueReportService.swift; sourceTree = "<group>"; };
+		22ISS0032F900100002955B9 /* ReportIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportIssueSheet.swift; sourceTree = "<group>"; };
+		22ISS0052F900100002955B9 /* IssueReportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueReportServiceTests.swift; sourceTree = "<group>"; };
 		22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdCoreRulesTests.swift; sourceTree = "<group>"; };
 		22CORE0062F700300002955B9 /* JuicdCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JuicdCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -209,6 +215,7 @@
 			children = (
 				225E4B052F6F2CED002955B9 /* JuicdRepository.swift */,
 				22ANLGRP0F700200002955B /* Analytics */,
+				22ISS0012F900100002955B9 /* IssueReportService.swift */,
 				225E4B062F6F2CED002955B9 /* StubOddsProvider.swift */,
 				225E4B2B2F6F2CED002955B9 /* OddsAPIConfig.swift */,
 				225E4B2D2F6F2CED002955B9 /* TheOddsAPIService.swift */,
@@ -253,6 +260,7 @@
 				225E4B482F6F2CED002955B9 /* TutorialView.swift */,
 				225E4B122F6F2CED002955B9 /* TourneyView.swift */,
 				225E4B142F6F2CED002955B9 /* ProfileView.swift */,
+				22ISS0032F900100002955B9 /* ReportIssueSheet.swift */,
 				225E4B152F6F2CED002955B9 /* SignInView.swift */,
 				225E4B652F6F2CED002955B9 /* JuicdNativeAdPlaceholder.swift */,
 				22GAD0052F800100002955B9 /* JuicdBannerAdView.swift */,
@@ -304,6 +312,7 @@
 			children = (
 				22CORE0012F700300002955B9 /* JuicdCoreRulesTests.swift */,
 				22CORE0022F800100002955B9 /* JuicdAdsConfigTests.swift */,
+				22ISS0052F900100002955B9 /* IssueReportServiceTests.swift */,
 			);
 			path = JuicdCoreTests;
 			sourceTree = "<group>";
@@ -497,6 +506,8 @@
 				22ANL101F700200002955B9 /* AnalyticsDebugOverlay.swift in Sources */,
 				22ANL111F700200002955B9 /* SupabaseAnalyticsProvider.swift in Sources */,
 				22ANL121F700200002955B9 /* AppErrorLogger.swift in Sources */,
+				22ISS0022F900100002955B9 /* IssueReportService.swift in Sources */,
+				22ISS0042F900100002955B9 /* ReportIssueSheet.swift in Sources */,
 				225E4B6D2F6F2CED002955B9 /* JuicdNotifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -520,6 +531,7 @@
 			files = (
 				22CORE0022F700300002955B9 /* JuicdCoreRulesTests.swift in Sources */,
 				22CORE0032F800100002955B9 /* JuicdAdsConfigTests.swift in Sources */,
+				22ISS0062F900100002955B9 /* IssueReportServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -667,7 +679,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -702,7 +714,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Juicd.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -734,7 +746,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -753,7 +765,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -774,7 +786,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -793,7 +805,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 8H2437SV33;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;

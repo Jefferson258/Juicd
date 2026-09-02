@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var showSeasonInfo = false
     @State private var showSeasonMetrics = false
     @State private var showCareerMetrics = false
+    @State private var showReportIssue = false
     @State private var showDeleteAccountConfirmation = false
     @State private var showDeleteAccountError = false
     @State private var accountDeletionError = ""
@@ -128,6 +129,24 @@ struct ProfileView: View {
                                 .onChange(of: notifySeasonalUpdates) { _, on in
                                     if on { requestNotificationAuthorizationIfNeeded() }
                                 }
+                        }
+                    }
+
+                    Card(title: "Help", systemImage: "exclamationmark.bubble.fill") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Something broken or confusing? Send a short note from this device. Don’t include passwords.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                showReportIssue = true
+                            } label: {
+                                Text("Report an issue")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(JuicdTheme.brand)
                         }
                     }
 
@@ -320,6 +339,9 @@ struct ProfileView: View {
                 stats: career,
                 footnote: "Career totals include all time. Returned from bets sums payouts and daily bracket rewards from the ledger."
             )
+        }
+        .sheet(isPresented: $showReportIssue) {
+            ReportIssueSheet()
         }
         .alert("Delete Juicd account?", isPresented: $showDeleteAccountConfirmation) {
             Button("Cancel", role: .cancel) {}

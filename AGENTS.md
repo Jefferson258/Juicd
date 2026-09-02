@@ -77,6 +77,12 @@ when Supabase is configured (`SupabaseAnalyticsProvider`, `AppErrorLogger`).
 Apply migration `20260721200000_juicd_analytics_logging.sql`, then query via
 Supabase SQL Editor — see LaunchPilot `docs/HOW_TO_VIEW_ANALYTICS.md`.
 
+Profile **Help → Report an issue** writes the user’s text through
+`IssueReportService.sink` (swap this to change destination). Default sink:
+dedicated `juicd_issue_reports` (migration `20260902120000_juicd_issue_reports.sql`,
+applied 2026-09-02) plus an info breadcrumb on `juicd_app_errors` with
+`extra.kind=user_report`. Query via `supabase db query --linked` / SQL Editor.
+
 ## Going to real data (high priority, but gated)
 
 1. Owner provides an **Odds API key** (free/dev tier; never pay without asking).
