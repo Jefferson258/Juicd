@@ -30,7 +30,7 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 9** on TestFlight (Option B ads: dismissible 300×250).
+- Currently **build 10** on TestFlight (Profile “Report an issue” + Option B ads).
 - Ads: **Option B with X** — dismissible 300×250 AdMob box in the sponsored
   card on Play and Tourney. Sticky banners off. Simulator/DEBUG uses Google
   test creatives; store builds use the plist unit. Toggle default **on**.
