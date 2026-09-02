@@ -14,9 +14,11 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
   snapshots use `source=odds_api`. `outcome_mode` remains **simulated**.
   Do not claim sportsbook or real-money odds; a shared sports-data line is
   the accurate product claim.
-- Ads: Google Mobile Ads SDK is wired (Play banners, test IDs until production
-  units are pasted). Do not claim live advertising in the listing until
-  production IDs are in the binary and privacy labels are set.
+- Ads: Google Mobile Ads SDK is wired as a **dismissible 300×250 box** on
+  Play and Tourney (Option B with X). Sticky bottom strip is off. Simulator
+  shows Google Test Ad creatives; store builds use the pasted production
+  unit. Do not claim live advertising in the listing until a Release build
+  is on TestFlight and privacy labels are set.
 - The website download link now uses App Store Connect app ID `6785327494`;
   incomplete screenshot slots and no support link remain.
 - Social handles are not recorded. `MarketingPilot/scripts/marketing-draft` now
@@ -34,7 +36,7 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 | Marketing site | Builds; hero + legal note in first viewport | Contest rules page required |
 | App Store URL in site | **Wired** `id6785327494` | Verify the public listing URL after approval |
 | Instagram / TikTok / X | **Not created** | Owner — see Social |
-| In-app ads | Dev placeholders only | Not brand social |
+| In-app ads | Option B 300×250 + X on Play/Tourney | Not brand social |
 | Paid acquisition | Not started | Owner only |
 
 ---

@@ -13,4 +13,21 @@ final class JuicdAdsConfigTests: XCTestCase {
         )
         XCTAssertFalse(JuicdAdsConfig.usesTestAds)
     }
+
+    func testSimulatorRequestsGoogleTestCreatives() {
+        #if targetEnvironment(simulator)
+        XCTAssertTrue(JuicdAdsConfig.loadsGoogleTestCreatives)
+        XCTAssertEqual(JuicdAdsConfig.creativeBannerUnitID, JuicdAdsConfig.testBannerUnitID)
+        #endif
+    }
+
+    func testInFeedAdFollowsToggleOnly() {
+        XCTAssertFalse(JuicdAdsDev.shouldShowAd(adsEnabled: false))
+        XCTAssertTrue(JuicdAdsDev.shouldShowAd(adsEnabled: true))
+        XCTAssertTrue(JuicdAdsDev.shouldShowAd(adsEnabled: true))
+    }
+
+    func testDefaultPresentationIsDismissibleCardBanner() {
+        XCTAssertEqual(JuicdAdsConfig.presentation, .cardBanner)
+    }
 }

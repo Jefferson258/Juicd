@@ -2,7 +2,9 @@ import SwiftUI
 
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
+    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @State private var showTourneyTips = false
+    @State private var adDismissed = false
     @FocusState private var dailyPickFieldFocused: Bool
 
     private static let tipTimeFormatter: DateFormatter = {
@@ -35,6 +37,12 @@ struct TourneyView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(JuicdTheme.brand)
+                }
+
+                if adsEnabled && !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
+                    JuicdInFeedAdSlot(creative: JuicdDevAdCreative.all[1], onDismiss: {
+                        adDismissed = true
+                    })
                 }
 
                 dailySection

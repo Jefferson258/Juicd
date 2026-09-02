@@ -13,7 +13,7 @@ final class JuicdUITests: XCTestCase {
 
     func testVisualQAScreenshots() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData"]
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on"]
         app.launch()
 
         // Resolve repo/qa-screenshots from this source file (portable; no Desktop hardcode).
@@ -64,6 +64,7 @@ final class JuicdUITests: XCTestCase {
         )
 
         sleep(2)
+        _ = app.otherElements["ad-sponsored-card"].waitForExistence(timeout: 6)
         try snap("01-play")
 
         tapTab("Dashboard")
@@ -72,6 +73,7 @@ final class JuicdUITests: XCTestCase {
 
         tapTab("Tourney")
         sleep(2)
+        _ = app.otherElements["ad-sponsored-card"].waitForExistence(timeout: 6)
         let simulate = app.buttons["Simulate full bracket (demo)"]
         if simulate.waitForExistence(timeout: 2) {
             simulate.tap()

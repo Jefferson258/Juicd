@@ -1,56 +1,21 @@
 # Juicd — Ads
 
-Play-tab ads: **Google AdMob banners** (SDK wired) plus optional fake placeholder creatives for layout testing.
+**Option B with X (locked Sep 1, 2026):** a dismissible **300×250 AdMob**
+box inside the dark “Sponsored” card on Play and Tourney. No sticky banner
+above the tab bar. No rewarded video.
+
+Simulator/DEBUG loads Google **Test Ad** creatives. Release on device uses
+the banner unit in `Juicd/Info.plist` requested as a medium rectangle.
 
 ---
 
-## What was implemented
+## What the player sees
 
-1. **`JuicdAdsConfig`** — reads `GADApplicationIdentifier` and `JUICD_ADMOB_BANNER_UNIT_ID` from Info.plist. Empty / missing → Google **test** IDs.
-2. **`JuicdMobileAds.start()`** — initializes the Google Mobile Ads SDK at launch (`JuicdApp`). Requests are tagged **non-personalized** (`npa=1`) so we do not need ATT yet.
-3. **`JuicdBannerAdView`** — adaptive banner in the Play feed.
-4. **`JuicdAdsDev`** — frequency helpers + fake creatives (spawn from Profile).
-5. **`JuicdNativeAdPlaceholder`** — still used when you spawn a fake sponsor from Profile.
-6. **Profile → Prototype tools** — toggle **Show ads on Play tab** (default **off**). With test IDs, the toggle shows one real test banner so the SDK can be verified.
-
----
-
-## Credentials to paste later (no Google password)
-
-From [AdMob](https://admob.google.com/) → Apps → Juicd iOS (`com.jefferson258.juicd`):
-
-1. **App ID** — `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY`
-2. **Banner ad unit ID** — `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ`
-
-Put them in `Juicd/Info.plist`:
-
-| Key | Value |
-|-----|--------|
-| `GADApplicationIdentifier` | App ID |
-| `JUICD_ADMOB_BANNER_UNIT_ID` | Banner unit ID |
-
-**Pasted Sep 1, 2026** (publisher `pub-1484242722888691`):
-
-| Key | Value |
-|-----|--------|
-| `GADApplicationIdentifier` | `ca-app-pub-1484242722888691~4589222474` |
-| `JUICD_ADMOB_BANNER_UNIT_ID` | `ca-app-pub-1484242722888691/1963059137` |
-
-Payouts (W-9, LLC bank) are still required before Google will fully approve the account and pay out. Fill may be empty until payment setup is done. Never click your own ads. Never use Google’s sample test IDs (`ca-app-pub-3940256099942544…`) in a shipped store build.
-
----
-
-## Frequency
-
-- **Test IDs:** one banner per Play feed rebuild while the Profile toggle is on (so you can see it).
-- **Production IDs:** same 4% + 120s cooldown as the old placeholder (`JuicdAdsDev.shouldShowAd`).
-
----
-
-## App Store / privacy (when shipping with ads)
-
-- App Privacy: advertising data; tracking **no** while we stay non-personalized / no ATT.
-- Privacy Policy already mentions AdMob/ATT for when that is enabled.
+- **Play:** one 300×250 box at the top of the pick list. Tap **X** and it
+  stays gone until they spawn another from Profile (or relaunch).
+- **Tourney:** the same card under the header. **X** hides it for that visit.
+- **Dashboard / Friends / Profile:** no ads.
+- No interstitials, no full-screen ads, no 4% roll, no bottom strip.
 
 ---
 
@@ -58,11 +23,11 @@ Payouts (W-9, LLC bank) are still required before Google will fully approve the 
 
 | File | Role |
 |------|------|
-| `Services/JuicdAdsConfig.swift` | Test vs production IDs |
-| `Services/JuicdMobileAds.swift` | SDK start + npa request |
-| `Views/JuicdBannerAdView.swift` | SwiftUI banner wrapper |
-| `Services/JuicdAdsDev.swift` | Policy + fake creatives |
-| `Views/JuicdNativeAdPlaceholder.swift` | Spawn-preview card |
-| `Views/PlayView.swift` | Feed insertion |
-| `Views/ProfileView.swift` | Toggle |
-| `Juicd/Info.plist` | App ID + banner unit |
+| `Views/JuicdBannerAdView.swift` | `JuicdSponsoredBannerCard` (300×250 + X) |
+| `Views/JuicdNativeAdPlaceholder.swift` | Option A mock (launch-arg only) |
+| `Services/JuicdAdsConfig.swift` | IDs + default `.cardBanner` |
+| `Services/JuicdAdsDev.swift` | Toggle helper |
+| `Views/PlayView.swift` | In-feed insertion |
+| `Views/TourneyView.swift` | Card under header |
+| `Views/ProfileView.swift` | Show ads + spawn previews |
+| `Juicd/Info.plist` | AdMob App ID + banner unit |

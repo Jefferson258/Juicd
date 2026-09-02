@@ -39,8 +39,9 @@ private struct LoggedInTabShell: View {
     @StateObject private var profileVM: ProfileViewModel
 
     @AppStorage("juicd_tutorial_completed") private var tutorialCompleted = false
+    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @State private var showTutorial = false
-    @State private var selectedTab = 0
+    @State private var selectedTab = Self.launchSelectedTab()
 
     init(repository: InMemoryJuicdRepository, userId: UUID, onDeleteAccount: @escaping () async throws -> Void) {
         self.repository = repository
@@ -74,6 +75,12 @@ private struct LoggedInTabShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            if adsEnabled
+                && JuicdAdsConfig.presentation == .bottomBanner
+                && (selectedTab == 0 || selectedTab == 2) {
+                JuicdAnchoredBannerSlot()
+            }
+
             JuicdCustomTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -106,6 +113,18 @@ private struct LoggedInTabShell: View {
         tourneyVM.configure(userId: userId)
         friendsVM.configure(userId: userId)
         profileVM.configure(userId: userId)
+    }
+
+    private static func launchSelectedTab() -> Int {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-juicd-tab"), i + 1 < args.count else { return 0 }
+        switch args[i + 1].lowercased() {
+        case "dashboard": return 1
+        case "tourney": return 2
+        case "friends": return 3
+        case "profile": return 4
+        default: return 0
+        }
     }
 }
 

@@ -8,7 +8,7 @@ struct ProfileView: View {
     @AppStorage("juicd_notify_daily_updates") private var notifyDailyUpdates = false
     @AppStorage("juicd_notify_tournament_updates") private var notifyTournamentUpdates = false
     @AppStorage("juicd_notify_seasonal_updates") private var notifySeasonalUpdates = false
-    @AppStorage("juicd_ads_enabled") private var adsEnabled = false
+    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
     @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
@@ -27,6 +27,13 @@ struct ProfileView: View {
 
     private var season: CareerBettingStats { viewModel.seasonStats ?? .zero }
     private var career: CareerBettingStats { viewModel.careerStats ?? .zero }
+
+    private var adsEnabledCopy: String {
+        if JuicdAdsConfig.loadsGoogleTestCreatives {
+            return "Dismissible 300×250 AdMob box on Play and Tourney (Sponsored card with an X). Sticky banners are off. Spawn buttons below force the slot on Play."
+        }
+        return "One dismissible 300×250 ad on Play and Tourney. Tap X to hide it. Dashboard, Friends, and Profile stay ad-free."
+    }
 
     var body: some View {
         ScrollView {
@@ -225,7 +232,7 @@ struct ProfileView: View {
 
                             Divider().overlay(JuicdTheme.strokeSubtle)
 
-                            Toggle("Show ads on Play tab", isOn: $adsEnabled)
+                            Toggle("Show ads", isOn: $adsEnabled)
                                 .font(.system(size: 14, weight: .semibold))
                                 .tint(JuicdTheme.brand)
                                 .onChange(of: adsEnabled) { _, on in
@@ -234,9 +241,7 @@ struct ProfileView: View {
                                         forceRevision += 1
                                     }
                                 }
-                            Text(JuicdAdsConfig.usesTestAds
-                                 ? "Uses Google test banners until production AdMob IDs are in Info.plist. Spawn buttons below still show fake placeholder creatives."
-                                 : "Loads AdMob banners in the Play feed. Off by default.")
+                            Text(adsEnabledCopy)
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .fixedSize(horizontal: false, vertical: true)

@@ -69,6 +69,16 @@ final class AuthViewModel: ObservableObject {
     // MARK: - Private
 
     private func restoreIfPossible() async {
+        if ProcessInfo.processInfo.arguments.contains("-juicd-dev-signin") {
+            let demoId = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+            if ProcessInfo.processInfo.arguments.contains("-seedDemoData"),
+               let seeded = repository.profile(userId: demoId) {
+                profile = seeded
+                return
+            }
+            await signInOnline(displayName: "Player", method: "dev_launch_arg")
+            return
+        }
         guard SupabaseConfig.isConfigured else { return }
         guard let session = await SupabaseAuthService.restoreSession() else { return }
         await finishWithSession(session, displayName: nil)

@@ -163,15 +163,14 @@ Profile toggles are local until you wire a backend.
 
 ## 8. In-app ads (Google Mobile Ads or other)
 
-The app ships with **Google Mobile Ads** banners on the **Play** tab (toggle under **Profile → Prototype tools**). See **[ADS.md](ADS.md)**.
+The app ships with a dismissible **300×250 AdMob** box (Option B) on **Play** and **Tourney**. No bottom strip. Toggle under **Profile → Prototype tools**. See **[ADS.md](ADS.md)**.
 
-Until production IDs are pasted into `Juicd/Info.plist`, the SDK uses Google **test** units. To go live:
+Simulator / DEBUG loads Google **Test Ad** creatives. Release on device uses the plist unit:
 
-1. Create the iOS app + a **banner** ad unit in [AdMob](https://admob.google.com/) (bundle `com.jefferson258.juicd`).
-2. Paste **App ID** → `GADApplicationIdentifier` and **banner unit** → `JUICD_ADMOB_BANNER_UNIT_ID`.
-3. Confirm test banners still load, then a device smoke with production units.
-4. App Store Connect: advertising yes; tracking no while requests stay non-personalized (no ATT yet).
-5. LLC bank + AdMob payments are for **payouts**, not for showing ads.
+1. Production App ID + banner unit are already in `Juicd/Info.plist`.
+2. Confirm Test Ad banners in Simulator, then a device smoke with production units (Release).
+3. App Store Connect: advertising yes; tracking no while requests stay non-personalized (no ATT yet).
+4. LLC bank + AdMob payments are for **payouts**, not for showing ads.
 
 **Note:** Many ad networks restrict **real-money gambling** creatives; sports media / generic brand ads are easier to fill. Get legal/compliance review for your jurisdictions.
 
@@ -252,7 +251,7 @@ Quality rules:
 | No odds at all | If Supabase isn’t set up, set **`ODDS_API_KEY`** in target Info for client fallback, or complete §3 |
 | Live mode not working | Verify `juicd_runtime_config.odds_mode='live'` and Edge secret `ODDS_API_KEY` is set |
 | Build errors after clone | Open `.xcodeproj`, clean build folder (⇧⌘K), rebuild |
-| Ads don’t appear | Toggle **Show dev ad placeholders** on Profile; change sport/filter to rebuild feed; wait **cooldown** (see [ADS.md](ADS.md)) |
+| Ads don’t appear | Profile → Prototype tools → **Show ads**. Simulator should show a Google “Test Ad” 300×250 box in the Sponsored card. Release on device uses live fill (may be empty until AdMob payments). |
 
 ---
 

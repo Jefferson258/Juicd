@@ -3,16 +3,16 @@ import SwiftUI
 struct PlayView: View {
     @ObservedObject var viewModel: PlayViewModel
 
-    @AppStorage("juicd_ads_enabled") private var adsEnabled = false
+    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
     @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
     /// When set, inserts at most one ad at `insertIndex` (0...n) among ribbons.
     @State private var adInsertion: AdInsertion?
 
-    /// After user taps dismiss on the ad, no new random ad until ribbons change (spawn still works).
+    /// After user taps dismiss on the ad, no new ad until they spawn one from Profile.
     @State private var adDismissedForCurrentRibbonFeed = false
-    @State private var previousRibbonSig = ""
+    @State private var sessionCreativeId = JuicdDevAdCreative.all[0].id
     @State private var showPlayTips = false
     @FocusState private var searchFieldFocused: Bool
 
@@ -65,19 +65,8 @@ struct PlayView: View {
                             case .ribbon(let ribbon):
                                 ribbonBlock(ribbon)
                                     .id(ribbon.id)
-                            case .adMob(let rowId):
-                                JuicdBannerAdView {
-                                    JuicdAdsDev.recordImpression()
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 50)
-                                .id(rowId)
                             case .placeholder(let creative, let rowId):
-                                JuicdNativeAdPlaceholder(creative: creative) {
-                                    JuicdAdsDev.recordImpression()
-                                } onDismiss: {
-                                    dismissCurrentAd()
-                                }
+                                JuicdInFeedAdSlot(creative: creative, onDismiss: dismissCurrentAd)
                                 .id(rowId)
                             }
                         }
@@ -634,25 +623,23 @@ struct PlayView: View {
     // MARK: - Ad placement (Play feed)
 
     private enum AdInsertion {
-        case admob(insertIndex: Int)
         case placeholder(JuicdDevAdCreative, insertIndex: Int)
 
         var insertIndex: Int {
             switch self {
-            case .admob(let i), .placeholder(_, let i): return i
+            case .placeholder(_, let i): return i
             }
         }
     }
 
     private enum PlayFeedRow: Identifiable {
         case ribbon(PlayPropRibbon)
-        case adMob(rowId: String)
         case placeholder(JuicdDevAdCreative, rowId: String)
 
         var id: String {
             switch self {
             case .ribbon(let r): return r.id
-            case .adMob(let rowId), .placeholder(_, let rowId): return rowId
+            case .placeholder(_, let rowId): return rowId
             }
         }
     }
@@ -665,8 +652,6 @@ struct PlayView: View {
         var rows: [PlayFeedRow] = []
         func appendAd() {
             switch insertion {
-            case .admob:
-                rows.append(.adMob(rowId: "ad-admob-\(index)"))
             case .placeholder(let creative, _):
                 rows.append(.placeholder(creative, rowId: "ad-\(creative.id)-\(index)"))
             }
@@ -700,18 +685,17 @@ struct PlayView: View {
             adInsertion = nil
             return
         }
-        guard adsEnabled else {
+        guard JuicdAdsDev.shouldShowAd(adsEnabled: adsEnabled) else {
             adInsertion = nil
             return
         }
-        if JuicdAdsConfig.usesTestAds {
-            adInsertion = .admob(insertIndex: Int.random(in: 0...ribbonCount))
-            return
-        }
-        guard JuicdAdsDev.shouldShowAd(adsEnabled: true) else {
+        if JuicdAdsConfig.presentation == .bottomBanner {
             adInsertion = nil
             return
         }
-        adInsertion = .admob(insertIndex: Int.random(in: 0...ribbonCount))
+        let creative = JuicdDevAdCreative.all.first(where: { $0.id == sessionCreativeId })
+            ?? JuicdDevAdCreative.all[0]
+        // First row of the pick list so the card is on-screen and easy to dismiss.
+        adInsertion = .placeholder(creative, insertIndex: 0)
     }
 }

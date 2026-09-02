@@ -7,6 +7,13 @@ struct JuicdApp: App {
 
     init() {
         JuicdMobileAds.start()
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-juicd-ads-on") {
+            UserDefaults.standard.set(true, forKey: JuicdAdsConfig.enabledStorageKey)
+        }
+        if args.contains("-juicd-ads-off") {
+            UserDefaults.standard.set(false, forKey: JuicdAdsConfig.enabledStorageKey)
+        }
         // Opaque bar, no blur/material — avoids “liquid glass” if any system tab UI appears.
         // Main chrome uses a SwiftUI custom bar (see RootView) like Corvim.
         let tab = UITabBarAppearance()
