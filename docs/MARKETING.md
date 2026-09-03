@@ -21,9 +21,9 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
   is on TestFlight and privacy labels are set.
 - The website download link now uses App Store Connect app ID `6785327494`;
   incomplete screenshot slots and no support link remain.
-- Social handles are not recorded. `MarketingPilot/scripts/marketing-draft` now
-  creates a draft packet and deterministic preflight; social publishing remains
-  owner-gated.
+- Social: Instagram `@juicdsports` is live (Professional; FB Page Juicd Sports
+  linked). TikTok/X not created. `MarketingPilot/scripts/marketing-draft`
+  remains the draft default; live posting only with explicit owner OK.
 
 ---
 
@@ -35,7 +35,7 @@ MarketingPilot (`~/Desktop/MarketingPilot`) (README + PIPELINE).
 | Screenshots | QA + ASC framed | Confirm parlay shot exists before final ASC push |
 | Marketing site | Builds; hero + legal note in first viewport | Contest rules page required |
 | App Store URL in site | **Wired** `id6785327494` | Verify the public listing URL after approval |
-| Instagram / TikTok / X | **Not created** | Owner — see Social |
+| Instagram | `@juicdsports` live | TikTok/X not created — see MarketingPilot SOCIAL_SETUP |
 | In-app ads | Option B 300×250 + X on Play/Tourney | Not brand social |
 | Paid acquisition | Not started | Owner only |
 
@@ -65,8 +65,8 @@ Suggested handles:
 
 | Channel | Handle target | Why |
 |---------|---------------|-----|
-| Instagram | `@juicd` / `@juicdapp` | Slip builds + tourney energy |
-| TikTok | same | Fast "build a parlay" screen recordings |
+| Instagram | `@juicdsports` (**live**) | Slip builds + tourney energy |
+| TikTok | `@juicdsports` / `@juicd` | Fast "build a parlay" screen recordings |
 | X | same | Sports-day chatter + launch |
 
 ### Bio template
