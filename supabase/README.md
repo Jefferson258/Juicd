@@ -69,13 +69,14 @@ Migrations **seed** `odds_mode = simulated` and `outcome_mode = simulated`
 |---|---|---|
 | `odds_mode` | `live` | since 2026-06-29; Edge secret `ODDS_API_KEY` is set |
 | `outcome_mode` | `simulated` | do not flip without owner + counsel |
-| `odds_board_ttl_seconds` | `1800` | |
+| `odds_board_ttl_seconds` | `86400` | once per UTC day; live config, not a code change |
 
 Same-day snapshot `slate_key=2026-08-30` had `source=odds_api` and a Live API
 moneyline ribbon (real NBA matchup) plus the usual simulated filler ribbons.
 Public copy may say a shared sports-data line exists; do **not** claim
 sportsbook / real-money odds. Do **not** call `play-board?force=1` casually —
-that burns Odds API quota.
+that burns Odds API quota. Check remaining credits with
+`GET …/functions/v1/play-board?quota=1` (uses `/v4/sports`, **0** credits).
 
 ## Staging integrity harness
 

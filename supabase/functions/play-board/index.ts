@@ -106,6 +106,26 @@ const LIVE_SPORT_CANDIDATES: Array<{ sport: string; leagueTag: string; label: st
   { sport: "americanfootball_nfl", leagueTag: "NFL", label: "NFL" },
 ];
 
+/** Skip paid /odds calls when the free-tier cushion is gone. */
+const ODDS_MIN_REMAINING = 40;
+/** Hard cap: at most one billed /odds call per board refresh. */
+const ODDS_MAX_BILLED_CALLS_PER_REFRESH = 1;
+
+async function oddsQuota(apiKey: string): Promise<{ remaining: number | null; used: number | null }> {
+  // GET /v4/sports does not count against the usage quota.
+  const resp = await fetch(
+    `https://api.the-odds-api.com/v4/sports/?apiKey=${encodeURIComponent(apiKey)}`,
+  );
+  const remainingRaw = resp.headers.get("x-requests-remaining");
+  const usedRaw = resp.headers.get("x-requests-used");
+  const remaining = remainingRaw != null ? Number.parseInt(remainingRaw, 10) : null;
+  const used = usedRaw != null ? Number.parseInt(usedRaw, 10) : null;
+  return {
+    remaining: Number.isFinite(remaining) ? remaining : null,
+    used: Number.isFinite(used) ? used : null,
+  };
+}
+
 async function fetchSportEvents(
   apiKey: string,
   sport: string,
@@ -124,14 +144,23 @@ async function fetchSportEvents(
 }
 
 async function liveBoardFromOddsApi(apiKey: string, slateKey: string): Promise<Ribbon[]> {
+  const quota = await oddsQuota(apiKey);
+  if (quota.remaining != null && quota.remaining < ODDS_MIN_REMAINING) {
+    return simulatedBoard(slateKey);
+  }
+
+  let billedCalls = 0;
   for (const candidate of LIVE_SPORT_CANDIDATES) {
+    if (billedCalls >= ODDS_MAX_BILLED_CALLS_PER_REFRESH) break;
     const events = await fetchSportEvents(apiKey, candidate.sport);
     if (!events || events.length === 0) continue;
+    // Non-empty /odds response costs 1 credit (1 region × 1 h2h market).
+    billedCalls += 1;
 
     const e = events[0];
     const outcome = e?.bookmakers?.[0]?.markets?.find((m: any) => m.key === "h2h")
       ?.outcomes?.[0];
-    if (!outcome?.name || !outcome?.price) continue;
+    if (!outcome?.name || !outcome?.price) break;
 
     const liveRibbon: Ribbon = {
       id: "live_api",
@@ -226,6 +255,30 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
+  const quota = url.searchParams.get("quota") === "1" ||
+    url.searchParams.get("quota") === "true";
+  if (quota) {
+    // GET /v4/sports does not count against the usage quota.
+    if (!oddsApiKey) {
+      return new Response(JSON.stringify({ error: "missing_odds_api_key" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const sportsResp = await fetch(
+      `https://api.the-odds-api.com/v4/sports/?apiKey=${encodeURIComponent(oddsApiKey)}`,
+    );
+    return new Response(JSON.stringify({
+      used: sportsResp.headers.get("x-requests-used"),
+      remaining: sportsResp.headers.get("x-requests-remaining"),
+      last: sportsResp.headers.get("x-requests-last"),
+      httpStatus: sportsResp.status,
+      countsAgainstQuota: false,
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const force = url.searchParams.get("force") === "1" ||
     url.searchParams.get("force") === "true";
   if (force && bearerToken(req) !== serviceRole) {

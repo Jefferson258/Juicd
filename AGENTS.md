@@ -59,11 +59,13 @@ settlement changes need owner + counsel sign-off before shipping.
   `staging_authoritative_settlement=on` on a disposable project. Never apply
   that SQL or env var to `hwyxtklbffqwcbtuetit`.
 - **Odds board cache (Jul 26):** `play-board` reads `juicd_play_board_snapshots`
-  first. Fresh within `odds_board_ttl_seconds` (default **1800**) → no Odds API.
+  first. Fresh within `odds_board_ttl_seconds` (currently **86400**, once per
+  UTC day) → no Odds API.
   Stampede lock via `refresh_started_at`. Client soft-cache **180s** + in-flight
   dedupe; Sync bypasses client cache only (Edge TTL still applies).
 - **Runtime:** `odds_mode=live` (Odds API + Edge snapshot cache); `outcome_mode`
-  still **simulated**. Cache TTL default **1800s** mitigates quota burn. Do not
+  still **simulated**. Cache TTL is **86400s** (raise later via the same
+  config if we go paid). Do not
   flip `outcome_mode` to live without owner + counsel OK. Re-pause risk: free
   Supabase projects go inactive — restore via Management API `/restore` if needed.
 - All migrations are **idempotent** (verified rerunnable). Keep them additive.
