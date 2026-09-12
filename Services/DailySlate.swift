@@ -1,38 +1,84 @@
 import Foundation
 
-/// Betting **slate** = local calendar day that starts at **6:00** (not midnight). Before 6am, you’re still on the previous day’s slate.
-/// Same slate key + deterministic seeds ⇒ same props/odds for every player without a database (prototype).
+/// Juicd day = America/Chicago, rolling at **4:00am CT**.
+/// A 1:00am CT Aug 28 tip belongs to the **Aug 27** slate.
 enum SlateDay {
-    /// Anchor midnight for the slate’s **label date** (local TZ).
-    static func anchorDate(for date: Date = .now) -> Date {
-        let cal = Calendar.current
-        let sod = cal.startOfDay(for: date)
-        let six = cal.date(byAdding: .hour, value: 6, to: sod)!
-        if date >= six {
-            return sod
-        }
-        return cal.date(byAdding: .day, value: -1, to: sod)!
+    static let chicagoTimeZone = TimeZone(identifier: "America/Chicago")!
+
+    private static var chicagoCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = chicagoTimeZone
+        return cal
     }
 
-    /// `yyyy-MM-dd` in **local** time for the current slate (6am boundary).
     static func slateKey(for date: Date = .now) -> String {
-        let df = DateFormatter()
-        df.calendar = Calendar.current
-        df.timeZone = Calendar.current.timeZone
-        df.dateFormat = "yyyy-MM-dd"
-        return df.string(from: anchorDate(for: date))
+        let cal = chicagoCalendar
+        var comps = cal.dateComponents([.year, .month, .day, .hour], from: date)
+        if (comps.hour ?? 0) < 4, let y = comps.year, let m = comps.month, let d = comps.day,
+           let dayStart = cal.date(from: DateComponents(year: y, month: m, day: d)),
+           let prev = cal.date(byAdding: .day, value: -1, to: dayStart) {
+            comps = cal.dateComponents([.year, .month, .day], from: prev)
+        }
+        let y = comps.year ?? 1970
+        let m = comps.month ?? 1
+        let d = comps.day ?? 1
+        return String(format: "%04d-%02d-%02d", y, m, d)
     }
 
-    /// The slate that **ended** when the current one began (used to resolve ranked play).
     static func previousSlateKey(from date: Date = .now) -> String {
-        let cal = Calendar.current
-        let anchor = anchorDate(for: date)
-        let prev = cal.date(byAdding: .day, value: -1, to: anchor)!
-        let df = DateFormatter()
-        df.calendar = cal
-        df.timeZone = cal.timeZone
-        df.dateFormat = "yyyy-MM-dd"
-        return df.string(from: prev)
+        let cal = chicagoCalendar
+        let key = slateKey(for: date)
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let start = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
+              let prev = cal.date(byAdding: .day, value: -1, to: start) else {
+            return key
+        }
+        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: prev) ?? prev)
+    }
+
+    /// Thursday CT slate of the current NFL week (Thu–Wed).
+    static func nflWeekKey(for date: Date = .now) -> String {
+        let cal = chicagoCalendar
+        let key = slateKey(for: date)
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let day = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)) else {
+            return key
+        }
+        let weekday = cal.component(.weekday, from: day) // 1 Sun … 5 Thu … 7 Sat
+        let offset: Int = {
+            switch weekday {
+            case 5: return 0
+            case 6: return 1
+            case 7: return 2
+            case 1: return 3
+            case 2: return 4
+            case 3: return 5
+            default: return 6
+            }
+        }()
+        guard let thu = cal.date(byAdding: .day, value: -offset, to: day) else { return key }
+        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: thu) ?? thu)
+    }
+}
+
+enum GameCountdown {
+    static func remaining(until commence: Date, now: Date = .now) -> TimeInterval {
+        max(0, commence.timeIntervalSince(now))
+    }
+
+    static func label(until commence: Date, now: Date = .now) -> String {
+        let s = Int(remaining(until: commence, now: now).rounded(.down))
+        if s <= 0 { return "Started" }
+        let h = s / 3600
+        let m = (s % 3600) / 60
+        if h >= 24 {
+            let d = h / 24
+            return "\(d)d \(h % 24)h"
+        }
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s % 60) }
+        return String(format: "%d:%02d", m, s % 60)
     }
 }
 
@@ -59,9 +105,22 @@ enum StableUUID {
     }
 }
 
-/// Builds the Play board for a slate so all users see the **same** props and prices (IDs stable per slate).
+/// Fallback Play board when Supabase is down. Only future CT tips; empty sports omitted.
 enum DailySlateBoard {
-    static func ribbons(forSlateKey slateKey: String, sport: PlaySportPill) -> [PlayPropRibbon] {
+    static func ribbons(forSlateKey slateKey: String, sport: PlaySportPill, now: Date = .now) -> [PlayPropRibbon] {
+        let cal = SlateDay.chicagoTimeZone
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = cal
+        let parts = slateKey.split(separator: "-").compactMap { Int($0) }
+        let evening: Date = {
+            if parts.count == 3,
+               let day = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 19, minute: 10)) {
+                return day
+            }
+            return now.addingTimeInterval(6 * 3600)
+        }()
+        let later = evening.addingTimeInterval(3 * 3600)
+
         let base: [PlayPropRibbon]
         switch sport {
         case .forYou:
@@ -70,14 +129,148 @@ enum DailySlateBoard {
             guard let r = PlayBoardStubData.sportRibbon(for: sport) else { return [] }
             base = [r]
         }
-        return base.map { ribbon in
+        let allowed: Set<String> = ["NFL", "NBA", "NHL", "MLB"]
+        return base.compactMap { ribbon in
             var r = ribbon
-            r.props = ribbon.props.enumerated().map { idx, p in
+            r.props = ribbon.props.enumerated().compactMap { idx, p in
+                guard allowed.contains(p.leagueTag.uppercased()) else { return nil }
                 var q = p
                 q.id = StableUUID.from("\(slateKey)|\(ribbon.id)|\(idx)|\(p.pickLabel)")
-                return q
+                q.commenceTime = idx.isMultiple(of: 2) ? evening : later
+                q.eventId = "stub-\(ribbon.id)-\(idx / 2)"
+                q.sportKey = sportKey(for: q.leagueTag)
+                if q.pointLine == nil {
+                    let digits = q.lineText.filter { $0.isNumber || $0 == "." }
+                    q.pointLine = Double(digits)
+                }
+                return q.commenceTime.map { $0 > now } == true ? q : nil
             }
-            return r
+            return r.props.isEmpty ? nil : r
         }
+    }
+
+    private static func sportKey(for tag: String) -> String {
+        switch tag.uppercased() {
+        case "NFL": return "americanfootball_nfl"
+        case "NBA": return "basketball_nba"
+        case "NHL": return "icehockey_nhl"
+        case "MLB": return "baseball_mlb"
+        default: return ""
+        }
+    }
+}
+
+enum TourneySlateBuilder {
+    private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static func daily(from props: [PlayPropBet], slateKey: String) -> RemoteTourneyPayload? {
+        payload(kind: "daily", periodKey: slateKey, title: "Daily closest-pick", props: props, preferSameEvent: true)
+    }
+
+    static func weekly(from props: [PlayPropBet], weekKey: String) -> RemoteTourneyPayload? {
+        payload(kind: "weekly", periodKey: weekKey, title: "Weekly closest-pick", props: props, preferSameEvent: false)
+    }
+
+    private static func payload(
+        kind: String,
+        periodKey: String,
+        title: String,
+        props: [PlayPropBet],
+        preferSameEvent: Bool
+    ) -> RemoteTourneyPayload? {
+        let overs = props.filter {
+            $0.pickLabel == "Over" && $0.eventId != nil && $0.commenceTime != nil && numericLine(from: $0) != nil
+        }
+        var byEvent: [String: [PlayPropBet]] = [:]
+        for p in overs {
+            guard let id = p.eventId else { continue }
+            byEvent[id, default: []].append(p)
+        }
+        var chosen: [PlayPropBet] = []
+        if preferSameEvent, let best = byEvent.values.max(by: { $0.count < $1.count }) {
+            chosen = Array(best.prefix(4))
+        }
+        if chosen.count < 4 {
+            let ordered = byEvent.values.sorted { ($0.first?.commenceTime ?? .distantFuture) < ($1.first?.commenceTime ?? .distantFuture) }
+            for list in ordered {
+                guard let first = list.first, !chosen.contains(where: { $0.eventId == first.eventId }) else { continue }
+                chosen.append(first)
+                if chosen.count >= 4 { break }
+            }
+        }
+        if chosen.count < 4 {
+            for p in overs where !chosen.contains(where: { $0.id == p.id }) {
+                chosen.append(p)
+                if chosen.count >= 4 { break }
+            }
+        }
+        var rounds = chosen.compactMap { roundFromOver($0) }
+        if rounds.count < 4 {
+            var seen = Set(rounds.map(\.eventId))
+            for p in props where (p.propDescription.lowercased().contains("moneyline") || p.propDescription.lowercased().contains("h2h")) {
+                guard let id = p.eventId, let commence = p.commenceTime, !seen.contains(id) else { continue }
+                seen.insert(id)
+                rounds.append(
+                    RemoteTourneyRound(
+                        round: rounds.count + 1,
+                        propLabel: "\(p.matchup) — combined score",
+                        statSummary: "Closest to the final combined score (both teams). Enter a number — no suggested line.",
+                        line: nil,
+                        eventId: id,
+                        matchup: p.matchup,
+                        player: "Combined score",
+                        commenceTime: iso.string(from: commence),
+                        sportKey: p.sportKey ?? ""
+                    )
+                )
+                if rounds.count >= 4 { break }
+            }
+        }
+        guard rounds.count >= 2, let first = rounds.first else { return nil }
+        let numbered = rounds.prefix(4).enumerated().map { i, r in
+            var copy = r
+            copy.round = i + 1
+            return copy
+        }
+        let same = numbered.allSatisfy { $0.matchup == numbered[0].matchup }
+        return RemoteTourneyPayload(
+            kind: kind,
+            periodKey: periodKey,
+            title: title,
+            gameLabel: same ? numbered[0].matchup : "\(numbered.count) games",
+            commenceTime: first.commenceTime,
+            freezeAt: freezeISO(from: first.commenceTime),
+            roundSpecs: numbered
+        )
+    }
+
+    private static func roundFromOver(_ p: PlayPropBet) -> RemoteTourneyRound? {
+        guard let line = numericLine(from: p), let id = p.eventId, let commence = p.commenceTime else { return nil }
+        return RemoteTourneyRound(
+            round: 1,
+            propLabel: "\(p.athleteOrTeam) — \(p.propDescription)",
+            statSummary: "Closest to actual \(p.propDescription.lowercased()) (\(p.matchup)). Line \(p.lineText).",
+            line: line,
+            eventId: id,
+            matchup: p.matchup,
+            player: p.athleteOrTeam,
+            commenceTime: iso.string(from: commence),
+            sportKey: p.sportKey ?? ""
+        )
+    }
+
+    private static func numericLine(from p: PlayPropBet) -> Double? {
+        if let line = p.pointLine { return line }
+        let digits = p.lineText.filter { $0.isNumber || $0 == "." }
+        return Double(digits)
+    }
+
+    private static func freezeISO(from commenceISO: String) -> String {
+        guard let commence = ISO8601DateFormatter().date(from: commenceISO) else { return commenceISO }
+        return iso.string(from: commence.addingTimeInterval(-3600))
     }
 }

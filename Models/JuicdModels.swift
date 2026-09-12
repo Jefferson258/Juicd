@@ -145,13 +145,15 @@ struct DailyMatchSnapshot: Codable, Equatable {
 struct PlayBoardEntry: Codable, Identifiable, Equatable {
     var id: UUID
     var userId: UUID
-    /// Local slate key (`yyyy-MM-dd`, 6am boundary) — same as `SlateDay.slateKey`.
+    /// Local slate key (`yyyy-MM-dd`, 4am CT boundary) — same as `SlateDay.slateKey`.
     var slateDayKey: String
     var createdAt: Date
     var stakePoints: Int
     var legSummaries: [String]
     var combinedOdds: Double
     var didWin: Bool
+    var pending: Bool
+    var commenceAt: Date?
     /// Points earned toward season score from this slip.
     var seasonPointsEarned: Int
     /// Resolved per-leg outcomes for this slip (Play parlay legs only).
@@ -159,8 +161,8 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
     var playLegLosses: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, userId, slateDayKey, createdAt, stakePoints, legSummaries, combinedOdds, didWin, seasonPointsEarned
-        case playLegWins, playLegLosses
+        case id, userId, slateDayKey, createdAt, stakePoints, legSummaries, combinedOdds, didWin, pending, commenceAt
+        case seasonPointsEarned, playLegWins, playLegLosses
     }
 
     init(
@@ -174,7 +176,9 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         didWin: Bool,
         seasonPointsEarned: Int,
         playLegWins: Int,
-        playLegLosses: Int
+        playLegLosses: Int,
+        pending: Bool = false,
+        commenceAt: Date? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -184,6 +188,8 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         self.legSummaries = legSummaries
         self.combinedOdds = combinedOdds
         self.didWin = didWin
+        self.pending = pending
+        self.commenceAt = commenceAt
         self.seasonPointsEarned = seasonPointsEarned
         self.playLegWins = playLegWins
         self.playLegLosses = playLegLosses
@@ -199,6 +205,8 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         legSummaries = try c.decode([String].self, forKey: .legSummaries)
         combinedOdds = try c.decode(Double.self, forKey: .combinedOdds)
         didWin = try c.decode(Bool.self, forKey: .didWin)
+        pending = try c.decodeIfPresent(Bool.self, forKey: .pending) ?? false
+        commenceAt = try c.decodeIfPresent(Date.self, forKey: .commenceAt)
         seasonPointsEarned = try c.decode(Int.self, forKey: .seasonPointsEarned)
         if let plw = try c.decodeIfPresent(Int.self, forKey: .playLegWins),
            let pll = try c.decodeIfPresent(Int.self, forKey: .playLegLosses) {
@@ -229,6 +237,8 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         try c.encode(legSummaries, forKey: .legSummaries)
         try c.encode(combinedOdds, forKey: .combinedOdds)
         try c.encode(didWin, forKey: .didWin)
+        try c.encode(pending, forKey: .pending)
+        try c.encodeIfPresent(commenceAt, forKey: .commenceAt)
         try c.encode(seasonPointsEarned, forKey: .seasonPointsEarned)
         try c.encode(playLegWins, forKey: .playLegWins)
         try c.encode(playLegLosses, forKey: .playLegLosses)
@@ -438,6 +448,164 @@ struct DailyClosestPickResult: Equatable {
     var wonTournament: Bool
 }
 
+struct RemoteTourneyRound: Codable, Equatable, Identifiable {
+    var round: Int
+    var propLabel: String
+    var statSummary: String
+    var line: Double?
+    var eventId: String
+    var matchup: String
+    var player: String
+    var commenceTime: String
+    var sportKey: String
+    var id: Int { round }
+
+    var commenceDate: Date? { ISO8601DateFormatter().date(from: commenceTime) }
+}
+
+struct RemoteTourneyPayload: Codable, Equatable {
+    var kind: String
+    var periodKey: String
+    var title: String
+    var gameLabel: String
+    var commenceTime: String
+    var freezeAt: String
+    var roundSpecs: [RemoteTourneyRound]
+
+    var commenceDate: Date? { ISO8601DateFormatter().date(from: commenceTime) }
+    var freezeDate: Date? { ISO8601DateFormatter().date(from: freezeAt) }
+
+    /// Cached Edge slates from before the no-demo generator. Real Over 44.5 props are not this.
+    var containsBannedPlaceholder: Bool {
+        let blob = (gameLabel + roundSpecs.map(\.matchup).joined()).uppercased()
+        if blob.contains("HOU @ SEA") { return true }
+        return roundSpecs.contains { spec in
+            let text = "\(spec.propLabel) \(spec.statSummary) \(spec.player)".lowercased()
+            return text.contains("combined score") && spec.line != nil
+        }
+    }
+}
+
+struct TourneyGenerationDiag: Codable, Equatable {
+    var kind: String
+    var ok: Bool
+    var fallback: String
+    var detail: String
+}
+
+struct TourneyDiagnostics: Codable, Equatable {
+    var daily: TourneyGenerationDiag?
+    var weekly: TourneyGenerationDiag?
+}
+
+struct BracketEntrant: Identifiable, Equatable {
+    var id: String
+    var displayName: String
+    var isBot: Bool
+    var slot: Int
+    var picks: [Double]
+    var eliminatedRound: Int?
+}
+
+enum TourneyClosestGrading {
+    /// Pair adjacent slots; closer pick to the round actual advances. Ties go to the lower slot.
+    static func apply(entrants: [BracketEntrant], actuals: [Double?]) -> [BracketEntrant] {
+        var elim: [String: Int] = [:]
+        var alive = entrants.sorted { $0.slot < $1.slot }
+        for (roundIndex, actualOpt) in actuals.enumerated() {
+            guard let actual = actualOpt else { break }
+            var next: [BracketEntrant] = []
+            var i = 0
+            while i < alive.count {
+                let a = alive[i]
+                if i + 1 >= alive.count {
+                    next.append(a)
+                    break
+                }
+                let b = alive[i + 1]
+                let da = abs((a.picks.indices.contains(roundIndex) ? a.picks[roundIndex] : 0) - actual)
+                let db = abs((b.picks.indices.contains(roundIndex) ? b.picks[roundIndex] : 0) - actual)
+                if da < db || (da == db && a.slot < b.slot) {
+                    next.append(a)
+                    elim[b.id] = roundIndex + 1
+                } else {
+                    next.append(b)
+                    elim[a.id] = roundIndex + 1
+                }
+                i += 2
+            }
+            alive = next
+        }
+        return entrants.map { row in
+            var copy = row
+            copy.eliminatedRound = elim[row.id]
+            return copy
+        }
+    }
+}
+
+enum TourneyBracketTree {
+    struct Match: Identifiable, Equatable {
+        var round: Int
+        var index: Int
+        var top: BracketEntrant?
+        var bottom: BracketEntrant?
+        var winner: BracketEntrant?
+        var id: String { "\(round)-\(index)" }
+    }
+
+    static func rounds(
+        entrants: [BracketEntrant],
+        actuals: [Double?]?,
+        revealed: Int
+    ) -> [[Match]] {
+        let sorted = entrants.sorted { $0.slot < $1.slot }
+        var alive: [BracketEntrant?] = sorted.map { Optional($0) }
+        while alive.count < 16 { alive.append(nil) }
+        if alive.count > 16 { alive = Array(alive.prefix(16)) }
+
+        var columns: [[Match]] = []
+        for round in 1...4 {
+            var matches: [Match] = []
+            var next: [BracketEntrant?] = []
+            var i = 0
+            var matchIndex = 0
+            while i < alive.count {
+                let top = alive[i]
+                let bottom = i + 1 < alive.count ? alive[i + 1] : nil
+                let winner = winnerOf(top: top, bottom: bottom, round: round, actuals: actuals, revealed: revealed)
+                matches.append(Match(round: round, index: matchIndex, top: top, bottom: bottom, winner: winner))
+                next.append(winner)
+                i += 2
+                matchIndex += 1
+            }
+            columns.append(matches)
+            alive = next
+        }
+        return columns
+    }
+
+    private static func winnerOf(
+        top: BracketEntrant?,
+        bottom: BracketEntrant?,
+        round: Int,
+        actuals: [Double?]?,
+        revealed: Int
+    ) -> BracketEntrant? {
+        guard revealed >= round,
+              let actuals,
+              actuals.indices.contains(round - 1),
+              let actual = actuals[round - 1]
+        else { return nil }
+        guard let top, let bottom, !top.picks.isEmpty, !bottom.picks.isEmpty else { return nil }
+        let ri = round - 1
+        let da = abs((top.picks.indices.contains(ri) ? top.picks[ri] : 0) - actual)
+        let db = abs((bottom.picks.indices.contains(ri) ? bottom.picks[ri] : 0) - actual)
+        if da < db || (da == db && top.slot < bottom.slot) { return top }
+        return bottom
+    }
+}
+
 enum RankTier: String, Codable, CaseIterable, Comparable {
     case bronze
     case silver
@@ -563,9 +731,20 @@ struct PlayPropBet: Identifiable, Equatable {
     var oddsDecimal: Double
     /// When set (e.g. `1.5`), displayed decimal odds use `oddsDecimal * juicdMultiplier` for the nightly Juicd boost.
     var juicdMultiplier: Double?
+    var commenceTime: Date?
+    var eventId: String?
+    var sportKey: String?
+    var homeTeam: String?
+    var awayTeam: String?
+    var pointLine: Double?
 
     var juicdEffectiveDecimalOdds: Double {
         oddsDecimal * (juicdMultiplier ?? 1)
+    }
+
+    var hasStarted: Bool {
+        guard let commenceTime else { return false }
+        return commenceTime <= .now
     }
 
     init(
@@ -577,7 +756,13 @@ struct PlayPropBet: Identifiable, Equatable {
         lineText: String,
         pickLabel: String,
         oddsDecimal: Double,
-        juicdMultiplier: Double? = nil
+        juicdMultiplier: Double? = nil,
+        commenceTime: Date? = nil,
+        eventId: String? = nil,
+        sportKey: String? = nil,
+        homeTeam: String? = nil,
+        awayTeam: String? = nil,
+        pointLine: Double? = nil
     ) {
         self.id = id
         self.leagueTag = leagueTag
@@ -588,6 +773,12 @@ struct PlayPropBet: Identifiable, Equatable {
         self.pickLabel = pickLabel
         self.oddsDecimal = oddsDecimal
         self.juicdMultiplier = juicdMultiplier
+        self.commenceTime = commenceTime
+        self.eventId = eventId
+        self.sportKey = sportKey
+        self.homeTeam = homeTeam
+        self.awayTeam = awayTeam
+        self.pointLine = pointLine
     }
 
     /// Snapshot for ledger resolution (one leg per pick).
@@ -597,7 +788,16 @@ struct PlayPropBet: Identifiable, Equatable {
             marketId: id,
             choiceId: id,
             choiceLabel: "\(pickLabel) · \(athleteOrTeam) · \(lineText)",
-            oddsDecimalAtSubmit: juicdEffectiveDecimalOdds
+            oddsDecimalAtSubmit: juicdEffectiveDecimalOdds,
+            commenceTime: commenceTime,
+            eventId: eventId,
+            sportKey: sportKey,
+            athleteOrTeam: athleteOrTeam,
+            propDescription: propDescription,
+            pickLabel: pickLabel,
+            pointLine: pointLine,
+            homeTeam: homeTeam,
+            awayTeam: awayTeam
         )
     }
 }
@@ -615,6 +815,15 @@ struct BetLeg: Codable, Identifiable, Hashable {
     var choiceId: UUID
     var choiceLabel: String
     var oddsDecimalAtSubmit: Double
+    var commenceTime: Date? = nil
+    var eventId: String? = nil
+    var sportKey: String? = nil
+    var athleteOrTeam: String? = nil
+    var propDescription: String? = nil
+    var pickLabel: String? = nil
+    var pointLine: Double? = nil
+    var homeTeam: String? = nil
+    var awayTeam: String? = nil
 }
 
 /// Result of a Play-tab single or parlay bet (separate from daily quarter tournament).
@@ -622,6 +831,7 @@ struct PlayParlayOutcome: Equatable {
     var didWin: Bool
     /// Points earned toward season score (not wallet balance).
     var seasonPointsEarned: Int
+    var pending: Bool = false
 }
 
 enum BetSlipStatus: String, Codable {

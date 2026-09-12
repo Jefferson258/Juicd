@@ -117,7 +117,9 @@ final class JuicdCoreRulesTests: XCTestCase {
             forcedLegOutcomesByLegId: [leg().id: true]
         )
 
-        XCTAssertEqual(outcome, PlayParlayOutcome(didWin: true, seasonPointsEarned: 25))
+        XCTAssertEqual(outcome?.didWin, true)
+        XCTAssertEqual(outcome?.pending, false)
+        XCTAssertEqual(outcome?.seasonPointsEarned, 25)
         XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 125)
         XCTAssertEqual(repo.state.ledger.map(\.deltaPoints), [-25, 50])
         XCTAssertEqual(repo.careerBettingStats(userId: userId).totalPointsStaked, 25)
@@ -212,5 +214,154 @@ final class JuicdCoreRulesTests: XCTestCase {
         XCTAssertEqual(repo.state.groups.count, 1)
         XCTAssertEqual(repo.state.groups.first?.id, group.id)
         XCTAssertFalse(repo.clearUserData(userId: userId))
+    }
+
+    func testSlateTreatsPre4amCentralAsPriorDay() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let oneAM = cal.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 1, minute: 0))!
+        let fourAM = cal.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 4, minute: 0))!
+        XCTAssertEqual(SlateDay.slateKey(for: oneAM), "2026-08-27")
+        XCTAssertEqual(SlateDay.slateKey(for: fourAM), "2026-08-28")
+    }
+
+    func testPlayParlayStaysPendingWithoutForcedOutcomes() {
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        let start = Date().addingTimeInterval(3600)
+        var pendingLeg = leg()
+        pendingLeg.commenceTime = start
+        let outcome = repo.submitPlayParlay(
+            userId: userId,
+            stakePoints: 10,
+            legs: [pendingLeg],
+            date: Date(timeIntervalSince1970: 1_000_000)
+        )
+        XCTAssertEqual(outcome?.pending, true)
+        XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 90)
+        XCTAssertEqual(repo.state.playBoardEntries?.first?.pending, true)
+        XCTAssertEqual(repo.careerBettingStats(userId: userId).playWins, 0)
+    }
+
+    func testSameKickoffParlayRule() {
+        let a = PlayPropBet(
+            id: UUID(), leagueTag: "MLB", athleteOrTeam: "A", matchup: "A @ B",
+            propDescription: "Moneyline", lineText: "H2H", pickLabel: "A",
+            oddsDecimal: 1.9, commenceTime: Date(timeIntervalSince1970: 1000), eventId: "e1"
+        )
+        let b = PlayPropBet(
+            id: UUID(), leagueTag: "MLB", athleteOrTeam: "C", matchup: "C @ D",
+            propDescription: "Moneyline", lineText: "H2H", pickLabel: "C",
+            oddsDecimal: 2.1, commenceTime: Date(timeIntervalSince1970: 8000), eventId: "e2"
+        )
+        let same = PlayPropBet(
+            id: UUID(), leagueTag: "MLB", athleteOrTeam: "B", matchup: "A @ B",
+            propDescription: "Moneyline", lineText: "H2H", pickLabel: "B",
+            oddsDecimal: 2.0, commenceTime: Date(timeIntervalSince1970: 1000), eventId: "e1"
+        )
+        XCTAssertFalse(PlayViewModel.sameKickoff(a, b))
+        XCTAssertTrue(PlayViewModel.sameKickoff(a, same))
+    }
+
+    func testClosestNumberPairingEliminatesFartherPick() {
+        let a = BracketEntrant(id: "a", displayName: "A", isBot: false, slot: 0, picks: [10], eliminatedRound: nil)
+        let b = BracketEntrant(id: "b", displayName: "B", isBot: true, slot: 1, picks: [20], eliminatedRound: nil)
+        let graded = TourneyClosestGrading.apply(entrants: [a, b], actuals: [11])
+        XCTAssertNil(graded.first { $0.id == "a" }?.eliminatedRound)
+        XCTAssertEqual(graded.first { $0.id == "b" }?.eliminatedRound, 1)
+    }
+
+    func testPopularPillTitle() {
+        XCTAssertEqual(PlaySportPill.forYou.displayTitle, "Popular")
+    }
+
+    func testTourneySlateBuilderUsesRealLinesNotDemoNames() {
+        let start = Date().addingTimeInterval(8 * 3600)
+        let props = (0..<4).map { i in
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "NBA",
+                athleteOrTeam: "Player \(i)",
+                matchup: "DEN @ MIN",
+                propDescription: "Points",
+                lineText: "24.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.9,
+                commenceTime: start,
+                eventId: "evt-1",
+                sportKey: "basketball_nba",
+                pointLine: 24.5
+            )
+        }
+        let daily = TourneySlateBuilder.daily(from: props, slateKey: "2026-09-11")
+        XCTAssertEqual(daily?.roundSpecs.count, 4)
+        XCTAssertEqual(daily?.gameLabel, "DEN @ MIN")
+        XCTAssertFalse(daily?.gameLabel.contains("HOU") == true)
+        XCTAssertEqual(daily?.roundSpecs.first?.line, 24.5)
+    }
+
+    func testBracketTreeShowsR16ThroughFinal() {
+        let people = (0..<16).map { i in
+            BracketEntrant(
+                id: "p\(i)",
+                displayName: "P\(i)",
+                isBot: i > 0,
+                slot: i,
+                picks: [10, 10, 10, 10],
+                eliminatedRound: nil
+            )
+        }
+        let columns = TourneyBracketTree.rounds(entrants: people, actuals: [10, 10, 10, 10], revealed: 4)
+        XCTAssertEqual(columns.map(\.count), [8, 4, 2, 1])
+        XCTAssertEqual(columns[0][0].top?.id, "p0")
+        XCTAssertEqual(columns[0][0].bottom?.id, "p1")
+        XCTAssertEqual(columns[3][0].winner?.id, "p0")
+    }
+
+    func testRejectsCachedCombinedScorePlaceholderLine() {
+        let commence = "2026-09-12T00:00:00Z"
+        let bad = RemoteTourneyPayload(
+            kind: "weekly",
+            periodKey: "2026-09-11",
+            title: "Weekly",
+            gameLabel: "NFL",
+            commenceTime: commence,
+            freezeAt: commence,
+            roundSpecs: [
+                RemoteTourneyRound(
+                    round: 1,
+                    propLabel: "KC @ BUF — combined score",
+                    statSummary: "Closest to combined score",
+                    line: 44.5,
+                    eventId: "e1",
+                    matchup: "KC @ BUF",
+                    player: "Combined score",
+                    commenceTime: commence,
+                    sportKey: "americanfootball_nfl"
+                )
+            ]
+        )
+        XCTAssertTrue(bad.containsBannedPlaceholder)
+
+        let combinedNoLine = RemoteTourneyRound(
+            round: 1,
+            propLabel: "KC @ BUF — combined score",
+            statSummary: "Enter a number — no suggested line.",
+            line: nil,
+            eventId: "e1",
+            matchup: "KC @ BUF",
+            player: "Combined score",
+            commenceTime: commence,
+            sportKey: "americanfootball_nfl"
+        )
+        let ok = RemoteTourneyPayload(
+            kind: "weekly",
+            periodKey: "2026-09-11",
+            title: "Weekly",
+            gameLabel: "KC @ BUF",
+            commenceTime: commence,
+            freezeAt: commence,
+            roundSpecs: [combinedNoLine]
+        )
+        XCTAssertFalse(ok.containsBannedPlaceholder)
     }
 }

@@ -18,7 +18,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
 
     var displayTitle: String {
         switch self {
-        case .forYou: return "For You"
+        case .forYou: return "Popular"
         case .nba: return "NBA"
         case .nfl: return "NFL"
         case .mlb: return "MLB"
@@ -47,7 +47,12 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case "popular_wsoc", "womens_soccer": return .womensSoccer
         case "popular_soccer", "soccer": return .soccer
         case "live_api": return nil
-        default: return nil
+        default:
+            if ribbonId.hasPrefix("live_nfl") || ribbonId.hasPrefix("live_props_nfl") { return .nfl }
+            if ribbonId.hasPrefix("live_nba") || ribbonId.hasPrefix("live_props_nba") { return .nba }
+            if ribbonId.hasPrefix("live_mlb") || ribbonId.hasPrefix("live_props_mlb") { return .mlb }
+            if ribbonId.hasPrefix("live_nhl") || ribbonId.hasPrefix("live_props_nhl") { return .nhl }
+            return nil
         }
     }
 

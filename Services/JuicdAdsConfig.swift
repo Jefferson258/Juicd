@@ -50,7 +50,7 @@ enum JuicdAdsConfig {
         loadsGoogleTestCreatives ? testBannerUnitID : bannerUnitID
     }
 
-    /// Locked layout: dismissible 300×250 AdMob box in the sponsored card (Option B).
+    /// Locked layout: dismissible 320×100 AdMob large banner in the sponsored card.
     /// Launch with `-juicd-ad-style native|card|bottom` only to compare.
     enum Presentation: String {
         case nativeCard = "native"

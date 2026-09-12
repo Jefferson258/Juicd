@@ -30,10 +30,20 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 11** on TestFlight (Profile “Report an issue” + Option B ads).
-- Ads: **Option B with X** — dismissible 300×250 AdMob box in the sponsored
-  card on Play and Tourney. Sticky banners off. Simulator/DEBUG uses Google
-  test creatives; store builds use the plist unit. Toggle default **on**.
+- Currently **build 13** on TestFlight (compact Play header, **Popular** pill,
+  R16→Final tourney tree, no demo/placeholder tourney slates). Client discards
+  cached Edge tourneys that still carry a combined-score **line** (the old 44.5)
+  and rebuilds from live props. Owner phone (`tjk1002@aol.com`) is on the
+  **Internal Testers** group — post-upload must add new builds there, not only
+  the external “Beta Testers” public-link group.
+- **Tourney slates:** never fall back to local demo names or a canned line
+  (no HOU @ SEA demo, no 44.5). `play-board` builds daily/weekly from real
+  overs, then other sports, then combined-score with **no suggested line**.
+  Failures insert `juicd_app_errors` (`screen=tourney`, `platform=edge`) plus
+  client `AppErrorLogger`. Query those rows if a day has no tourney.
+- Ads: **Option B with X** — dismissible **320×100** AdMob large banner in the
+  sponsored card on Play and Tourney. Sticky banners off. Simulator/DEBUG uses
+  Google test creatives; store builds use the plist unit. Toggle default **on**.
   Payouts still need the LLC bank + AdMob payments.
 - Build/upload: see TestFlight section in `LAUNCH_OUT_OF_CODE.md`.
 
@@ -52,21 +62,29 @@ settlement changes need owner + counsel sign-off before shipping.
   `juicd_career_betting_stats`.
 - **RPCs (4):** `juicd_record_prop_action`, `juicd_join_group_by_code`,
   `juicd_my_group_ids`, `juicd_handle_new_user` (auto-creates a profile row).
-- **Edge functions:** `play-board`, `resolve-play-slip` (deployed).
-  Staging-only atomic settlement lives in
+- **Edge functions (deployed):** `play-board`, `resolve-play-slip`,
+  `settle-play-slips`, `tourney-bracket`. Staging-only atomic settlement lives in
   `supabase/staging/AUTHORITATIVE_SETTLEMENT.sql` and is off unless
   `JUICD_AUTHORITATIVE_SETTLEMENT=1` **and**
   `staging_authoritative_settlement=on` on a disposable project. Never apply
   that SQL or env var to `hwyxtklbffqwcbtuetit`.
-- **Odds board cache (Jul 26):** `play-board` reads `juicd_play_board_snapshots`
-  first. Fresh within `odds_board_ttl_seconds` (currently **86400**, once per
-  UTC day) → no Odds API.
+- **Play board (Sep 11 2026):** Juicd day = **4:00am America/Chicago**.
+  `play-board` freshness is the CT `slate_key` (not UTC midnight). Sports are
+  NFL/NBA/NHL/MLB only, max **16 Odds credits/day**, started games dropped.
+  First GET of a new slate can spend those credits — **do not casual `?force=1`**.
+  Client Play slips stay **pending** until `settle-play-slips` grades a final
+  (moneylines + ESPN boxscore player props / closest-number actuals).
+  Closest-pick tourney entries persist on `juicd_tournament_entries` via
+  `tourney-bracket`. `resolve-play-slip` is the old RNG path — Play no longer
+  calls it for live slips.
+- **Odds board cache:** `play-board` reads `juicd_play_board_snapshots`
+  first. Fresh within the current CT slate → no Odds API.
   Stampede lock via `refresh_started_at`. Client soft-cache **180s** + in-flight
-  dedupe; Sync bypasses client cache only (Edge TTL still applies).
-- **Runtime:** `odds_mode=live` (Odds API + Edge snapshot cache); `outcome_mode`
-  still **simulated**. Cache TTL is **86400s** (raise later via the same
-  config if we go paid). Do not
-  flip `outcome_mode` to live without owner + counsel OK. Re-pause risk: free
+  dedupe; Sync bypasses client cache only (Edge slate TTL still applies).
+- **Runtime:** `odds_mode=live` (Odds API + Edge snapshot cache). Owner signed
+  off on pending-until-final Play slips; ESPN moneyline grading is live via
+  `settle-play-slips`. Do not flip a separate `outcome_mode=live` config or
+  spend Odds credits without an explicit ask. Re-pause risk: free
   Supabase projects go inactive — restore via Management API `/restore` if needed.
 - All migrations are **idempotent** (verified rerunnable). Keep them additive.
   See `supabase/README.md`. **Do not** run destructive SQL on
@@ -94,8 +112,8 @@ applied 2026-09-02) plus an info breadcrumb on `juicd_app_errors` with
    (`outcome_mode` separately, with care). This is a behavior change — confirm
    with the owner before flipping.
 
-**Status 2026-08-30:** steps 1–4 for `odds_mode` are already done in production.
-Leave `outcome_mode=simulated`. Do not re-flip or force-refresh the board
+**Status 2026-09-11:** `odds_mode=live`. Play slips grade via ESPN
+`settle-play-slips` (no extra Odds credits). Do not `?force=1` the board
 without an explicit ask (Odds API quota).
 
 ## What's been done

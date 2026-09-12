@@ -13,6 +13,9 @@ final class PlayViewModel: ObservableObject {
 
     /// Full board after slate + boosts (before sport / stat / search filters).
     @Published private(set) var ribbons: [PlayPropRibbon] = []
+    @Published private(set) var dailyTourney: RemoteTourneyPayload?
+    @Published private(set) var weeklyTourney: RemoteTourneyPayload?
+    @Published var countdownNow: Date = .now
 
     /// When true, `ribbons` came from Supabase and must not be replaced by local stub rebuilds when switching sport filters.
     private var boardUsesRemoteFeed = false
@@ -71,21 +74,28 @@ final class PlayViewModel: ObservableObject {
         repository.estimatedNetPointsPayout(stakePoints: stakePoints, parlayOddsDecimal: impliedParlayDecimal)
     }
 
-    /// Ribbons with props filtered for UI (search / stat / sport).
+    /// Ribbons with props filtered for UI (search / stat / sport). Started games are dropped.
     var displayedRibbons: [PlayPropRibbon] {
         ribbons.compactMap { ribbon in
             var r = ribbon
-            r.props = ribbon.props.filter { propMatchesFilters($0) }
+            r.props = ribbon.props.filter { prop in
+                !prop.hasStarted && propMatchesFilters(prop)
+            }
             if r.props.isEmpty { return nil }
             return r
         }
+    }
+
+    var pendingSlips: [PlayBoardEntry] {
+        guard let userId else { return [] }
+        return repository.playBoardEntriesOnSlate(userId: userId).filter(\.pending)
     }
 
     var hasActiveSearch: Bool {
         sportPill != .forYou && !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Sport filter pills that currently have at least one priced prop on the board (always includes **For You**).
+    /// Sport filter pills that currently have at least one priced prop on the board (always includes **Popular**).
     var sportPillsWithOdds: [PlaySportPill] {
         Self.sportPillsMatchingLeagues(on: propsUnionForSportToolbar())
     }
@@ -115,7 +125,38 @@ final class PlayViewModel: ObservableObject {
         _ = repository.awardDailyPointsIfNeeded(userId: userId, date: .now)
         profile = repository.profile(userId: userId)
         rebuildRibbons()
-        Task { await refreshLiveOddsLine(bypassClientCache: false) }
+        Task {
+            await refreshLiveOddsLine(bypassClientCache: false)
+            await settlePendingSlips()
+        }
+    }
+
+    /// Ask the Edge grader to resolve pending Play slips once games are final.
+    func settlePendingSlips() async {
+        guard let userId, SupabaseConfig.isConfigured else { return }
+        let slips = repository.playBoardEntriesOnSlate(userId: userId).filter(\.pending)
+        for slip in slips {
+            guard let legs = repository.pendingLegs(for: slip.id), !legs.isEmpty else { continue }
+            guard let outcomes = await SupabaseOddsService.settlePlaySlips(userId: userId, legs: legs) else {
+                continue
+            }
+            var resolved: [(UUID, Bool)] = []
+            var stillPending = false
+            for leg in legs {
+                guard let row = outcomes.first(where: { $0.legId.lowercased() == leg.id.uuidString.lowercased() }) else {
+                    stillPending = true
+                    break
+                }
+                if row.status == "pending" || row.didWin == nil {
+                    stillPending = true
+                    break
+                }
+                resolved.append((leg.id, row.didWin ?? false))
+            }
+            guard !stillPending, resolved.count == legs.count else { continue }
+            _ = repository.resolvePendingPlaySlip(userId: userId, slipId: slip.id, resolved: resolved)
+        }
+        profile = repository.profile(userId: userId)
     }
 
     /// - Parameter bypassClientCache: when true (manual Sync), skip the 3‑minute client
@@ -153,6 +194,27 @@ final class PlayViewModel: ObservableObject {
                     return "fresh"
                 }()
                 oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source) · \(cacheTag)"
+                dailyTourney = serverBoard.dailyTourney
+                weeklyTourney = serverBoard.weeklyTourney
+                if dailyTourney?.containsBannedPlaceholder == true {
+                    AppErrorLogger.log(
+                        severity: .warning,
+                        message: "Discarded cached daily tourney placeholder; rebuilding from live props.",
+                        screen: "tourney",
+                        extra: ["kind": .string("daily"), "fallback": .string("cached_placeholder")]
+                    )
+                    dailyTourney = nil
+                }
+                if weeklyTourney?.containsBannedPlaceholder == true {
+                    AppErrorLogger.log(
+                        severity: .warning,
+                        message: "Discarded cached weekly tourney placeholder; rebuilding from live props.",
+                        screen: "tourney",
+                        extra: ["kind": .string("weekly"), "fallback": .string("cached_placeholder")]
+                    )
+                    weeklyTourney = nil
+                }
+                logTourneyDiagnostics(serverBoard.tourneyDiagnostics)
                 let mapped = serverBoard.ribbons.map { ribbon in
                     PlayPropRibbon(
                         id: ribbon.id,
@@ -163,6 +225,8 @@ final class PlayViewModel: ObservableObject {
                             let fallbackId = StableUUID.from(
                                 "\(serverBoard.slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
                             )
+                            let commence = Self.parseISO(dto.commenceTime)
+                            if let commence, commence <= .now { return nil }
                             return PlayPropBet(
                                 id: UUID(uuidString: dto.id) ?? fallbackId,
                                 leagueTag: dto.leagueTag,
@@ -171,12 +235,40 @@ final class PlayViewModel: ObservableObject {
                                 propDescription: dto.propDescription,
                                 lineText: dto.lineText,
                                 pickLabel: dto.pickLabel,
-                                oddsDecimal: dto.oddsDecimal
+                                oddsDecimal: dto.oddsDecimal,
+                                commenceTime: commence,
+                                eventId: dto.eventId,
+                                sportKey: dto.sportKey,
+                                homeTeam: dto.homeTeam,
+                                awayTeam: dto.awayTeam,
+                                pointLine: dto.pointLine
                             )
                         }
                     )
                 }
                 let trimmed = Self.ribbonsDroppingEmpty(mapped)
+                let boardProps = trimmed.flatMap(\.props)
+                if dailyTourney == nil {
+                    dailyTourney = TourneySlateBuilder.daily(from: boardProps, slateKey: serverBoard.slateKey)
+                }
+                if weeklyTourney == nil {
+                    weeklyTourney = TourneySlateBuilder.weekly(from: boardProps, weekKey: SlateDay.nflWeekKey())
+                }
+                logClientTourneyBuildFailure(
+                    kind: "daily",
+                    payload: dailyTourney,
+                    propCount: boardProps.count,
+                    source: "play_board"
+                )
+                logClientTourneyBuildFailure(
+                    kind: "weekly",
+                    payload: weeklyTourney,
+                    propCount: boardProps.count,
+                    source: "play_board"
+                )
+                repository.lastDailyTourney = dailyTourney
+                repository.lastWeeklyTourney = weeklyTourney
+                repository.objectWillChange.send()
                 if trimmed.isEmpty {
                     boardUsesRemoteFeed = false
                     oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
@@ -192,6 +284,8 @@ final class PlayViewModel: ObservableObject {
             }
             guard generation == oddsRefreshGeneration else { return }
             AnalyticsService.logOddsSync(ok: false, source: "supabase_fetch")
+            logClientTourneyBuildFailure(kind: "daily", payload: dailyTourney, propCount: 0, source: "play_board_fetch_failed")
+            logClientTourneyBuildFailure(kind: "weekly", payload: weeklyTourney, propCount: 0, source: "play_board_fetch_failed")
         }
 
         guard generation == oddsRefreshGeneration else { return }
@@ -202,6 +296,8 @@ final class PlayViewModel: ObservableObject {
             liveLine = nil
             rebuildRibbons()
             clampSportPillToAvailableOdds()
+            logClientTourneyBuildFailure(kind: "daily", payload: dailyTourney, propCount: 0, source: "odds_unconfigured_refused_demo")
+            logClientTourneyBuildFailure(kind: "weekly", payload: weeklyTourney, propCount: 0, source: "odds_unconfigured_refused_demo")
             return
         }
 
@@ -242,6 +338,41 @@ final class PlayViewModel: ObservableObject {
             board = [liveRibbon] + board
         }
         ribbons = Self.ribbonsDroppingEmpty(JuicdOddsNightly.applyBoosts(to: board, slateKey: slateKey))
+        // Never mint a daily/weekly tourney from the local demo board.
+    }
+
+    private func logTourneyDiagnostics(_ diags: TourneyDiagnostics?) {
+        for diag in [diags?.daily, diags?.weekly].compactMap({ $0 }) where !diag.ok {
+            AppErrorLogger.log(
+                severity: .error,
+                message: diag.detail,
+                screen: "tourney",
+                extra: [
+                    "kind": .string(diag.kind),
+                    "fallback": .string(diag.fallback),
+                ]
+            )
+        }
+    }
+
+    private func logClientTourneyBuildFailure(
+        kind: String,
+        payload: RemoteTourneyPayload?,
+        propCount: Int,
+        source: String
+    ) {
+        guard payload == nil else { return }
+        AppErrorLogger.log(
+            severity: .error,
+            message: "Could not generate \(kind) tourney from \(propCount) live props (source=\(source); local demo refused).",
+            screen: "tourney",
+            extra: [
+                "kind": .string(kind),
+                "fallback": .string("none"),
+                "source": .string(source),
+                "prop_count": .int(propCount),
+            ]
+        )
     }
 
     /// Props across the full cross-sport inventory (stub + optional live line), or the remote board when active.
@@ -341,7 +472,22 @@ final class PlayViewModel: ObservableObject {
     }
 
     func handlePropTap(_ prop: PlayPropBet) {
+        if prop.hasStarted {
+            builderToast = "That game already started."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
+                self?.builderToast = nil
+            }
+            return
+        }
         if pickingAdditionalLeg {
+            if let first = parlayLegs.first, !Self.sameKickoff(first, prop) {
+                builderToast = "Parlay legs must share the same start time."
+                pickingAdditionalLeg = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
+                    self?.builderToast = nil
+                }
+                return
+            }
             addParlayLeg(prop)
             pickingAdditionalLeg = false
             showParlayBuilder = true
@@ -354,6 +500,21 @@ final class PlayViewModel: ObservableObject {
         parlayLegs = [prop]
         clampStakeToBalance()
         showParlayBuilder = true
+    }
+
+    static func sameKickoff(_ a: PlayPropBet, _ b: PlayPropBet) -> Bool {
+        if let ae = a.eventId, let be = b.eventId, !ae.isEmpty, ae == be { return true }
+        guard let at = a.commenceTime, let bt = b.commenceTime else { return false }
+        return abs(at.timeIntervalSince(bt)) < 60
+    }
+
+    private static func parseISO(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: raw) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: raw)
     }
 
     func addParlayLeg(_ prop: PlayPropBet) {
@@ -400,29 +561,18 @@ final class PlayViewModel: ObservableObject {
         guard stakePoints >= 1, stakePoints <= maxStakePoints else { return }
 
         let legs = parlayLegs.map { $0.asBetLeg() }
-        let serverOutcomeMap: [UUID: Bool]? = await {
-            guard SupabaseConfig.isConfigured else { return nil }
-            guard let remote = await SupabaseOddsService.resolvePlaySlip(userId: userId, legs: legs) else { return nil }
-            return SupabaseOddsService.validatedOutcomeMap(remote, for: legs)
-        }()
-
-        // Once a backend is configured, a local RNG must not settle a
-        // user-facing slip. This fail-closed path keeps the server response
-        // authoritative until durable server-side balance/ledger settlement
-        // is approved and implemented.
-        if SupabaseConfig.isConfigured && serverOutcomeMap == nil {
-            builderToast = "Settlement service unavailable — try again."
-            AppErrorLogger.log(
-                severity: .error,
-                message: "authoritative settlement unavailable",
-                screen: "play",
-                extra: ["leg_count": .int(legs.count)]
-            )
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                self?.builderToast = nil
-            }
-            clampStakeToBalance()
+        if parlayLegs.contains(where: \.hasStarted) {
+            builderToast = "A selected game already started."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }
             return
+        }
+        if parlayLegs.count > 1 {
+            let first = parlayLegs[0]
+            if parlayLegs.dropFirst().contains(where: { !Self.sameKickoff(first, $0) }) {
+                builderToast = "Parlay legs must share the same start time."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }
+                return
+            }
         }
 
         let legCount = legs.count
@@ -430,20 +580,20 @@ final class PlayViewModel: ObservableObject {
         if let outcome = repository.submitPlayParlay(
             userId: userId,
             stakePoints: stakePoints,
-            legs: legs,
-            forcedLegOutcomesByLegId: serverOutcomeMap
+            legs: legs
         ) {
             profile = repository.profile(userId: userId)
             AnalyticsService.logSlipSubmitted(legCount: legCount, stakePoints: stake)
-            AnalyticsService.logSlipResolved(won: outcome.didWin, legCount: legCount)
-            if outcome.didWin {
+            if outcome.pending {
+                builderToast = "Locked in — pending until the game ends."
+            } else if outcome.didWin {
                 builderToast = "Hit! +\(outcome.seasonPointsEarned) season pts"
             } else {
                 builderToast = "Parlay didn’t hit — try another."
             }
             parlayLegs = []
             showParlayBuilder = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
                 self?.builderToast = nil
             }
         } else {

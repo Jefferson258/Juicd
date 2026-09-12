@@ -22,30 +22,27 @@ struct PlayView: View {
         NavigationStack {
             ZStack(alignment: .top) {
             ScrollView {
-                SectionColumn(spacing: 24) {
+                SectionColumn(spacing: 14) {
                     JuicdTabScreenAccent()
-                    BrandHeader(
-                        title: "Play",
-                        subtitle: "Picks, slips, and bets.",
-                        centered: true,
-                        kicker: "Today’s board"
-                    )
-                    HStack(spacing: 10) {
-                        compactTopIcon(systemName: "sportscourt.fill")
-                        compactTopIcon(systemName: "bolt.fill")
-                        compactTopIcon(systemName: "ticket.fill")
+                    HStack(alignment: .center, spacing: 10) {
+                        Text("Play")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                        Spacer(minLength: 8)
+                        if let profile = viewModel.profile {
+                            compactBalanceChip(points: profile.availableDailyPoints)
+                        }
                         Button {
                             showPlayTips = true
                         } label: {
                             Image(systemName: "info.circle.fill")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 15, weight: .bold))
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(JuicdTheme.brand)
                     }
 
-                    if let profile = viewModel.profile {
-                        bankrollHero(points: profile.availableDailyPoints)
+                    if !viewModel.pendingSlips.isEmpty {
+                        pendingSlipsCard
                     }
 
                     sportFilterPills
@@ -54,8 +51,6 @@ struct PlayView: View {
                         statFilterPills
                         searchBar
                     }
-
-                    oddsToolbar
 
                     if viewModel.displayedRibbons.isEmpty {
                         playEmptyState
@@ -73,7 +68,7 @@ struct PlayView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 18)
+                .padding(.vertical, 10)
                 .padding(.bottom, 8)
             }
             // New identity when sport/stat filters change so scroll offset resets to the top (no stale position from the last league).
@@ -97,6 +92,7 @@ struct PlayView: View {
             }
         .task {
             await viewModel.refreshLiveOddsLine()
+            await viewModel.settlePendingSlips()
         }
         .onAppear {
             viewModel.refreshProfile()
@@ -139,7 +135,7 @@ struct PlayView: View {
                             .font(.title2.bold())
                             .foregroundStyle(JuicdTheme.textPrimary)
 
-                        tipRow(icon: "sparkles", text: "For You aggregates ribbons that actually have priced props; league pills filter to one sport and unlock stat/search chips.")
+                        tipRow(icon: "sparkles", text: "Popular aggregates ribbons that actually have priced props; league pills filter to one sport and unlock stat/search chips.")
                         tipRow(icon: "sportscourt.fill", text: "Tap any tile to build a slip — singles start there; Add leg stacks up to a small parlay with multiplied decimal odds.")
                         tipRow(icon: "bolt.fill", text: "Stake comes from your daily balance (prototype tops out at 100 per slate). You can spend part or all of it on one slip.")
                         tipRow(icon: "star.circle.fill", text: "Juicd boost tiles multiply decimal odds on that pick — great upside if you love the price.")
@@ -163,18 +159,6 @@ struct PlayView: View {
         .juicdKeyboardDoneButton { searchFieldFocused = false }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
-    }
-
-    private func compactTopIcon(systemName: String) -> some View {
-        ZStack {
-            Circle()
-                .fill(JuicdTheme.brand.opacity(0.2))
-                .overlay(Circle().stroke(JuicdTheme.brand.opacity(0.55), lineWidth: 1))
-            Image(systemName: systemName)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .frame(width: 32, height: 32)
     }
 
     private func tipRow(icon: String, text: String) -> some View {
@@ -292,16 +276,16 @@ struct PlayView: View {
 
     private var playEmptyState: some View {
         VStack(spacing: 18) {
-            Image(systemName: "line.3.horizontal.decrease.circle")
+            Image(systemName: "moon.zzz.fill")
                 .font(.system(size: 44, weight: .medium))
                 .foregroundStyle(JuicdTheme.textTertiary)
-            Text("No picks found")
+            Text("No games left today")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(JuicdTheme.textPrimary)
             Text(
                 viewModel.hasActiveSearch
                     ? "Try a different search or clear it."
-                    : "Try another filter or sync again."
+                    : "Today’s Juicd board only lists games that haven’t started yet. Check back after 4am CT."
             )
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(JuicdTheme.textSecondary)
@@ -318,6 +302,40 @@ struct PlayView: View {
                         .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
                 )
         )
+    }
+
+    private var pendingSlipsCard: some View {
+        Card(title: "Pending slips", systemImage: "clock.badge.checkmark", style: .hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(viewModel.pendingSlips) { slip in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(slip.legSummaries.joined(separator: " + "))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(JuicdTheme.textPrimary)
+                            .lineLimit(2)
+                        HStack {
+                            Text("\(slip.stakePoints) pts · \(String(format: "%.2f", slip.combinedOdds))")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(JuicdTheme.brand)
+                            Spacer()
+                            if let commence = slip.commenceAt {
+                                TimelineView(.periodic(from: .now, by: 1)) { context in
+                                    Text(GameCountdown.label(until: commence, now: context.date))
+                                        .font(.caption.weight(.heavy))
+                                        .foregroundStyle(JuicdTheme.textSecondary)
+                                }
+                            } else {
+                                Text("Pending")
+                                    .font(.caption.weight(.heavy))
+                                    .foregroundStyle(JuicdTheme.textSecondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.45)))
+                }
+            }
+        }
     }
 
     private var addLegBanner: some View {
@@ -347,112 +365,26 @@ struct PlayView: View {
         .padding(.top, 8)
     }
 
-    private var oddsToolbar: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(statusDotColor)
-                    .frame(width: 8, height: 8)
-                Text(viewModel.oddsStatus)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(JuicdTheme.textSecondary)
-                    .lineLimit(2)
-            }
-            .padding(.leading, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button {
-                Task { await viewModel.refreshLiveOddsLine(bypassClientCache: true) }
-            } label: {
-                HStack(spacing: 6) {
-                    if viewModel.isLoadingOdds {
-                        ProgressView()
-                            .scaleEffect(0.85)
-                            .tint(JuicdTheme.brand)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .bold))
-                    }
-                    Text("Sync")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                }
+    private func compactBalanceChip(points: Int) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(JuicdTheme.brand)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(JuicdTheme.brand.opacity(0.12))
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(JuicdTheme.brand.opacity(0.35), lineWidth: 1)
-                        )
-                )
-            }
-            .disabled(viewModel.isLoadingOdds)
-            .buttonStyle(.plain)
+            Text("\(points) pts")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(JuicdTheme.card.opacity(0.65))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
-                )
-        )
-    }
-
-    private var statusDotColor: Color {
-        if viewModel.isLoadingOdds { return JuicdTheme.brand }
-        if viewModel.liveLine != nil { return Color(red: 0.3, green: 0.95, blue: 0.55) }
-        return JuicdTheme.textTertiary
-    }
-
-    private func bankrollHero(points: Int) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [JuicdTheme.brand.opacity(0.5), JuicdTheme.brand2.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 42, height: 42)
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Balance")
-                    .font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textTertiary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(points)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textPrimary)
-                    Text("pts")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            Capsule(style: .continuous)
                 .fill(JuicdTheme.card)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    Capsule(style: .continuous)
                         .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
                 }
-                .shadow(color: Color.black.opacity(0.35), radius: 16, y: 8)
         }
+        .accessibilityLabel("Balance \(points) points")
     }
 
     private func ribbonBlock(_ ribbon: PlayPropRibbon) -> some View {
@@ -540,6 +472,15 @@ struct PlayView: View {
                     .foregroundStyle(JuicdTheme.textTertiary)
                     .lineLimit(1)
                     .padding(.top, 4)
+
+                if let commence = prop.commenceTime {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text("Starts in \(GameCountdown.label(until: commence, now: context.date))")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(JuicdTheme.brand)
+                            .padding(.top, 4)
+                    }
+                }
 
                 Text(prop.propDescription)
                     .font(.system(size: 12, weight: .medium))

@@ -7,8 +7,8 @@ enum JuicdBannerPlacement {
     case inlineFeed
     /// Full-width strip above the tab bar.
     case anchoredBottom
-    /// 300×250 box (MREC) for the in-feed sponsored card.
-    case mediumRectangle
+    /// 320×100 large banner for the in-feed sponsored card (~half of the old 300×250 MREC).
+    case largeBanner
 }
 
 /// Adaptive AdMob banner. Simulator/DEBUG loads Google Test Ad creatives.
@@ -27,8 +27,8 @@ struct JuicdBannerAdView: UIViewRepresentable {
         JuicdMobileAds.start()
         let banner: BannerView
         switch placement {
-        case .mediumRectangle:
-            banner = BannerView(adSize: AdSizeMediumRectangle)
+        case .largeBanner:
+            banner = BannerView(adSize: AdSizeLargeBanner)
         case .inlineFeed, .anchoredBottom:
             let adSize = currentOrientationAnchoredAdaptiveBanner(width: bannerWidth)
             banner = BannerView(adSize: adSize)
@@ -58,8 +58,8 @@ struct JuicdBannerAdView: UIViewRepresentable {
             return max(screen - 32, 320)
         case .anchoredBottom:
             return max(screen, 320)
-        case .mediumRectangle:
-            return 300
+        case .largeBanner:
+            return 320
         }
     }
 
@@ -130,26 +130,26 @@ struct JuicdAnchoredBannerSlot: View {
     }
 }
 
-/// 300×250 AdMob box inside the same sponsored-card chrome as the native placeholder (includes X).
+/// 320×100 AdMob large banner inside the sponsored-card chrome (includes X).
 struct JuicdSponsoredBannerCard: View {
     var onPaidImpression: () -> Void = {}
     var onDismiss: () -> Void = {}
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Sponsored")
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
                     .foregroundStyle(JuicdTheme.textTertiary)
                     .textCase(.uppercase)
                     .tracking(0.6)
 
-                JuicdBannerAdView(placement: .mediumRectangle, onPaidImpression: onPaidImpression)
-                    .frame(width: 300, height: 250)
+                JuicdBannerAdView(placement: .largeBanner, onPaidImpression: onPaidImpression)
+                    .frame(width: 320, height: 100)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .padding(16)
+            .padding(12)
             .padding(.top, 2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {

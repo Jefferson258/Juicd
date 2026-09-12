@@ -2,7 +2,7 @@ import Foundation
 
 /// Rich fake **player / game props** for the Play tab. Replace with `TheOddsAPIPlayboardHook` when you wire a key.
 enum PlayBoardStubData {
-    /// For You home: multiple “Popular …” ribbons by league.
+    /// Popular home: multiple “Popular …” ribbons by league.
     static let forYouRibbons: [PlayPropRibbon] = [
         popularNBA,
         popularNFL,
