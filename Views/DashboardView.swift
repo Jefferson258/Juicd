@@ -36,17 +36,28 @@ struct DashboardView: View {
 
                     Card(title: "Daily balance", systemImage: "bolt.fill", style: .hero) {
                         VStack(spacing: 18) {
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Text("\(profile.availableDailyPoints)")
-                                    .font(.system(size: 52, weight: .bold, design: .rounded))
-                                    .foregroundStyle(JuicdTheme.textPrimary)
-                                Text("pts")
-                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(JuicdTheme.textSecondary)
+                            HStack(spacing: 18) {
+                                VStack(spacing: 4) {
+                                    Text("\(profile.availableDailyPoints)")
+                                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.textPrimary)
+                                    Text("today")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                VStack(spacing: 4) {
+                                    Text("\(viewModel.tomorrowPointsRemaining)")
+                                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.textPrimary)
+                                    Text("tomorrow")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity)
                             }
-                            .frame(maxWidth: .infinity)
 
-                            Text("Resets to \(JuicdBalance.dailyPlayAllowancePoints) each slate.")
+                            Text("Today’s 100 resets at 4am CT. Tomorrow’s bank is separate until then.")
                                 .foregroundStyle(JuicdTheme.textSecondary)
                                 .font(.system(size: 14, weight: .medium))
                                 .multilineTextAlignment(.center)
@@ -176,9 +187,9 @@ struct DashboardView: View {
                             .font(.title2.bold())
                             .foregroundStyle(JuicdTheme.textPrimary)
 
-                        tipRow(icon: "list.bullet.clipboard.fill", text: "Play slips: pick a slate chip (Today or a past day) to review singles and parlays — stake, combined odds, result, and season points earned.")
+                        tipRow(icon: "list.bullet.clipboard.fill", text: "Play slips: Today shows today and tomorrow together. Pending slips stay pending until the game ends.")
                         tipRow(icon: "chart.line.uptrend.xyaxis", text: "Last ranked match summarizes how you placed in the prior slate’s 10-player pool once results apply.")
-                        tipRow(icon: "bolt.fill", text: "Daily balance refills each slate; spending it doesn’t directly move tier — ranked outcomes from Play do.")
+                        tipRow(icon: "bolt.fill", text: "Daily balance has two banks: today and tomorrow. Tomorrow’s 100 is separate until 4am CT.")
                         tipRow(icon: "trophy.fill", text: "Rank tier card shows your current band; open Ranking help (?) on Rank ladder for the full MMR story.")
                         tipRow(icon: "function", text: "MMR each day breaks down grouping, scaling, placement, smoothing, and tier curves in plain language.")
                     }
@@ -202,7 +213,7 @@ struct DashboardView: View {
     private var playSlipsSection: some View {
         Card(title: "Play slips", systemImage: "list.bullet.clipboard.fill", style: .hero) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Singles and parlays by slate day (resets at 6:00 local).")
+                Text("Singles and parlays for today and tomorrow (4am CT slate). Older days stay in the chips.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .lineSpacing(3)
@@ -247,9 +258,11 @@ struct DashboardView: View {
     }
 
     private var emptyPlaySlipsCopy: String {
-        let today = SlateDay.slateKey()
-        if viewModel.selectedPlaySlateKey == today {
-            return "No slips on today’s slate yet. Place picks on the Play tab — they’ll show here with stake, combined odds, and season points."
+        if viewModel.isShowingActiveSlates {
+            if viewModel.selectedPlaySlateKey == SlateDay.nextSlateKey() {
+                return "No slips on tomorrow’s slate yet. Tomorrow’s games use a separate 100 points."
+            }
+            return "No slips today or tomorrow yet. Place picks on Play — they show up here as soon as you lock them."
         }
         return "No slips on this slate. Pick another day above, or place new picks on Play."
     }
@@ -265,10 +278,13 @@ struct DashboardView: View {
                         Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
                             .font(.caption.weight(.heavy))
                             .foregroundStyle(JuicdTheme.textTertiary)
+                        Text(slateTag(for: entry.slateDayKey))
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(JuicdTheme.brand)
                         Spacer()
-                        Text(entry.didWin ? "Won" : "Missed")
+                        Text(slipOutcomeLabel(entry))
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary)
+                            .foregroundStyle(slipOutcomeColor(entry))
                     }
                     Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
                         .font(.subheadline.weight(.semibold))
@@ -291,6 +307,7 @@ struct DashboardView: View {
     private func slateChipLabel(_ slateKey: String) -> String {
         let today = SlateDay.slateKey()
         if slateKey == today { return "Today" }
+        if slateKey == SlateDay.nextSlateKey() { return "Tomorrow" }
         let inDF = DateFormatter()
         inDF.calendar = Calendar.current
         inDF.timeZone = TimeZone.current
@@ -299,6 +316,22 @@ struct DashboardView: View {
         let out = DateFormatter()
         out.dateFormat = "EEE MMM d"
         return out.string(from: d)
+    }
+
+    private func slateTag(for slateKey: String) -> String {
+        if slateKey == SlateDay.slateKey() { return "Today" }
+        if slateKey == SlateDay.nextSlateKey() { return "Tomorrow" }
+        return slateChipLabel(slateKey)
+    }
+
+    private func slipOutcomeLabel(_ entry: PlayBoardEntry) -> String {
+        if entry.pending { return "Pending" }
+        return entry.didWin ? "Won" : "Missed"
+    }
+
+    private func slipOutcomeColor(_ entry: PlayBoardEntry) -> Color {
+        if entry.pending { return JuicdTheme.brand }
+        return entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary
     }
 
     @ViewBuilder

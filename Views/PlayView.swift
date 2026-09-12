@@ -29,7 +29,10 @@ struct PlayView: View {
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                         Spacer(minLength: 8)
                         if let profile = viewModel.profile {
-                            compactBalanceChip(points: profile.availableDailyPoints)
+                            compactBalanceChip(
+                                todayPoints: profile.availableDailyPoints,
+                                tomorrowPoints: viewModel.tomorrowPointsRemaining
+                            )
                         }
                         Button {
                             showPlayTips = true
@@ -376,12 +379,20 @@ struct PlayView: View {
         .padding(.top, 8)
     }
 
-    private func compactBalanceChip(points: Int) -> some View {
+    private func compactBalanceChip(todayPoints: Int, tomorrowPoints: Int) -> some View {
+        HStack(spacing: 8) {
+            balancePill(points: todayPoints, label: "today")
+            balancePill(points: tomorrowPoints, label: "tm")
+        }
+        .accessibilityLabel("Today \(todayPoints) points, tomorrow \(tomorrowPoints) points")
+    }
+
+    private func balancePill(points: Int, label: String) -> some View {
         HStack(spacing: 5) {
             Image(systemName: "bolt.fill")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(JuicdTheme.brand)
-            Text("\(points) pts")
+            Text("\(points) \(label)")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(JuicdTheme.textPrimary)
         }
@@ -395,7 +406,6 @@ struct PlayView: View {
                         .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
                 }
         }
-        .accessibilityLabel("Balance \(points) points")
     }
 
     private var todayQuietBanner: some View {

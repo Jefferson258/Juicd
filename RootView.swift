@@ -94,6 +94,14 @@ private struct LoggedInTabShell: View {
                 showTutorial = true
             }
         }
+        .onChange(of: selectedTab) { _, tab in
+            if tab == 1 {
+                dashboardVM.refresh()
+            }
+            if tab == 0 {
+                playVM.refreshProfile()
+            }
+        }
         .fullScreenCover(isPresented: $showTutorial) {
             TutorialView {
                 showTutorial = false

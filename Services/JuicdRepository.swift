@@ -532,6 +532,15 @@ final class InMemoryJuicdRepository: ObservableObject {
         return keys.sorted(by: >)
     }
 
+    /// Today’s and tomorrow’s Play slips together, newest first.
+    func playBoardEntriesOnActiveSlates(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
+        let today = SlateDay.slateKey(for: date)
+        let tomorrow = SlateDay.nextSlateKey(from: date)
+        return (state.playBoardEntries ?? [])
+            .filter { $0.userId == userId && ($0.slateDayKey == today || $0.slateDayKey == tomorrow) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     // MARK: - Daily closest-pick tournament (16 players, 4 quarters)
 
     /// Dev slate: several tournament *variants* with four distinct round previews; tip times stagger from `now`; entry closes **1 hour before** lock.

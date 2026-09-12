@@ -29,6 +29,8 @@ final class PlayViewModel: ObservableObject {
     private var inFlightOddsRefresh: Task<Void, Never>?
 
     @Published private(set) var isSubmittingPlayParlay = false
+    @Published private(set) var tomorrowPointsRemaining: Int = JuicdBalance.dailyPlayAllowancePoints
+    private var repoCancellable: AnyCancellable?
 
     @Published var sportPill: PlaySportPill = .forYou {
         didSet {
@@ -61,7 +63,15 @@ final class PlayViewModel: ObservableObject {
 
     init(repository: InMemoryJuicdRepository) {
         self.repository = repository
+        repoCancellable = repository.objectWillChange
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.refreshProfile()
+                }
+            }
     }
+
+    nonisolated deinit {}
 
     var maxStakePoints: Int {
         guard let userId else { return 0 }
@@ -519,6 +529,10 @@ final class PlayViewModel: ObservableObject {
     func refreshProfile() {
         guard let userId else { return }
         profile = repository.profile(userId: userId)
+        tomorrowPointsRemaining = repository.pointsRemaining(
+            userId: userId,
+            slateDayKey: SlateDay.nextSlateKey()
+        )
         clampStakeToBalance()
     }
 

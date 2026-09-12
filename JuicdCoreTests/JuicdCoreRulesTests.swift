@@ -443,4 +443,27 @@ final class JuicdCoreRulesTests: XCTestCase {
         XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 100)
         XCTAssertTrue(repo.state.playBoardEntries?.isEmpty ?? true)
     }
+
+    func testActiveSlateSlipsIncludeTodayAndTomorrow() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let fridayNight = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 21))!
+        let fridayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 22))!
+        let saturdayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 19))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var todayLeg = leg()
+        todayLeg.commenceTime = fridayGame
+        var tomorrowLeg = leg(id: UUID(uuidString: "44444444-4444-4444-8444-444444444444")!)
+        tomorrowLeg.commenceTime = saturdayGame
+        _ = repo.submitPlayParlay(userId: userId, stakePoints: 10, legs: [todayLeg], date: fridayNight)
+        _ = repo.submitPlayParlay(userId: userId, stakePoints: 25, legs: [tomorrowLeg], date: fridayNight)
+        let slips = repo.playBoardEntriesOnActiveSlates(userId: userId, date: fridayNight)
+        XCTAssertEqual(slips.count, 2)
+        XCTAssertEqual(Set(slips.map(\.slateDayKey)).count, 2)
+        XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 90)
+        XCTAssertEqual(
+            repo.pointsRemaining(userId: userId, slateDayKey: SlateDay.nextSlateKey(from: fridayNight), date: fridayNight),
+            75
+        )
+    }
 }

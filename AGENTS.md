@@ -30,8 +30,8 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 14** on TestFlight (tomorrow Play board, Monday–Sunday
-  weekly, frozen tourneys, no generator copy). Client discards cached Edge
+- Currently **build 15** on TestFlight (dashboard live-updates today + tomorrow
+  slips and both point banks). Client discards cached Edge
   tourneys that still carry a combined-score **line** (the old 44.5) and rebuilds
   from live props. Owner phone (`tjk1002@aol.com`) is on the **Internal Testers**
   group — post-upload must add new builds there, not only the external “Beta
