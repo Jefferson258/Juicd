@@ -8,7 +8,11 @@ struct ParlayBuilderSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if viewModel.maxStakePoints <= 0 {
-                        Text("You don’t have any daily points left. Come back after the next refill.")
+                        Text(
+                            viewModel.isUpcomingSlateParlay
+                                ? "You’ve already used tomorrow’s 100 points."
+                                : "You don’t have any daily points left. Come back after the next refill."
+                        )
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.system(size: 15, weight: .medium))
                     } else {
@@ -103,6 +107,9 @@ struct ParlayBuilderSheet: View {
                 Label("Stake", systemImage: "banknote.fill")
                     .font(.caption.weight(.heavy))
                     .foregroundStyle(.white.opacity(0.95))
+                Text(viewModel.isUpcomingSlateParlay ? "Tomorrow’s bank" : "Today’s bank")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(JuicdTheme.textTertiary)
                 Spacer()
                 Text("Max \(viewModel.maxStakePoints) pts")
                     .font(.caption.weight(.semibold))

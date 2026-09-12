@@ -37,8 +37,20 @@ enum SlateDay {
         return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: prev) ?? prev)
     }
 
-    /// Thursday CT slate of the current NFL week (Thu–Wed).
-    static func nflWeekKey(for date: Date = .now) -> String {
+    static func nextSlateKey(from date: Date = .now) -> String {
+        let cal = chicagoCalendar
+        let key = slateKey(for: date)
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let start = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
+              let next = cal.date(byAdding: .day, value: 1, to: start) else {
+            return key
+        }
+        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: next) ?? next)
+    }
+
+    /// Monday 4am CT through Sunday night. Key is that Monday’s slate date.
+    static func calendarWeekKey(for date: Date = .now) -> String {
         let cal = chicagoCalendar
         let key = slateKey(for: date)
         let parts = key.split(separator: "-").compactMap { Int($0) }
@@ -46,20 +58,38 @@ enum SlateDay {
               let day = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)) else {
             return key
         }
-        let weekday = cal.component(.weekday, from: day) // 1 Sun … 5 Thu … 7 Sat
-        let offset: Int = {
-            switch weekday {
-            case 5: return 0
-            case 6: return 1
-            case 7: return 2
-            case 1: return 3
-            case 2: return 4
-            case 3: return 5
-            default: return 6
-            }
-        }()
-        guard let thu = cal.date(byAdding: .day, value: -offset, to: day) else { return key }
-        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: thu) ?? thu)
+        let weekday = cal.component(.weekday, from: day) // 1 Sun … 2 Mon …
+        let offset = (weekday + 5) % 7 // Mon=0 … Sun=6
+        guard let mon = cal.date(byAdding: .day, value: -offset, to: day) else { return key }
+        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: mon) ?? mon)
+    }
+
+    static func nextCalendarWeekKey(for date: Date = .now) -> String {
+        let cal = chicagoCalendar
+        let key = calendarWeekKey(for: date)
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let start = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
+              let next = cal.date(byAdding: .day, value: 7, to: start) else {
+            return key
+        }
+        return slateKey(for: cal.date(bySettingHour: 12, minute: 0, second: 0, of: next) ?? next)
+    }
+
+    static func isSundayEarlyWeeklyWindow(for date: Date = .now) -> Bool {
+        let cal = chicagoCalendar
+        let key = slateKey(for: date)
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let day = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)) else {
+            return false
+        }
+        return cal.component(.weekday, from: day) == 1
+    }
+
+    /// Alias: weekly is Monday–Sunday (not Thursday NFL week).
+    static func nflWeekKey(for date: Date = .now) -> String {
+        calendarWeekKey(for: date)
     }
 }
 

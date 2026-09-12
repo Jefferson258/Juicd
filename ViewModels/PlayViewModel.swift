@@ -13,8 +13,11 @@ final class PlayViewModel: ObservableObject {
 
     /// Full board after slate + boosts (before sport / stat / search filters).
     @Published private(set) var ribbons: [PlayPropRibbon] = []
+    @Published private(set) var tomorrowRibbons: [PlayPropRibbon] = []
     @Published private(set) var dailyTourney: RemoteTourneyPayload?
     @Published private(set) var weeklyTourney: RemoteTourneyPayload?
+    @Published private(set) var nextDailyTourney: RemoteTourneyPayload?
+    @Published private(set) var nextWeeklyTourney: RemoteTourneyPayload?
     @Published var countdownNow: Date = .now
 
     /// When true, `ribbons` came from Supabase and must not be replaced by local stub rebuilds when switching sport filters.
@@ -61,8 +64,19 @@ final class PlayViewModel: ObservableObject {
     }
 
     var maxStakePoints: Int {
-        guard let profile else { return 0 }
-        return min(JuicdBalance.dailyPlayAllowancePoints, profile.availableDailyPoints)
+        guard let userId else { return 0 }
+        let slate = parlaySlateKey ?? SlateDay.slateKey()
+        return repository.pointsRemaining(userId: userId, slateDayKey: slate)
+    }
+
+    var parlaySlateKey: String? {
+        let keys = Set(parlayLegs.map { Self.slateKey(for: $0) })
+        guard keys.count == 1, let key = keys.first else { return nil }
+        return key
+    }
+
+    var isUpcomingSlateParlay: Bool {
+        parlaySlateKey == SlateDay.nextSlateKey()
     }
 
     var impliedParlayDecimal: Double {
@@ -76,19 +90,16 @@ final class PlayViewModel: ObservableObject {
 
     /// Ribbons with props filtered for UI (search / stat / sport). Started games are dropped.
     var displayedRibbons: [PlayPropRibbon] {
-        ribbons.compactMap { ribbon in
-            var r = ribbon
-            r.props = ribbon.props.filter { prop in
-                !prop.hasStarted && propMatchesFilters(prop)
-            }
-            if r.props.isEmpty { return nil }
-            return r
-        }
+        displayed(from: ribbons)
+    }
+
+    var displayedTomorrowRibbons: [PlayPropRibbon] {
+        displayed(from: tomorrowRibbons)
     }
 
     var pendingSlips: [PlayBoardEntry] {
         guard let userId else { return [] }
-        return repository.playBoardEntriesOnSlate(userId: userId).filter(\.pending)
+        return repository.pendingPlayEntries(userId: userId)
     }
 
     var hasActiveSearch: Bool {
@@ -134,7 +145,7 @@ final class PlayViewModel: ObservableObject {
     /// Ask the Edge grader to resolve pending Play slips once games are final.
     func settlePendingSlips() async {
         guard let userId, SupabaseConfig.isConfigured else { return }
-        let slips = repository.playBoardEntriesOnSlate(userId: userId).filter(\.pending)
+        let slips = repository.pendingPlayEntries(userId: userId)
         for slip in slips {
             guard let legs = repository.pendingLegs(for: slip.id), !legs.isEmpty else { continue }
             guard let outcomes = await SupabaseOddsService.settlePlaySlips(userId: userId, legs: legs) else {
@@ -194,65 +205,58 @@ final class PlayViewModel: ObservableObject {
                     return "fresh"
                 }()
                 oddsStatus = "Supabase \(serverBoard.mode) · \(serverBoard.source) · \(cacheTag)"
-                dailyTourney = serverBoard.dailyTourney
-                weeklyTourney = serverBoard.weeklyTourney
-                if dailyTourney?.containsBannedPlaceholder == true {
+                dailyTourney = Self.usableTourney(serverBoard.dailyTourney)
+                weeklyTourney = Self.usableTourney(serverBoard.weeklyTourney)
+                nextDailyTourney = Self.usableTourney(serverBoard.nextDailyTourney)
+                nextWeeklyTourney = Self.usableTourney(serverBoard.nextWeeklyTourney)
+                if serverBoard.dailyTourney?.containsBannedPlaceholder == true {
                     AppErrorLogger.log(
                         severity: .warning,
                         message: "Discarded cached daily tourney placeholder; rebuilding from live props.",
                         screen: "tourney",
                         extra: ["kind": .string("daily"), "fallback": .string("cached_placeholder")]
                     )
-                    dailyTourney = nil
                 }
-                if weeklyTourney?.containsBannedPlaceholder == true {
+                if serverBoard.weeklyTourney?.containsBannedPlaceholder == true {
                     AppErrorLogger.log(
                         severity: .warning,
                         message: "Discarded cached weekly tourney placeholder; rebuilding from live props.",
                         screen: "tourney",
                         extra: ["kind": .string("weekly"), "fallback": .string("cached_placeholder")]
                     )
-                    weeklyTourney = nil
                 }
                 logTourneyDiagnostics(serverBoard.tourneyDiagnostics)
-                let mapped = serverBoard.ribbons.map { ribbon in
-                    PlayPropRibbon(
-                        id: ribbon.id,
-                        title: ribbon.title,
-                        subtitle: ribbon.subtitle,
-                        props: ribbon.props.compactMap { dto in
-                            guard dto.oddsDecimal > 1.001 else { return nil }
-                            let fallbackId = StableUUID.from(
-                                "\(serverBoard.slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
-                            )
-                            let commence = Self.parseISO(dto.commenceTime)
-                            if let commence, commence <= .now { return nil }
-                            return PlayPropBet(
-                                id: UUID(uuidString: dto.id) ?? fallbackId,
-                                leagueTag: dto.leagueTag,
-                                athleteOrTeam: dto.athleteOrTeam,
-                                matchup: dto.matchup,
-                                propDescription: dto.propDescription,
-                                lineText: dto.lineText,
-                                pickLabel: dto.pickLabel,
-                                oddsDecimal: dto.oddsDecimal,
-                                commenceTime: commence,
-                                eventId: dto.eventId,
-                                sportKey: dto.sportKey,
-                                homeTeam: dto.homeTeam,
-                                awayTeam: dto.awayTeam,
-                                pointLine: dto.pointLine
-                            )
-                        }
+                let trimmed = Self.ribbonsDroppingEmpty(
+                    Self.mapRibbons(serverBoard.ribbons, slateKey: serverBoard.slateKey)
+                )
+                let tomorrowTrimmed = Self.ribbonsDroppingEmpty(
+                    Self.mapRibbons(
+                        serverBoard.tomorrowRibbons ?? [],
+                        slateKey: serverBoard.nextSlateKey ?? SlateDay.nextSlateKey()
                     )
-                }
-                let trimmed = Self.ribbonsDroppingEmpty(mapped)
+                )
                 let boardProps = trimmed.flatMap(\.props)
+                let tomorrowProps = tomorrowTrimmed.flatMap(\.props)
                 if dailyTourney == nil {
                     dailyTourney = TourneySlateBuilder.daily(from: boardProps, slateKey: serverBoard.slateKey)
                 }
                 if weeklyTourney == nil {
-                    weeklyTourney = TourneySlateBuilder.weekly(from: boardProps, weekKey: SlateDay.nflWeekKey())
+                    weeklyTourney = TourneySlateBuilder.weekly(
+                        from: boardProps,
+                        weekKey: serverBoard.weekKey ?? SlateDay.calendarWeekKey()
+                    )
+                }
+                if nextDailyTourney == nil {
+                    nextDailyTourney = TourneySlateBuilder.daily(
+                        from: tomorrowProps,
+                        slateKey: serverBoard.nextSlateKey ?? SlateDay.nextSlateKey()
+                    )
+                }
+                if nextWeeklyTourney == nil, SlateDay.isSundayEarlyWeeklyWindow() {
+                    nextWeeklyTourney = TourneySlateBuilder.weekly(
+                        from: tomorrowProps,
+                        weekKey: serverBoard.nextWeekKey ?? SlateDay.nextCalendarWeekKey()
+                    )
                 }
                 logClientTourneyBuildFailure(
                     kind: "daily",
@@ -268,8 +272,10 @@ final class PlayViewModel: ObservableObject {
                 )
                 repository.lastDailyTourney = dailyTourney
                 repository.lastWeeklyTourney = weeklyTourney
+                repository.lastNextDailyTourney = nextDailyTourney
+                repository.lastNextWeeklyTourney = nextWeeklyTourney
                 repository.objectWillChange.send()
-                if trimmed.isEmpty {
+                if trimmed.isEmpty && tomorrowTrimmed.isEmpty {
                     boardUsesRemoteFeed = false
                     oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
                     AnalyticsService.logOddsSync(ok: false, source: "supabase_empty")
@@ -277,6 +283,7 @@ final class PlayViewModel: ObservableObject {
                 } else {
                     boardUsesRemoteFeed = true
                     ribbons = trimmed
+                    tomorrowRibbons = tomorrowTrimmed
                     AnalyticsService.logOddsSync(ok: true, source: "supabase_\(serverBoard.mode)")
                 }
                 clampSportPillToAvailableOdds()
@@ -338,6 +345,7 @@ final class PlayViewModel: ObservableObject {
             board = [liveRibbon] + board
         }
         ribbons = Self.ribbonsDroppingEmpty(JuicdOddsNightly.applyBoosts(to: board, slateKey: slateKey))
+        tomorrowRibbons = []
         // Never mint a daily/weekly tourney from the local demo board.
     }
 
@@ -378,7 +386,7 @@ final class PlayViewModel: ObservableObject {
     /// Props across the full cross-sport inventory (stub + optional live line), or the remote board when active.
     private func propsUnionForSportToolbar() -> [PlayPropBet] {
         if boardUsesRemoteFeed {
-            return ribbons.flatMap(\.props)
+            return ribbons.flatMap(\.props) + tomorrowRibbons.flatMap(\.props)
         }
         let slateKey = SlateDay.slateKey()
         var inventory = JuicdOddsNightly.applyBoosts(
@@ -405,6 +413,59 @@ final class PlayViewModel: ObservableObject {
         let allowed = Self.sportPillsMatchingLeagues(on: propsUnionForSportToolbar())
         guard !allowed.contains(sportPill) else { return }
         sportPill = .forYou
+    }
+
+    private func displayed(from source: [PlayPropRibbon]) -> [PlayPropRibbon] {
+        source.compactMap { ribbon in
+            var r = ribbon
+            r.props = ribbon.props.filter { prop in
+                !prop.hasStarted && propMatchesFilters(prop)
+            }
+            if r.props.isEmpty { return nil }
+            return r
+        }
+    }
+
+    private static func usableTourney(_ payload: RemoteTourneyPayload?) -> RemoteTourneyPayload? {
+        guard let payload, !payload.containsBannedPlaceholder else { return nil }
+        return payload
+    }
+
+    private static func mapRibbons(
+        _ dtos: [SupabasePlayBoardResponse.RibbonDTO],
+        slateKey: String
+    ) -> [PlayPropRibbon] {
+        dtos.map { ribbon in
+            PlayPropRibbon(
+                id: ribbon.id,
+                title: ribbon.title,
+                subtitle: ribbon.subtitle,
+                props: ribbon.props.compactMap { dto in
+                    guard dto.oddsDecimal > 1.001 else { return nil }
+                    let fallbackId = StableUUID.from(
+                        "\(slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
+                    )
+                    let commence = Self.parseISO(dto.commenceTime)
+                    if let commence, commence <= .now { return nil }
+                    return PlayPropBet(
+                        id: UUID(uuidString: dto.id) ?? fallbackId,
+                        leagueTag: dto.leagueTag,
+                        athleteOrTeam: dto.athleteOrTeam,
+                        matchup: dto.matchup,
+                        propDescription: dto.propDescription,
+                        lineText: dto.lineText,
+                        pickLabel: dto.pickLabel,
+                        oddsDecimal: dto.oddsDecimal,
+                        commenceTime: commence,
+                        eventId: dto.eventId,
+                        sportKey: dto.sportKey,
+                        homeTeam: dto.homeTeam,
+                        awayTeam: dto.awayTeam,
+                        pointLine: dto.pointLine
+                    )
+                }
+            )
+        }
     }
 
     private static func ribbonsDroppingEmpty(_ ribbons: [PlayPropRibbon]) -> [PlayPropRibbon] {
@@ -480,6 +541,14 @@ final class PlayViewModel: ObservableObject {
             return
         }
         if pickingAdditionalLeg {
+            if let first = parlayLegs.first, !Self.sameSlate(first, prop) {
+                builderToast = "Parlay legs must be on the same Juicd day."
+                pickingAdditionalLeg = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
+                    self?.builderToast = nil
+                }
+                return
+            }
             if let first = parlayLegs.first, !Self.sameKickoff(first, prop) {
                 builderToast = "Parlay legs must share the same start time."
                 pickingAdditionalLeg = false
@@ -506,6 +575,17 @@ final class PlayViewModel: ObservableObject {
         if let ae = a.eventId, let be = b.eventId, !ae.isEmpty, ae == be { return true }
         guard let at = a.commenceTime, let bt = b.commenceTime else { return false }
         return abs(at.timeIntervalSince(bt)) < 60
+    }
+
+    static func slateKey(for prop: PlayPropBet, now: Date = .now) -> String {
+        if let commence = prop.commenceTime {
+            return SlateDay.slateKey(for: commence)
+        }
+        return SlateDay.slateKey(for: now)
+    }
+
+    static func sameSlate(_ a: PlayPropBet, _ b: PlayPropBet, now: Date = .now) -> Bool {
+        slateKey(for: a, now: now) == slateKey(for: b, now: now)
     }
 
     private static func parseISO(_ raw: String?) -> Date? {
@@ -568,6 +648,11 @@ final class PlayViewModel: ObservableObject {
         }
         if parlayLegs.count > 1 {
             let first = parlayLegs[0]
+            if parlayLegs.dropFirst().contains(where: { !Self.sameSlate(first, $0) }) {
+                builderToast = "Parlay legs must be on the same Juicd day."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }
+                return
+            }
             if parlayLegs.dropFirst().contains(where: { !Self.sameKickoff(first, $0) }) {
                 builderToast = "Parlay legs must share the same start time."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }

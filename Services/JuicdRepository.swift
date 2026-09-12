@@ -26,9 +26,13 @@ final class InMemoryJuicdRepository: ObservableObject {
 
         /// Key `userId|yyyy-MM-dd` → closest-pick daily tournament state.
         var dailyClosestByKey: [String: DailyClosestTournamentState]?
+        /// Key `userId|kind|periodKey` → 4 closest-number picks.
+        var tourneyPicksByKey: [String: [Double]]?
 
         /// Play-board slips (single or parlay) for dashboard history.
         var playBoardEntries: [PlayBoardEntry]?
+        /// Legs for pending Play slips, keyed by slip id.
+        var pendingSlipLegs: [UUID: [BetLeg]]?
 
         /// Pending friend invites (prototype persistence; mirror `friend_requests` in Supabase).
         var friendRequests: [FriendRequest]?
@@ -58,6 +62,14 @@ final class InMemoryJuicdRepository: ObservableObject {
     private let persistenceEnabled: Bool
 
     @Published private(set) var state: PersistedState
+    /// Latest daily/weekly tourney payloads from `play-board` (not @Published —
+    /// extra Published fields were crashing XCTest deinit of this @MainActor type).
+    var lastDailyTourney: RemoteTourneyPayload?
+    var lastWeeklyTourney: RemoteTourneyPayload?
+    var lastNextDailyTourney: RemoteTourneyPayload?
+    var lastNextWeeklyTourney: RemoteTourneyPayload?
+
+    nonisolated deinit {}
 
     private init() {
         self.persistenceEnabled = true
@@ -329,7 +341,9 @@ final class InMemoryJuicdRepository: ObservableObject {
             return profile
         }
 
-        profile.availableDailyPoints = JuicdBalance.dailyPlayAllowancePoints
+        let reserved = committedPlayStake(userId: userId, slateDayKey: slateKey)
+        let awarded = max(0, JuicdBalance.dailyPlayAllowancePoints - reserved)
+        profile.availableDailyPoints = awarded
         profile.lastDailyPointsAwardDateISO = slateKey
 
         let entry = PointsLedgerEntry(
@@ -338,7 +352,7 @@ final class InMemoryJuicdRepository: ObservableObject {
             userId: userId,
             tournamentId: nil,
             betSlipId: nil,
-            deltaPoints: JuicdBalance.dailyPlayAllowancePoints,
+            deltaPoints: awarded,
             reason: "Daily play allowance reset (wallet only — not rank score)"
         )
 
@@ -468,7 +482,44 @@ final class InMemoryJuicdRepository: ObservableObject {
         return playBoardEntries(userId: userId, slateDayKey: sk)
     }
 
-    /// All Play slips for a user on a given slate key (`yyyy-MM-dd`, 6am boundary).
+    /// Pending Play slips on today or tomorrow (bets already locked for the next slate).
+    func pendingPlayEntries(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
+        let today = SlateDay.slateKey(for: date)
+        let tomorrow = SlateDay.nextSlateKey(from: date)
+        return (state.playBoardEntries ?? [])
+            .filter { $0.userId == userId && $0.pending && ($0.slateDayKey == today || $0.slateDayKey == tomorrow) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func committedPlayStake(userId: UUID, slateDayKey: String) -> Int {
+        (state.playBoardEntries ?? [])
+            .filter { $0.userId == userId && $0.slateDayKey == slateDayKey }
+            .map(\.stakePoints)
+            .reduce(0, +)
+    }
+
+    /// Today uses the live wallet. Tomorrow uses the next slate's 100-pt bank minus already-locked slips.
+    func pointsRemaining(userId: UUID, slateDayKey: String, date: Date = .now) -> Int {
+        guard let profile = state.profiles[userId] else { return 0 }
+        let today = SlateDay.slateKey(for: date)
+        if slateDayKey == today {
+            return min(JuicdBalance.dailyPlayAllowancePoints, max(0, profile.availableDailyPoints))
+        }
+        return max(0, JuicdBalance.dailyPlayAllowancePoints - committedPlayStake(userId: userId, slateDayKey: slateDayKey))
+    }
+
+    func playSlateKey(for legs: [BetLeg], date: Date = .now) -> String? {
+        let keys = Set(legs.map { leg -> String in
+            if let commence = leg.commenceTime {
+                return SlateDay.slateKey(for: commence)
+            }
+            return SlateDay.slateKey(for: date)
+        })
+        guard keys.count == 1, let key = keys.first else { return nil }
+        return key
+    }
+
+    /// All Play slips for a user on a given slate key (`yyyy-MM-dd`, 4am CT boundary).
     func playBoardEntries(userId: UUID, slateDayKey: String) -> [PlayBoardEntry] {
         (state.playBoardEntries ?? [])
             .filter { $0.userId == userId && $0.slateDayKey == slateDayKey }
@@ -593,6 +644,21 @@ final class InMemoryJuicdRepository: ObservableObject {
                 roundPreviews: row.4
             )
         }
+    }
+
+    private func tourneyPickKey(userId: UUID, kind: String, periodKey: String) -> String {
+        "\(userId.uuidString)|\(kind)|\(periodKey)"
+    }
+
+    func tourneyPicks(userId: UUID, kind: String, periodKey: String) -> [Double]? {
+        state.tourneyPicksByKey?[tourneyPickKey(userId: userId, kind: kind, periodKey: periodKey)]
+    }
+
+    func saveTourneyPicks(userId: UUID, kind: String, periodKey: String, picks: [Double]) {
+        var map = state.tourneyPicksByKey ?? [:]
+        map[tourneyPickKey(userId: userId, kind: kind, periodKey: periodKey)] = picks
+        state.tourneyPicksByKey = map
+        persist()
     }
 
     private func dailyClosestStorageKey(userId: UUID, slateKey: String) -> String {
@@ -1053,14 +1119,10 @@ final class InMemoryJuicdRepository: ObservableObject {
         return max(0, Int(net.rounded()))
     }
 
-    /// Whether the user already placed at least one Play-board parlay stake on the **current slate** (local 6am day).
+    /// Whether the user already placed at least one Play-board parlay stake on the **current slate** (4am CT day).
     func hasPlayParlayStakeToday(userId: UUID, date: Date = .now) -> Bool {
         let day = SlateDay.slateKey(for: date)
-        return state.ledger.contains { entry in
-            entry.userId == userId
-                && SlateDay.slateKey(for: entry.createdAt) == day
-                && entry.reason == "Play parlay stake"
-        }
+        return (state.playBoardEntries ?? []).contains { $0.userId == userId && $0.slateDayKey == day }
     }
 
     /// Single pick or parlay from the Play board: deducts stake, resolves all legs, credits payout + season points on win.
@@ -1073,14 +1135,19 @@ final class InMemoryJuicdRepository: ObservableObject {
     ) -> PlayParlayOutcome? {
         guard stakePoints > 0, !legs.isEmpty else { return nil }
         guard var profile = state.profiles[userId] else { return nil }
-        let maxStake = min(JuicdBalance.dailyPlayAllowancePoints, profile.availableDailyPoints)
-        guard stakePoints <= maxStake else { return nil }
-        guard profile.availableDailyPoints >= stakePoints else { return nil }
+        guard let slateKey = playSlateKey(for: legs, date: date) else { return nil }
+        let today = SlateDay.slateKey(for: date)
+        let tomorrow = SlateDay.nextSlateKey(from: date)
+        guard slateKey == today || slateKey == tomorrow else { return nil }
+        let remaining = pointsRemaining(userId: userId, slateDayKey: slateKey, date: date)
+        guard stakePoints <= remaining else { return nil }
 
-        recordDailyRankParticipation(userId: userId, date: date)
+        if slateKey == today {
+            recordDailyRankParticipation(userId: userId, date: date)
+            profile.availableDailyPoints -= stakePoints
+            state.profiles[userId] = profile
+        }
 
-        profile.availableDailyPoints -= stakePoints
-        state.profiles[userId] = profile
         state.ledger.append(
             PointsLedgerEntry(
                 id: UUID(),
@@ -1094,21 +1161,115 @@ final class InMemoryJuicdRepository: ObservableObject {
         )
 
         let implied = parlayOddsDecimal(for: legs)
-        let slateKey = SlateDay.slateKey(for: date)
-        let seedKey = "\(userId.uuidString)-play-\(slateKey)-\(legs.map { "\($0.marketId.uuidString)|\($0.choiceId.uuidString)|\($0.oddsDecimalAtSubmit)" }.joined(separator: ";"))"
-        let resolved: [(legId: UUID, didWin: Bool)]
-        if let forced = forcedLegOutcomesByLegId, !forced.isEmpty {
-            resolved = legs.map { leg in
-                (legId: leg.id, didWin: forced[leg.id] ?? false)
-            }
-        } else {
-            resolved = resolvePlayParlayLegs(parlayLegs: legs, seedKey: seedKey)
-        }
-        let didWinAll = resolved.allSatisfy { $0.didWin }
+        let commenceAt = legs.compactMap(\.commenceTime).max()
+        let slipId = UUID()
 
+        if let forced = forcedLegOutcomesByLegId, !forced.isEmpty {
+            return finalizePlayParlay(
+                userId: userId,
+                slipId: slipId,
+                stakePoints: stakePoints,
+                legs: legs,
+                implied: implied,
+                slateKey: slateKey,
+                date: date,
+                resolved: legs.map { ($0.id, forced[$0.id] ?? false) },
+                commenceAt: commenceAt
+            )
+        }
+
+        var entries = state.playBoardEntries ?? []
+        entries.append(
+            PlayBoardEntry(
+                id: slipId,
+                userId: userId,
+                slateDayKey: slateKey,
+                createdAt: date,
+                stakePoints: stakePoints,
+                legSummaries: legs.map(\.choiceLabel),
+                combinedOdds: implied,
+                didWin: false,
+                seasonPointsEarned: 0,
+                playLegWins: 0,
+                playLegLosses: 0,
+                pending: true,
+                commenceAt: commenceAt
+            )
+        )
+        state.playBoardEntries = entries
+        var pending = state.pendingSlipLegs ?? [:]
+        pending[slipId] = legs
+        state.pendingSlipLegs = pending
+        persist()
+        return PlayParlayOutcome(didWin: false, seasonPointsEarned: 0, pending: true)
+    }
+
+    @discardableResult
+    func resolvePendingPlaySlip(
+        userId: UUID,
+        slipId: UUID,
+        resolved: [(UUID, Bool)],
+        date: Date = .now
+    ) -> PlayParlayOutcome? {
+        guard var list = state.playBoardEntries,
+              let idx = list.firstIndex(where: { $0.id == slipId && $0.userId == userId && $0.pending })
+        else { return nil }
+        let entry = list[idx]
+        let implied = entry.combinedOdds
+        let didWinAll = resolved.allSatisfy(\.1)
         var seasonPointsEarned = 0
-        if didWinAll {
-            profile = state.profiles[userId]!
+        if didWinAll, var profile = state.profiles[userId] {
+            let payoutIncludingStake = Int((Double(entry.stakePoints) * implied).rounded())
+            profile.availableDailyPoints += payoutIncludingStake
+            seasonPointsEarned = max(0, Int((Double(entry.stakePoints) * (implied - 1.0)).rounded()))
+            profile.seasonPointsWon += seasonPointsEarned
+            profile.allTimePointsWon += seasonPointsEarned
+            state.profiles[userId] = profile
+            state.ledger.append(
+                PointsLedgerEntry(
+                    id: UUID(),
+                    createdAt: date,
+                    userId: userId,
+                    tournamentId: nil,
+                    betSlipId: slipId,
+                    deltaPoints: payoutIncludingStake,
+                    reason: "Play parlay payout"
+                )
+            )
+        }
+        var updated = entry
+        updated.pending = false
+        updated.didWin = didWinAll
+        updated.seasonPointsEarned = seasonPointsEarned
+        updated.playLegWins = resolved.filter(\.1).count
+        updated.playLegLosses = resolved.count - updated.playLegWins
+        list[idx] = updated
+        state.playBoardEntries = list
+        var pending = state.pendingSlipLegs ?? [:]
+        pending.removeValue(forKey: slipId)
+        state.pendingSlipLegs = pending
+        persist()
+        return PlayParlayOutcome(didWin: didWinAll, seasonPointsEarned: seasonPointsEarned, pending: false)
+    }
+
+    func pendingLegs(for slipId: UUID) -> [BetLeg]? {
+        state.pendingSlipLegs?[slipId]
+    }
+
+    private func finalizePlayParlay(
+        userId: UUID,
+        slipId: UUID,
+        stakePoints: Int,
+        legs: [BetLeg],
+        implied: Double,
+        slateKey: String,
+        date: Date,
+        resolved: [(UUID, Bool)],
+        commenceAt: Date?
+    ) -> PlayParlayOutcome {
+        let didWinAll = resolved.allSatisfy(\.1)
+        var seasonPointsEarned = 0
+        if didWinAll, var profile = state.profiles[userId] {
             let payoutIncludingStake = Int((Double(stakePoints) * implied).rounded())
             profile.availableDailyPoints += payoutIncludingStake
             seasonPointsEarned = max(0, Int((Double(stakePoints) * (implied - 1.0)).rounded()))
@@ -1121,16 +1282,12 @@ final class InMemoryJuicdRepository: ObservableObject {
                     createdAt: date,
                     userId: userId,
                     tournamentId: nil,
-                    betSlipId: nil,
+                    betSlipId: slipId,
                     deltaPoints: payoutIncludingStake,
                     reason: "Play parlay payout"
                 )
             )
         }
-
-        let slipId = UUID()
-        let legWins = resolved.filter(\.didWin).count
-        let legLosses = resolved.count - legWins
         var entries = state.playBoardEntries ?? []
         entries.append(
             PlayBoardEntry(
@@ -1143,14 +1300,15 @@ final class InMemoryJuicdRepository: ObservableObject {
                 combinedOdds: implied,
                 didWin: didWinAll,
                 seasonPointsEarned: seasonPointsEarned,
-                playLegWins: legWins,
-                playLegLosses: legLosses
+                playLegWins: resolved.filter(\.1).count,
+                playLegLosses: resolved.count - resolved.filter(\.1).count,
+                pending: false,
+                commenceAt: commenceAt
             )
         )
         state.playBoardEntries = entries
-
         persist()
-        return PlayParlayOutcome(didWin: didWinAll, seasonPointsEarned: seasonPointsEarned)
+        return PlayParlayOutcome(didWin: didWinAll, seasonPointsEarned: seasonPointsEarned, pending: false)
     }
 
     // MARK: - Career & season stats
@@ -1174,10 +1332,10 @@ final class InMemoryJuicdRepository: ObservableObject {
         }
 
         let mine = (state.playBoardEntries ?? []).filter { entry in
-            entry.userId == userId && inSeason(entry.createdAt)
+            entry.userId == userId && inSeason(entry.createdAt) && !entry.pending
         }
         let playWins = mine.filter(\.didWin).count
-        let playLosses = mine.count - playWins
+        let playLosses = mine.filter { !$0.didWin }.count
 
         let dailySlips = state.dailyBets.values.filter { slip in
             guard slip.userId == userId, let t = slip.resolvedAt else { return false }

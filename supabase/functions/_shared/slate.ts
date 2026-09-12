@@ -91,15 +91,48 @@ export function freezeAtIso(commenceIso: string): string {
   return new Date(t - 60 * 60 * 1000).toISOString();
 }
 
-/** NFL week key: Thursday slate of the current NFL week (Thu–Wed in CT). */
-export function nflWeekKey(date: Date = new Date()): string {
+export function previousSlateKey(date: Date = new Date()): string {
+  const key = slateKey(date);
+  const [y, m, d] = key.split("-").map(Number);
+  return ymd(addDays({ year: y, month: m, day: d }, -1));
+}
+
+export function nextSlateKey(date: Date = new Date()): string {
+  const key = slateKey(date);
+  const [y, m, d] = key.split("-").map(Number);
+  return ymd(addDays({ year: y, month: m, day: d }, 1));
+}
+
+/**
+ * Juicd weekly: Monday 4:00am CT through Sunday night (next Monday 4:00am).
+ * The key is that Monday's slate date. Sunday is still this week; next week
+ * opens for early entry on Sunday.
+ */
+export function calendarWeekKey(date: Date = new Date()): string {
   const key = slateKey(date);
   const [y, m, d] = key.split("-").map(Number);
   const noon = chicagoNoon(y, m, d);
-  const dow = zoneWeekday(noon); // 0 Sun … 4 Thu … 6 Sat
-  const daysFromThursday = (dow + 3) % 7; // Thu=0, Fri=1, … Wed=6
-  const thu = addDays({ year: y, month: m, day: d }, -daysFromThursday);
-  return ymd(thu);
+  const dow = zoneWeekday(noon); // 0 Sun … 1 Mon … 6 Sat
+  const daysFromMonday = (dow + 6) % 7; // Mon=0 … Sun=6
+  const mon = addDays({ year: y, month: m, day: d }, -daysFromMonday);
+  return ymd(mon);
+}
+
+export function nextCalendarWeekKey(date: Date = new Date()): string {
+  const key = calendarWeekKey(date);
+  const [y, m, d] = key.split("-").map(Number);
+  return ymd(addDays({ year: y, month: m, day: d }, 7));
+}
+
+export function isSundayEarlyWeeklyWindow(date: Date = new Date()): boolean {
+  const key = slateKey(date);
+  const [y, m, d] = key.split("-").map(Number);
+  return zoneWeekday(chicagoNoon(y, m, d)) === 0;
+}
+
+/** @deprecated alias — weekly is Monday–Sunday, not Thursday NFL week. */
+export function nflWeekKey(date: Date = new Date()): string {
+  return calendarWeekKey(date);
 }
 
 function chicagoNoon(year: number, month: number, day: number): Date {
@@ -121,5 +154,5 @@ function zoneWeekday(date: Date): number {
 export function inNflWeek(commenceIso: string, weekKey: string): boolean {
   const t = Date.parse(commenceIso);
   if (Number.isNaN(t)) return false;
-  return nflWeekKey(new Date(t)) === weekKey;
+  return calendarWeekKey(new Date(t)) === weekKey;
 }

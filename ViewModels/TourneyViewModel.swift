@@ -13,7 +13,22 @@ final class TourneyViewModel: ObservableObject {
         var title: String { self == .daily ? "Daily" : "Weekly" }
     }
 
+    enum BoardWindow: String, CaseIterable, Identifiable {
+        case current
+        case upcoming
+        var id: String { rawValue }
+        func title(for kind: Kind) -> String {
+            switch (self, kind) {
+            case (.current, .daily): return "Today"
+            case (.upcoming, .daily): return "Tomorrow"
+            case (.current, .weekly): return "This week"
+            case (.upcoming, .weekly): return "Next week"
+            }
+        }
+    }
+
     @Published var kind: Kind = .daily
+    @Published var boardWindow: BoardWindow = .current
     @Published var pickTexts: [String] = ["", "", "", ""]
     @Published var errorMessage: String?
     @Published private(set) var submittedPicks: [Double]?
@@ -30,9 +45,18 @@ final class TourneyViewModel: ObservableObject {
     }
 
     var payload: RemoteTourneyPayload? {
+        switch (kind, boardWindow) {
+        case (.daily, .current): return repository.lastDailyTourney
+        case (.daily, .upcoming): return repository.lastNextDailyTourney
+        case (.weekly, .current): return repository.lastWeeklyTourney
+        case (.weekly, .upcoming): return repository.lastNextWeeklyTourney
+        }
+    }
+
+    var hasUpcomingBoard: Bool {
         switch kind {
-        case .daily: return repository.lastDailyTourney
-        case .weekly: return repository.lastWeeklyTourney
+        case .daily: return repository.lastNextDailyTourney != nil
+        case .weekly: return repository.lastNextWeeklyTourney != nil
         }
     }
 
@@ -69,6 +93,18 @@ final class TourneyViewModel: ObservableObject {
 
     func select(_ kind: Kind) {
         self.kind = kind
+        if !hasUpcomingBoard { boardWindow = .current }
+        remoteEntrants = nil
+        remoteActuals = nil
+        loadSubmitted()
+        seedPickPlaceholders()
+        errorMessage = nil
+        logMissingPayloadIfNeeded()
+        Task { await refreshRemoteBracket() }
+    }
+
+    func selectWindow(_ window: BoardWindow) {
+        boardWindow = window
         remoteEntrants = nil
         remoteActuals = nil
         loadSubmitted()
@@ -210,12 +246,9 @@ final class TourneyViewModel: ObservableObject {
             screen: "tourney",
             extra: [
                 "kind": .string(kind.rawValue),
-                "period": .string(kind == .daily ? SlateDay.slateKey() : SlateDay.nflWeekKey()),
+                "period": .string(kind == .daily ? SlateDay.slateKey() : SlateDay.calendarWeekKey()),
             ]
         )
-        if errorMessage == nil {
-            errorMessage = "No \(kind.title.lowercased()) tournament yet. Open Play to load today’s board — if it still fails, the miss is logged."
-        }
     }
 }
 

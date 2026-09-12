@@ -14,7 +14,7 @@ struct TourneyView: View {
                     JuicdTabScreenAccent()
                     BrandHeader(
                         title: "Tourney",
-                        subtitle: "One daily + one weekly. Same bracket for everyone.",
+                        subtitle: "Daily is 4am–4am CT. Weekly runs Monday through Sunday night.",
                         centered: true,
                         kicker: viewModel.kind.title
                     )
@@ -40,6 +40,18 @@ struct TourneyView: View {
                         viewModel.select(new)
                     }
 
+                    if viewModel.hasUpcomingBoard {
+                        Picker("Board", selection: $viewModel.boardWindow) {
+                            ForEach(TourneyViewModel.BoardWindow.allCases) { window in
+                                Text(window.title(for: viewModel.kind)).tag(window)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: viewModel.boardWindow) { _, new in
+                            viewModel.selectWindow(new)
+                        }
+                    }
+
                     if adsEnabled && !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
                         JuicdInFeedAdSlot(creative: JuicdDevAdCreative.all[1], onDismiss: {
                             adDismissed = true
@@ -51,7 +63,7 @@ struct TourneyView: View {
                         picksCard(payload)
                         bracketCard(payload)
                     } else {
-                        Text("No \(viewModel.kind.title.lowercased()) tournament on this board yet. The miss is logged so we can fix the generator.")
+                        Text(emptyTourneyCopy)
                             .font(.subheadline)
                             .foregroundStyle(JuicdTheme.textSecondary)
                     }
@@ -80,7 +92,7 @@ struct TourneyView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text("Tourney guide")
                             .font(.title2.bold())
-                        tipRow(icon: "calendar", text: "One daily bracket and one weekly bracket. Everybody is in the same event while the room is small.")
+                        tipRow(icon: "calendar", text: "Daily runs with the 4am CT board. Weekly is Monday through Sunday night. On Sunday you can enter next week early.")
                         tipRow(icon: "clock.fill", text: "Lock all four closest-number picks before freeze — one hour before the featured game starts.")
                         tipRow(icon: "person.crop.circle.badge.questionmark", text: "Empty slots fill with labeled bots (fun names like AmazingTackler54) at freeze.")
                         tipRow(icon: "eye.fill", text: "Everyone’s picks are visible before a round is scored. Rounds reveal after the game.")
@@ -96,6 +108,15 @@ struct TourneyView: View {
                 }
             }
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var emptyTourneyCopy: String {
+        switch viewModel.kind {
+        case .daily:
+            return "No daily tournament on the board yet. Check back after 4am CT."
+        case .weekly:
+            return "No weekly tournament on the board yet. The week runs Monday through Sunday."
         }
     }
 

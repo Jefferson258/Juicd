@@ -30,12 +30,12 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 13** on TestFlight (compact Play header, **Popular** pill,
-  R16→Final tourney tree, no demo/placeholder tourney slates). Client discards
-  cached Edge tourneys that still carry a combined-score **line** (the old 44.5)
-  and rebuilds from live props. Owner phone (`tjk1002@aol.com`) is on the
-  **Internal Testers** group — post-upload must add new builds there, not only
-  the external “Beta Testers” public-link group.
+- Currently **build 14** on TestFlight (tomorrow Play board, Monday–Sunday
+  weekly, frozen tourneys, no generator copy). Client discards cached Edge
+  tourneys that still carry a combined-score **line** (the old 44.5) and rebuilds
+  from live props. Owner phone (`tjk1002@aol.com`) is on the **Internal Testers**
+  group — post-upload must add new builds there, not only the external “Beta
+  Testers” public-link group.
 - **Tourney slates:** never fall back to local demo names or a canned line
   (no HOU @ SEA demo, no 44.5). `play-board` builds daily/weekly from real
   overs, then other sports, then combined-score with **no suggested line**.
@@ -71,7 +71,13 @@ settlement changes need owner + counsel sign-off before shipping.
 - **Play board (Sep 11 2026):** Juicd day = **4:00am America/Chicago**.
   `play-board` freshness is the CT `slate_key` (not UTC midnight). Sports are
   NFL/NBA/NHL/MLB only, max **16 Odds credits/day**, started games dropped.
-  First GET of a new slate can spend those credits — **do not casual `?force=1`**.
+  Response includes **today + tomorrow** h2h (no extra prop fetches for
+  tomorrow). Weekly tourney is **Monday 4am CT through Sunday night**; Sunday
+  also exposes next week for early entry. Existing daily/weekly payloads freeze
+  for the period — do not regenerate. First GET of a new slate (or the one-time
+  upgrade that adds `tomorrowRibbons`) can spend those credits — **do not casual
+  `?force=1`**. Tomorrow bets use tomorrow’s 100-pt bank; the line locks at
+  place time.
   Client Play slips stay **pending** until `settle-play-slips` grades a final
   (moneylines + ESPN boxscore player props / closest-number actuals).
   Closest-pick tourney entries persist on `juicd_tournament_entries` via

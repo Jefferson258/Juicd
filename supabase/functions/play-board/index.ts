@@ -1,11 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   MAX_ODDS_CREDITS_PER_DAY,
+  calendarWeekKey,
   eventNotStarted,
   eventOnSlate,
   freezeAtIso,
   inNflWeek,
-  nflWeekKey,
+  isSundayEarlyWeeklyWindow,
+  nextCalendarWeekKey,
+  nextSlateKey,
+  previousSlateKey,
   slateKey as juicdSlateKey,
 } from "../_shared/slate.ts";
 
@@ -65,8 +69,11 @@ type TourneyPayload = {
 type SnapshotBoard = {
   version: 2;
   ribbons: Ribbon[];
+  tomorrowRibbons?: Ribbon[];
   dailyTourney: TourneyPayload | null;
   weeklyTourney: TourneyPayload | null;
+  nextDailyTourney?: TourneyPayload | null;
+  nextWeeklyTourney?: TourneyPayload | null;
   creditsSpent: number;
   tourneyDiagnostics?: { daily: TourneyDiag; weekly: TourneyDiag };
 };
@@ -142,10 +149,30 @@ function commenceOf(event: any): string {
   return String(event?.commence_time ?? "");
 }
 
-function filterTodayUpcoming(events: any[], currentSlate: string, now: Date): any[] {
+function filterUpcomingOnSlate(events: any[], targetSlate: string, now: Date): any[] {
   return [...events]
-    .filter((e) => eventOnSlate(commenceOf(e), currentSlate) && eventNotStarted(commenceOf(e), now))
+    .filter((e) => eventOnSlate(commenceOf(e), targetSlate) && eventNotStarted(commenceOf(e), now))
     .sort((a, b) => (Date.parse(commenceOf(a)) || 0) - (Date.parse(commenceOf(b)) || 0));
+}
+
+function tourneyHasBannedPlaceholder(payload: TourneyPayload | null | undefined): boolean {
+  if (!payload?.roundSpecs?.length) return false;
+  const blob = (payload.gameLabel + payload.roundSpecs.map((r) => r.matchup).join("")).toUpperCase();
+  if (blob.includes("HOU @ SEA")) return true;
+  return payload.roundSpecs.some((spec) =>
+    `${spec.propLabel} ${spec.statSummary} ${spec.player}`.toLowerCase().includes("combined score") &&
+    spec.line != null
+  );
+}
+
+function reusableTourney(
+  existing: TourneyPayload | null | undefined,
+  periodKey: string,
+): TourneyPayload | null {
+  if (!existing || existing.periodKey !== periodKey) return null;
+  if (!existing.roundSpecs || existing.roundSpecs.length < 2) return null;
+  if (tourneyHasBannedPlaceholder(existing)) return null;
+  return existing;
 }
 
 async function oddsSportsCatalog(apiKey: string): Promise<{
@@ -545,13 +572,27 @@ async function liveBoardFromOddsApi(
   apiKey: string,
   slate: string,
   now: Date,
+  keep: {
+    daily?: TourneyPayload | null;
+    weekly?: TourneyPayload | null;
+    nextDaily?: TourneyPayload | null;
+    nextWeekly?: TourneyPayload | null;
+  } = {},
 ): Promise<{
   ribbons: Ribbon[];
+  tomorrowRibbons: Ribbon[];
   dailyTourney: TourneyPayload | null;
   weeklyTourney: TourneyPayload | null;
+  nextDailyTourney: TourneyPayload | null;
+  nextWeeklyTourney: TourneyPayload | null;
   creditsSpent: number;
   tourneyDiagnostics: { daily: TourneyDiag; weekly: TourneyDiag };
 }> {
+  const nextSlate = nextSlateKey(now);
+  const weekKey = calendarWeekKey(now);
+  const nextWeekKey = nextCalendarWeekKey(now);
+  const sundayEarly = isSundayEarlyWeeklyWindow(now);
+
   const catalog = await oddsSportsCatalog(apiKey);
   if (catalog.remaining != null && catalog.remaining < ODDS_MIN_REMAINING) {
     const empty = {
@@ -562,8 +603,11 @@ async function liveBoardFromOddsApi(
     };
     return {
       ribbons: [],
-      dailyTourney: null,
-      weeklyTourney: null,
+      tomorrowRibbons: [],
+      dailyTourney: reusableTourney(keep.daily, slate),
+      weeklyTourney: reusableTourney(keep.weekly, weekKey),
+      nextDailyTourney: reusableTourney(keep.nextDaily, nextSlate),
+      nextWeeklyTourney: sundayEarly ? reusableTourney(keep.nextWeekly, nextWeekKey) : null,
       creditsSpent: 0,
       tourneyDiagnostics: {
         daily: empty,
@@ -579,7 +623,9 @@ async function liveBoardFromOddsApi(
   let remaining = catalog.remaining;
   let spent = 0;
   const ribbons: Ribbon[] = [];
+  const tomorrowRibbons: Ribbon[] = [];
   const allProps: Prop[] = [];
+  const tomorrowProps: Prop[] = [];
   let nflAllUpcoming: any[] = [];
   const sportsWithToday: BoardSport[] = [];
   const todayEventsBySport = new Map<string, any[]>();
@@ -592,27 +638,41 @@ async function liveBoardFromOddsApi(
     spent += billed;
     if (remaining != null && remaining < ODDS_MIN_REMAINING) break;
     if (sport.sport === "americanfootball_nfl") nflAllUpcoming = events;
-    const today = filterTodayUpcoming(events, slate, now);
-    if (today.length === 0) continue;
-    sportsWithToday.push(sport);
-    todayEventsBySport.set(sport.sport, today);
-    const props = today.flatMap((e) => h2hProps(e, sport, slate));
-    if (props.length === 0) continue;
-    allProps.push(...props);
-    ribbons.push({
-      id: `live_${sport.leagueTag.toLowerCase()}`,
-      title: sport.label,
-      subtitle: `Today · ${sport.label} moneylines`,
-      props,
-    });
+    const today = filterUpcomingOnSlate(events, slate, now);
+    const tomorrow = filterUpcomingOnSlate(events, nextSlate, now);
+    if (today.length > 0) {
+      sportsWithToday.push(sport);
+      todayEventsBySport.set(sport.sport, today);
+      const props = today.flatMap((e) => h2hProps(e, sport, slate));
+      if (props.length > 0) {
+        allProps.push(...props);
+        ribbons.push({
+          id: `live_${sport.leagueTag.toLowerCase()}`,
+          title: sport.label,
+          subtitle: `Today · ${sport.label} moneylines`,
+          props,
+        });
+      }
+    }
+    if (tomorrow.length > 0) {
+      const props = tomorrow.flatMap((e) => h2hProps(e, sport, nextSlate));
+      if (props.length > 0) {
+        tomorrowProps.push(...props);
+        tomorrowRibbons.push({
+          id: `live_tomorrow_${sport.leagueTag.toLowerCase()}`,
+          title: sport.label,
+          subtitle: `Tomorrow · ${sport.label} moneylines`,
+          props,
+        });
+      }
+    }
   }
 
   for (const sport of sportsWithToday) {
     if (spent >= MAX_ODDS_CREDITS_PER_DAY) break;
     const today = todayEventsBySport.get(sport.sport) ?? [];
     const take = today.slice(0, PROP_GAMES_PER_SPORT);
-    // Prefer event list (free) so we still have ids if h2h payload omitted some.
-    const freeEvents = filterTodayUpcoming(await fetchEventIds(apiKey, sport.sport), slate, now);
+    const freeEvents = filterUpcomingOnSlate(await fetchEventIds(apiKey, sport.sport), slate, now);
     const pool = (freeEvents.length > 0 ? freeEvents : take).slice(0, PROP_GAMES_PER_SPORT);
     for (const ev of pool) {
       if (spent >= MAX_ODDS_CREDITS_PER_DAY) break;
@@ -640,13 +700,48 @@ async function liveBoardFromOddsApi(
     }
   }
 
-  const daily = dailyTourneyFromProps(allProps, slate);
-  const weekly = weeklyTourneyFromBoard(allProps, nflAllUpcoming, nflWeekKey(now), now);
+  const frozenDaily = reusableTourney(keep.daily, slate);
+  const daily = frozenDaily
+    ? {
+      payload: frozenDaily,
+      diag: {
+        kind: "daily" as const,
+        ok: true,
+        fallback: "frozen_existing",
+        detail: `Kept existing daily tourney for ${slate}.`,
+      },
+    }
+    : dailyTourneyFromProps(allProps, slate);
+
+  const frozenWeekly = reusableTourney(keep.weekly, weekKey);
+  const weekly = frozenWeekly
+    ? {
+      payload: frozenWeekly,
+      diag: {
+        kind: "weekly" as const,
+        ok: true,
+        fallback: "frozen_existing",
+        detail: `Kept existing weekly tourney for ${weekKey}.`,
+      },
+    }
+    : weeklyTourneyFromBoard(allProps, nflAllUpcoming, weekKey, now);
+
+  const nextDaily = reusableTourney(keep.nextDaily, nextSlate) ??
+    dailyTourneyFromProps(tomorrowProps, nextSlate).payload;
+
+  let nextWeekly: TourneyPayload | null = null;
+  if (sundayEarly) {
+    nextWeekly = reusableTourney(keep.nextWeekly, nextWeekKey) ??
+      weeklyTourneyFromBoard(tomorrowProps, nflAllUpcoming, nextWeekKey, now).payload;
+  }
 
   return {
     ribbons,
+    tomorrowRibbons,
     dailyTourney: daily.payload,
     weeklyTourney: weekly.payload,
+    nextDailyTourney: nextDaily,
+    nextWeeklyTourney: nextWeekly,
     creditsSpent: spent,
     tourneyDiagnostics: { daily: daily.diag, weekly: weekly.diag },
   };
@@ -663,8 +758,11 @@ function parseStoredBoard(board: unknown): SnapshotBoard | null {
       return {
         version: 2,
         ribbons: obj.ribbons as Ribbon[],
+        tomorrowRibbons: Array.isArray(obj.tomorrowRibbons) ? obj.tomorrowRibbons as Ribbon[] : undefined,
         dailyTourney: (obj.dailyTourney as TourneyPayload) ?? null,
         weeklyTourney: (obj.weeklyTourney as TourneyPayload) ?? null,
+        nextDailyTourney: (obj.nextDailyTourney as TourneyPayload) ?? null,
+        nextWeeklyTourney: (obj.nextWeeklyTourney as TourneyPayload) ?? null,
         creditsSpent: Number(obj.creditsSpent) || 0,
         tourneyDiagnostics: obj.tourneyDiagnostics as SnapshotBoard["tourneyDiagnostics"],
       };
@@ -788,14 +886,22 @@ Deno.serve(async (req) => {
   }
 
   function respond(source: string, stored: SnapshotBoard, cached: boolean, updatedAt: string | null) {
+    const nextSlate = nextSlateKey(now);
     const ribbons = liveFilter(stored.ribbons, slate, now);
+    const tomorrowRibbons = liveFilter(stored.tomorrowRibbons ?? [], nextSlate, now);
     return json({
       mode,
       source,
       slateKey: slate,
+      nextSlateKey: nextSlate,
+      weekKey: calendarWeekKey(now),
+      nextWeekKey: nextCalendarWeekKey(now),
       ribbons,
+      tomorrowRibbons,
       dailyTourney: stored.dailyTourney,
       weeklyTourney: stored.weeklyTourney,
+      nextDailyTourney: stored.nextDailyTourney ?? null,
+      nextWeeklyTourney: isSundayEarlyWeeklyWindow(now) ? (stored.nextWeeklyTourney ?? null) : null,
       creditsSpent: stored.creditsSpent,
       tourneyDiagnostics: stored.tourneyDiagnostics,
       cached,
@@ -807,7 +913,7 @@ Deno.serve(async (req) => {
   let snapshot = await loadSnapshot();
   const stored = snapshot ? parseStoredBoard(snapshot.board) : null;
   const sameSlateFresh = !force && snapshot && snapshot.mode === mode && stored &&
-    snapshot.slate_key === slate;
+    snapshot.slate_key === slate && stored.tomorrowRibbons !== undefined;
 
   if (sameSlateFresh) {
     return respond(snapshot!.source, stored!, true, snapshot!.updated_at);
@@ -833,7 +939,16 @@ Deno.serve(async (req) => {
     slate_key: slate,
     mode,
     source: snapshot?.source ?? "refreshing",
-    board: snapshot?.board ?? { version: 2, ribbons: [], dailyTourney: null, weeklyTourney: null, creditsSpent: 0 },
+    board: snapshot?.board ?? {
+      version: 2,
+      ribbons: [],
+      tomorrowRibbons: [],
+      dailyTourney: null,
+      weeklyTourney: null,
+      nextDailyTourney: null,
+      nextWeeklyTourney: null,
+      creditsSpent: 0,
+    },
     updated_at: snapshot?.updated_at ?? lockAt,
     refresh_started_at: lockAt,
   });
@@ -841,23 +956,43 @@ Deno.serve(async (req) => {
   let payload: SnapshotBoard = {
     version: 2,
     ribbons: [],
+    tomorrowRibbons: [],
     dailyTourney: null,
     weeklyTourney: null,
+    nextDailyTourney: null,
+    nextWeeklyTourney: null,
     creditsSpent: 0,
   };
   let source = "odds_api";
   try {
     if (mode === "live" && oddsApiKey) {
-      const live = await liveBoardFromOddsApi(oddsApiKey, slate, now);
+      const { data: prevRow } = await admin
+        .from("juicd_play_board_snapshots")
+        .select("board")
+        .eq("slate_key", previousSlateKey(now))
+        .maybeSingle();
+      const prevBoard = prevRow ? parseStoredBoard(prevRow.board) : null;
+      const weekKey = calendarWeekKey(now);
+      const live = await liveBoardFromOddsApi(oddsApiKey, slate, now, {
+        daily: reusableTourney(stored?.dailyTourney, slate) ??
+          reusableTourney(prevBoard?.nextDailyTourney, slate),
+        weekly: reusableTourney(stored?.weeklyTourney, weekKey) ??
+          reusableTourney(prevBoard?.nextWeeklyTourney, weekKey),
+        nextDaily: stored?.nextDailyTourney ?? prevBoard?.nextDailyTourney,
+        nextWeekly: stored?.nextWeeklyTourney ?? prevBoard?.nextWeeklyTourney,
+      });
       payload = {
         version: 2,
         ribbons: live.ribbons,
+        tomorrowRibbons: live.tomorrowRibbons,
         dailyTourney: live.dailyTourney,
         weeklyTourney: live.weeklyTourney,
+        nextDailyTourney: live.nextDailyTourney,
+        nextWeeklyTourney: live.nextWeeklyTourney,
         creditsSpent: live.creditsSpent,
         tourneyDiagnostics: live.tourneyDiagnostics,
       };
-      source = live.ribbons.length > 0 ? "odds_api" : "odds_api_empty";
+      source = live.ribbons.length > 0 || live.tomorrowRibbons.length > 0 ? "odds_api" : "odds_api_empty";
       await logTourneyGaps(admin, [live.tourneyDiagnostics.daily, live.tourneyDiagnostics.weekly], slate, source);
     } else {
       source = "simulated_disabled";
@@ -879,15 +1014,19 @@ Deno.serve(async (req) => {
     }
   } catch (_e) {
     if (stored) {
+      const patched: SnapshotBoard = {
+        ...stored,
+        tomorrowRibbons: stored.tomorrowRibbons ?? [],
+      };
       await admin.from("juicd_play_board_snapshots").upsert({
         slate_key: slate,
         mode: snapshot!.mode,
         source: snapshot!.source,
-        board: snapshot!.board,
+        board: patched,
         updated_at: snapshot!.updated_at,
         refresh_started_at: null,
       });
-      return respond(snapshot!.source, stored, true, snapshot!.updated_at);
+      return respond(snapshot!.source, patched, true, snapshot!.updated_at);
     }
     source = "odds_api_error";
   }

@@ -52,17 +52,28 @@ struct PlayView: View {
                         searchBar
                     }
 
-                    if viewModel.displayedRibbons.isEmpty {
+                    if viewModel.displayedRibbons.isEmpty && viewModel.displayedTomorrowRibbons.isEmpty {
                         playEmptyState
                     } else {
-                        ForEach(playFeedRows(ribbons: viewModel.displayedRibbons)) { row in
-                            switch row {
-                            case .ribbon(let ribbon):
+                        if viewModel.displayedRibbons.isEmpty {
+                            todayQuietBanner
+                        } else {
+                            ForEach(playFeedRows(ribbons: viewModel.displayedRibbons)) { row in
+                                switch row {
+                                case .ribbon(let ribbon):
+                                    ribbonBlock(ribbon)
+                                        .id(ribbon.id)
+                                case .placeholder(let creative, let rowId):
+                                    JuicdInFeedAdSlot(creative: creative, onDismiss: dismissCurrentAd)
+                                    .id(rowId)
+                                }
+                            }
+                        }
+                        if !viewModel.displayedTomorrowRibbons.isEmpty {
+                            tomorrowSectionHeader
+                            ForEach(viewModel.displayedTomorrowRibbons) { ribbon in
                                 ribbonBlock(ribbon)
                                     .id(ribbon.id)
-                            case .placeholder(let creative, let rowId):
-                                JuicdInFeedAdSlot(creative: creative, onDismiss: dismissCurrentAd)
-                                .id(rowId)
                             }
                         }
                     }
@@ -75,7 +86,7 @@ struct PlayView: View {
             .id("\(viewModel.sportPill.rawValue)-\(viewModel.statFilterId)")
             .scrollIndicators(.hidden)
             .background(JuicdScreenBackground())
-            .task(id: "\(viewModel.displayedRibbons.map(\.id).joined(separator: ","))-\(forceRevision)") {
+            .task(id: "\(viewModel.displayedRibbons.map(\.id).joined(separator: ","))-\(viewModel.displayedTomorrowRibbons.map(\.id).joined(separator: ","))-\(forceRevision)") {
                 refreshAdInsertion(ribbonCount: viewModel.displayedRibbons.count)
             }
             .onChange(of: adsEnabled) { _, on in
@@ -137,7 +148,7 @@ struct PlayView: View {
 
                         tipRow(icon: "sparkles", text: "Popular aggregates ribbons that actually have priced props; league pills filter to one sport and unlock stat/search chips.")
                         tipRow(icon: "sportscourt.fill", text: "Tap any tile to build a slip — singles start there; Add leg stacks up to a small parlay with multiplied decimal odds.")
-                        tipRow(icon: "bolt.fill", text: "Stake comes from your daily balance (prototype tops out at 100 per slate). You can spend part or all of it on one slip.")
+                        tipRow(icon: "bolt.fill", text: "Today’s bets use today’s 100 points. Tomorrow’s games use tomorrow’s 100 — the line locks when you place.")
                         tipRow(icon: "star.circle.fill", text: "Juicd boost tiles multiply decimal odds on that pick — great upside if you love the price.")
                         tipRow(icon: "arrow.clockwise", text: "Sync refreshes the board. With Supabase keys set you pull the shared Edge Function board; otherwise a fallback API line may appear.")
                         tipRow(icon: "chart.line.uptrend.xyaxis", text: "Ranked pools only care how your Play day went vs peers — low stakes get scaled so fairness holds.")
@@ -285,7 +296,7 @@ struct PlayView: View {
             Text(
                 viewModel.hasActiveSearch
                     ? "Try a different search or clear it."
-                    : "Today’s Juicd board only lists games that haven’t started yet. Check back after 4am CT."
+                    : "No games left on today’s or tomorrow’s board. Check back after 4am CT."
             )
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(JuicdTheme.textSecondary)
@@ -385,6 +396,26 @@ struct PlayView: View {
                 }
         }
         .accessibilityLabel("Balance \(points) points")
+    }
+
+    private var todayQuietBanner: some View {
+        Text("No games left today — tomorrow is below.")
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .foregroundStyle(JuicdTheme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+    }
+
+    private var tomorrowSectionHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Tomorrow")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(JuicdTheme.textPrimary)
+            Text("Uses tomorrow’s 100 points. Line locks when you place.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(JuicdTheme.textSecondary)
+        }
+        .padding(.top, 8)
     }
 
     private func ribbonBlock(_ ribbon: PlayPropRibbon) -> some View {

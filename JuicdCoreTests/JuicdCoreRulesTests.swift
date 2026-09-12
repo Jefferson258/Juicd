@@ -227,14 +227,15 @@ final class JuicdCoreRulesTests: XCTestCase {
 
     func testPlayParlayStaysPendingWithoutForcedOutcomes() {
         let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
-        let start = Date().addingTimeInterval(3600)
+        let now = Date()
+        let start = now.addingTimeInterval(3600)
         var pendingLeg = leg()
         pendingLeg.commenceTime = start
         let outcome = repo.submitPlayParlay(
             userId: userId,
             stakePoints: 10,
             legs: [pendingLeg],
-            date: Date(timeIntervalSince1970: 1_000_000)
+            date: now
         )
         XCTAssertEqual(outcome?.pending, true)
         XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 90)
@@ -363,5 +364,83 @@ final class JuicdCoreRulesTests: XCTestCase {
             roundSpecs: [combinedNoLine]
         )
         XCTAssertFalse(ok.containsBannedPlaceholder)
+    }
+
+    func testCalendarWeekIsMondayThroughSunday() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let friday = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 13))!
+        XCTAssertEqual(SlateDay.calendarWeekKey(for: friday), "2026-09-07")
+        XCTAssertEqual(SlateDay.nflWeekKey(for: friday), "2026-09-07")
+        XCTAssertEqual(SlateDay.nextSlateKey(from: friday), "2026-09-12")
+        let sunday = cal.date(from: DateComponents(year: 2026, month: 9, day: 13, hour: 16))!
+        XCTAssertTrue(SlateDay.isSundayEarlyWeeklyWindow(for: sunday))
+        XCTAssertEqual(SlateDay.calendarWeekKey(for: sunday), "2026-09-07")
+        XCTAssertEqual(SlateDay.nextCalendarWeekKey(for: sunday), "2026-09-14")
+        XCTAssertFalse(SlateDay.isSundayEarlyWeeklyWindow(for: friday))
+    }
+
+    func testTomorrowStakeDoesNotReduceTodayPoints() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let fridayNight = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 21))!
+        let saturdayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 19))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var tomorrowLeg = leg()
+        tomorrowLeg.commenceTime = saturdayGame
+        let outcome = repo.submitPlayParlay(
+            userId: userId,
+            stakePoints: 30,
+            legs: [tomorrowLeg],
+            date: fridayNight
+        )
+        XCTAssertEqual(outcome?.pending, true)
+        XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 100)
+        let tomorrowKey = SlateDay.nextSlateKey(from: fridayNight)
+        XCTAssertEqual(repo.committedPlayStake(userId: userId, slateDayKey: tomorrowKey), 30)
+        XCTAssertEqual(repo.pointsRemaining(userId: userId, slateDayKey: SlateDay.slateKey(for: fridayNight), date: fridayNight), 100)
+        XCTAssertEqual(repo.pointsRemaining(userId: userId, slateDayKey: tomorrowKey, date: fridayNight), 70)
+        XCTAssertEqual(repo.state.playBoardEntries?.first?.slateDayKey, tomorrowKey)
+    }
+
+    func testAwardAt4amSubtractsReservedTomorrowStakes() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let fridayNight = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 21))!
+        let saturdayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 19))!
+        let saturday4am = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 4))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var tomorrowLeg = leg()
+        tomorrowLeg.commenceTime = saturdayGame
+        _ = repo.submitPlayParlay(
+            userId: userId,
+            stakePoints: 30,
+            legs: [tomorrowLeg],
+            date: fridayNight
+        )
+        XCTAssertEqual(repo.awardDailyPointsIfNeeded(userId: userId, date: saturday4am)?.availableDailyPoints, 70)
+    }
+
+    func testMixedSlateParlayReturnsNil() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let fridayNight = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 21))!
+        let fridayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 22))!
+        let saturdayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 19))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var todayLeg = leg()
+        todayLeg.commenceTime = fridayGame
+        var tomorrowLeg = leg(id: UUID(uuidString: "44444444-4444-4444-8444-444444444444")!)
+        tomorrowLeg.commenceTime = saturdayGame
+        XCTAssertNil(
+            repo.submitPlayParlay(
+                userId: userId,
+                stakePoints: 10,
+                legs: [todayLeg, tomorrowLeg],
+                date: fridayNight
+            )
+        )
+        XCTAssertEqual(repo.profile(userId: userId)?.availableDailyPoints, 100)
+        XCTAssertTrue(repo.state.playBoardEntries?.isEmpty ?? true)
     }
 }
