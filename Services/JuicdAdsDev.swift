@@ -9,9 +9,9 @@ enum JuicdAdsDev {
 
     private static let lastImpressionKey = "juicd_ads_last_impression_at"
 
-    /// In-feed slot follows the Profile toggle only (no random roll).
-    static func shouldShowAd(adsEnabled: Bool) -> Bool {
-        adsEnabled
+    /// In-feed slot is always eligible. Session dismiss (X) still hides it until relaunch / spawn.
+    static func shouldShowAd() -> Bool {
+        true
     }
 
     /// Call when the user **sees** the in-feed ad cell (once per placement).

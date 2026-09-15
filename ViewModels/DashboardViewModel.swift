@@ -33,8 +33,6 @@ final class DashboardViewModel: ObservableObject {
             }
     }
 
-    nonisolated deinit {}
-
     func configure(userId: UUID?) {
         self.userId = userId
         refresh()

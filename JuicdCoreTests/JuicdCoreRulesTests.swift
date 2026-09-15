@@ -366,6 +366,15 @@ final class JuicdCoreRulesTests: XCTestCase {
         XCTAssertFalse(ok.containsBannedPlaceholder)
     }
 
+    func testCountdownPhraseNeverSaysStartsInStarted() {
+        let past = Date().addingTimeInterval(-30)
+        XCTAssertEqual(GameCountdown.phrase(until: past), "Started")
+        let future = Date().addingTimeInterval(95)
+        let phrase = GameCountdown.phrase(until: future)
+        XCTAssertTrue(phrase.hasPrefix("Starts in "))
+        XCTAssertFalse(phrase.contains("Starts in Started"))
+    }
+
     func testCalendarWeekIsMondayThroughSunday() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "America/Chicago")!
@@ -465,5 +474,72 @@ final class JuicdCoreRulesTests: XCTestCase {
             repo.pointsRemaining(userId: userId, slateDayKey: SlateDay.nextSlateKey(from: fridayNight), date: fridayNight),
             75
         )
+    }
+
+    func testSimilarRankedPoolsChunkByMMRAndPadRemainder() {
+        let ids = (0..<12).map { _ in UUID() }
+        var mmr: [UUID: Double] = [:]
+        for (i, id) in ids.enumerated() { mmr[id] = Double(1400 + i * 10) }
+        let pools = MMRLogic.similarPools(participantIds: ids, mmrById: mmr, poolSize: 10)
+        XCTAssertEqual(pools.count, 2)
+        XCTAssertEqual(pools[0].count, 10)
+        XCTAssertEqual(pools[1].count, 2)
+    }
+
+    func testCollapseOverUnderKeepsOneTile() {
+        let over = PlayPropBet(
+            id: UUID(), leagueTag: "NBA", athleteOrTeam: "Jokić", matchup: "DEN @ MIN",
+            propDescription: "Points", lineText: "27.5", pickLabel: "Over", oddsDecimal: 1.9,
+            eventId: "e1"
+        )
+        var under = over
+        under.id = UUID()
+        under.pickLabel = "Under"
+        under.oddsDecimal = 1.85
+        let merged = PlayLineGrouping.collapseOverUnder([over, under])
+        XCTAssertEqual(merged.count, 1)
+        XCTAssertEqual(merged[0].overOdds, 1.9)
+        XCTAssertEqual(merged[0].underOdds, 1.85)
+        XCTAssertEqual(merged[0].pickLabel, "O/U")
+    }
+
+    func testUngradedSlipsPushAndSkipRankedStake() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let friday = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 13))!
+        let saturday = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 13))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var playLeg = leg()
+        playLeg.commenceTime = friday
+        _ = repo.submitPlayParlay(userId: userId, stakePoints: 20, legs: [playLeg], date: friday)
+        let slate = SlateDay.slateKey(for: friday)
+        XCTAssertEqual(repo.voidUngradedPlaySlipsAsPush(userId: userId, slateKey: slate), 1)
+        XCTAssertEqual(repo.state.playBoardEntries?.first?.pushed, true)
+        repo.resolveDailyRankOutcomes(userId: userId, now: saturday)
+        XCTAssertEqual(repo.profile(userId: userId)?.lastDailyMatch?.pointsStaked ?? 0, 0)
+    }
+
+    func testTomorrowSlipEntersTomorrowRankedPool() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Chicago")!
+        let fridayNight = cal.date(from: DateComponents(year: 2026, month: 9, day: 11, hour: 21))!
+        let saturdayGame = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 19))!
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        var tomorrowLeg = leg()
+        tomorrowLeg.commenceTime = saturdayGame
+        _ = repo.submitPlayParlay(userId: userId, stakePoints: 25, legs: [tomorrowLeg], date: fridayNight)
+        let tomorrowKey = SlateDay.nextSlateKey(from: fridayNight)
+        XCTAssertTrue((repo.state.dailyRankParticipationByDay[tomorrowKey] ?? []).contains(userId))
+        XCTAssertFalse((repo.state.dailyRankParticipationByDay[SlateDay.slateKey(for: fridayNight)] ?? []).contains(userId))
+    }
+
+    func testTourneyTrophyUpgradesAtThreeFiveTen() {
+        let repo = InMemoryJuicdRepository(initialState: state(with: profile()))
+        repo.recordClosestTourneyWin(userId: userId, kind: "daily", periodKey: "d1")
+        XCTAssertEqual(repo.userBadges(userId: userId).first?.tintName, "bronze")
+        repo.recordClosestTourneyWin(userId: userId, kind: "daily", periodKey: "d1")
+        repo.recordClosestTourneyWin(userId: userId, kind: "daily", periodKey: "d2")
+        repo.recordClosestTourneyWin(userId: userId, kind: "daily", periodKey: "d3")
+        XCTAssertEqual(repo.userBadges(userId: userId).first?.tintName, "silver")
     }
 }

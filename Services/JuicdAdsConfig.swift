@@ -6,8 +6,6 @@ import Foundation
 /// load Google’s official **Test Ad** creatives so you can see real banner
 /// size/behavior without using live inventory (and without clicking your own ads).
 enum JuicdAdsConfig {
-    static let enabledStorageKey = "juicd_ads_enabled"
-
     /// Google sample iOS app. Replace with the Juicd iOS App ID from AdMob.
     static let testApplicationID = "ca-app-pub-3940256099942544~1458002511"
     /// Google sample banner. Replace with a Juicd banner unit.

@@ -2,7 +2,7 @@
 
 Step-by-step runbook to run Juicd locally, connect Supabase, optionally monetize with ads, ship TestFlight, and publish on the **App Store**.
 
-**You have a personal Apple Developer account today.** LLC, banking, and ad payout setup: **[`../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md`](../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md)**.
+**Apple Developer membership is still Individual.** Individual → Organization was **requested Sep 12, 2026** on this Apple ID (waiting on Apple). LLC, banking, and ad payout setup: **[`../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md`](../LegalDocuments/BUSINESS_LLC_AND_MONETIZATION.md)**.
 
 **Start here (your numbered steps + time estimates):** [YOUR_LAUNCH_CHECKLIST.md](YOUR_LAUNCH_CHECKLIST.md)  
 **You vs Agent by phase:** [LAUNCH_EXECUTION_SPLIT.md](LAUNCH_EXECUTION_SPLIT.md) · **Max access + credentials (incl. Odds API):** [MAX_ACCESS_SETUP_SPLIT.md](MAX_ACCESS_SETUP_SPLIT.md)  

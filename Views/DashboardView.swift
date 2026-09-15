@@ -111,7 +111,6 @@ struct DashboardView: View {
                     }
 
                     rankingsCard(profile: profile)
-                    mmrCalculationCard
                 } else {
                     Card(title: "Loading…", systemImage: "hourglass") {
                         Text("Loading profile.")
@@ -136,31 +135,31 @@ struct DashboardView: View {
                             .foregroundStyle(JuicdTheme.textPrimary)
 
                         helpSectionTitle("Two different numbers")
-                        Text("Daily balance is spendable points this slate (refills each slate — prototype uses up to 100). It is not your skill rating.\n\nSeason score only grows from wins and bonuses — it’s your long-run trophy progress on Profile.")
+                        Text("Daily balance is spendable points this slate (refills each slate, up to 100). It is not your skill rating.\n\nSeason score only grows from wins and bonuses — it’s your long-run trophy progress on Profile.")
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.body)
                             .lineSpacing(5)
 
                         helpSectionTitle("Ranked pools (MMR)")
-                        Text("When you place Play bets on a slate, you enter a simulated 10-player skill pool after that slate resolves. Placement (#1–#10) shifts MMR, which drives your tier on the ladder.")
+                        Text("When you place Play bets on a slate, you enter a 10-player skill pool of similarly ranked players after that slate resolves. Empty seats fill with bots. Placement (#1–#10) shifts MMR, which drives your tier on the ladder.\n\nTop 5 gain MMR. Bottom 5 lose MMR. #1 gains the most, #10 loses the most. Ungraded slips at 4am CT push (they don’t help or hurt that day’s ranked score).")
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.body)
                             .lineSpacing(5)
 
-                        helpSectionTitle("Fair staking")
-                        Text("If you risk fewer points than the daily allowance, your net result is scaled to a 100-point baseline before ranking. That way cautious staking doesn’t tank your placement unfairly.")
+                        helpSectionTitle("Fair staking (100-point stretch)")
+                        Text("If you risk fewer than 100 points, your net result is scaled to a 100-point baseline before ranking. Example: you bet 20 points and finish +10. Ranked scoring treats that as +50 at 100. Last ranked match shows what you actually bet versus what counted.")
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.body)
                             .lineSpacing(5)
 
                         helpSectionTitle("Smoothing")
-                        Text("MMR uses a moving average so one lucky or unlucky slate doesn’t swing your tier wildly.")
+                        Text("Each day’s MMR change is averaged in (about 35% of the raw swing), so one lucky or unlucky slate doesn’t jump your tier wildly.")
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.body)
                             .lineSpacing(5)
 
                         helpSectionTitle("This ladder")
-                        Text("The list is every tier in order. Your row shows a checkmark. Challenger/Champion sport small badges — they’re cosmetic flair on top of MMR.")
+                        Text("Highest tier is at the top. Your row is highlighted with your MMR. Rank up or down happens when yesterday’s pool resolves after 4am CT.")
                             .foregroundStyle(JuicdTheme.textSecondary)
                             .font(.body)
                             .lineSpacing(5)
@@ -190,8 +189,7 @@ struct DashboardView: View {
                         tipRow(icon: "list.bullet.clipboard.fill", text: "Play slips: Today shows today and tomorrow together. Pending slips stay pending until the game ends.")
                         tipRow(icon: "chart.line.uptrend.xyaxis", text: "Last ranked match summarizes how you placed in the prior slate’s 10-player pool once results apply.")
                         tipRow(icon: "bolt.fill", text: "Daily balance has two banks: today and tomorrow. Tomorrow’s 100 is separate until 4am CT.")
-                        tipRow(icon: "trophy.fill", text: "Rank tier card shows your current band; open Ranking help (?) on Rank ladder for the full MMR story.")
-                        tipRow(icon: "function", text: "MMR each day breaks down grouping, scaling, placement, smoothing, and tier curves in plain language.")
+                        tipRow(icon: "trophy.fill", text: "Rank tier card shows your current band; tap ? on Rank ladder for how MMR, staking, and rank-ups work.")
                     }
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .padding(24)
@@ -325,46 +323,50 @@ struct DashboardView: View {
     }
 
     private func slipOutcomeLabel(_ entry: PlayBoardEntry) -> String {
+        if entry.pushed { return "Push" }
         if entry.pending { return "Pending" }
         return entry.didWin ? "Won" : "Missed"
     }
 
     private func slipOutcomeColor(_ entry: PlayBoardEntry) -> Color {
+        if entry.pushed { return JuicdTheme.textSecondary }
         if entry.pending { return JuicdTheme.brand }
         return entry.didWin ? Color(red: 0.35, green: 0.95, blue: 0.55) : JuicdTheme.textTertiary
     }
 
     @ViewBuilder
     private func lastRankedMatchCard(profile: Profile) -> some View {
-        let snapshot = profile.lastDailyMatch ?? DailyMatchSnapshot.devPreview
-        let isSample = profile.lastDailyMatch == nil
-
         Card(title: "Last ranked match", systemImage: "chart.line.uptrend.xyaxis", style: .hero) {
             VStack(alignment: .leading, spacing: 10) {
-                if isSample {
-                    Text("Sample preview")
+                if let snapshot = profile.lastDailyMatch {
+                    Text(formattedRankPoolDay(snapshot.dayISO))
                         .font(.caption.weight(.heavy))
-                        .foregroundStyle(JuicdTheme.brand)
-                }
-                Text(formattedRankPoolDay(snapshot.dayISO))
-                    .font(.caption.weight(.heavy))
-                    .foregroundStyle(JuicdTheme.textTertiary)
-                Text("Placement \(snapshot.placement) / \(snapshot.poolSize)")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                if snapshot.tierBefore != snapshot.tierAfter {
-                    Text("Tier \(snapshot.tierBefore.displayName) → \(snapshot.tierAfter.displayName)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                } else {
-                    Text("Tier unchanged at \(snapshot.tierAfter.displayName)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                }
-                if isSample {
-                    Text("Your real result appears after the slate resolves.")
-                        .font(.caption.weight(.medium))
                         .foregroundStyle(JuicdTheme.textTertiary)
+                    Text("Placement \(snapshot.placement) / \(snapshot.poolSize)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textPrimary)
+                    if snapshot.tierBefore != snapshot.tierAfter {
+                        Text("Tier \(snapshot.tierBefore.displayName) → \(snapshot.tierAfter.displayName)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    } else {
+                        Text("Tier unchanged at \(snapshot.tierAfter.displayName)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                    }
+                    if let staked = snapshot.pointsStaked, staked > 0 {
+                        let scaled = Int((snapshot.scaledNetAtHundred ?? 0).rounded())
+                        let raw = snapshot.rawNetPoints ?? 0
+                        Text("You bet \(staked) pts (net \(raw >= 0 ? "+" : "")\(raw)). Ranked scoring stretched that to \(scaled >= 0 ? "+" : "")\(scaled) on a 100-pt line.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Text("Play on a slate and your placement, stake, and 100-point score show up after 4am CT.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                        .lineSpacing(3)
                 }
             }
         }
@@ -440,46 +442,66 @@ struct DashboardView: View {
             .padding(.bottom, 20)
 
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.rankLadder.enumerated()), id: \.offset) { index, tier in
+                ForEach(Array(viewModel.rankLadder.reversed().enumerated()), id: \.offset) { index, tier in
                     let isCurrent = tier == profile.currentTier
-                    if index > 0 {
-                        Divider()
-                            .overlay(JuicdTheme.strokeSubtle)
-                            .padding(.vertical, 2)
+                    let last = profile.lastDailyMatch
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(spacing: 0) {
+                            Circle()
+                                .fill(isCurrent ? JuicdTheme.brand : JuicdTheme.strokeSubtle)
+                                .frame(width: isCurrent ? 12 : 8, height: isCurrent ? 12 : 8)
+                                .padding(.top, 6)
+                            if index < viewModel.rankLadder.count - 1 {
+                                Rectangle()
+                                    .fill(JuicdTheme.strokeSubtle)
+                                    .frame(width: 2)
+                                    .frame(maxHeight: .infinity)
+                            }
+                        }
+                        .frame(width: 14)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(tier.displayName)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(isCurrent ? JuicdTheme.brand : JuicdTheme.textPrimary)
+                                if tier == .challenger || tier == .champion {
+                                    Text(tier == .champion ? "Elite" : "Top")
+                                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(Color(red: 1, green: 0.85, blue: 0.35))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(red: 1, green: 0.75, blue: 0.2).opacity(0.15))
+                                        )
+                                }
+                                Spacer(minLength: 0)
+                                if isCurrent {
+                                    Text("You")
+                                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.brand)
+                                }
+                            }
+                            if isCurrent {
+                                Text("MMR \(Int((profile.mmr ?? MMRLogic.startingMMR).rounded()))")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(JuicdTheme.textSecondary)
+                                if let last, last.tierAfter == tier, last.tierBefore != last.tierAfter {
+                                    Text(last.tierBefore < last.tierAfter
+                                         ? "↑ from \(last.tierBefore.displayName)"
+                                         : "↓ from \(last.tierBefore.displayName)")
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundStyle(JuicdTheme.brand)
+                                }
+                            }
+                        }
                     }
-                    HStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 7) {
-                            Text(tier.displayName)
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(isCurrent ? JuicdTheme.brand : JuicdTheme.textPrimary)
-                            Text("Based on MMR")
-                                .foregroundStyle(JuicdTheme.textTertiary)
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        Spacer()
-                        if tier == .challenger || tier == .champion {
-                            Text(tier == .champion ? "Elite" : "Top")
-                                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Color(red: 1, green: 0.85, blue: 0.35))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(Color(red: 1, green: 0.75, blue: 0.2).opacity(0.15))
-                                )
-                        }
-                        if isCurrent {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(JuicdTheme.brand)
-                                .font(.system(size: 18))
-                        }
-                    }
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 2)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 8)
                     .background(
-                        isCurrent
-                            ? JuicdTheme.brand.opacity(0.06)
-                            : Color.clear
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(isCurrent ? JuicdTheme.brand.opacity(0.10) : Color.clear)
                     )
                 }
             }
@@ -507,48 +529,6 @@ struct DashboardView: View {
                     ),
                     lineWidth: 1
                 )
-        }
-    }
-
-    private var mmrCalculationCard: some View {
-        Card(title: "MMR each day", systemImage: "function", style: .hero) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("1) Grouping")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                Text("You are matched into a daily group of 10 similar players.")
-                    .font(.caption)
-                    .foregroundStyle(JuicdTheme.textSecondary)
-
-                Text("2) Fair scaling")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                Text("Your daily net is scaled to a 100-point baseline, so spending fewer points does not punish rank quality.")
-                    .font(.caption)
-                    .foregroundStyle(JuicdTheme.textSecondary)
-
-                Text("3) Placement")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                Text("Top 5 gain MMR. Bottom 5 lose MMR. #1 gains the most, #10 loses the most.")
-                    .font(.caption)
-                    .foregroundStyle(JuicdTheme.textSecondary)
-
-                Text("4) Moving average")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                Text("Daily changes are smoothed with a moving average to keep rank movement stable.")
-                    .font(.caption)
-                    .foregroundStyle(JuicdTheme.textSecondary)
-
-                Text("5) Bell-curve tiers")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(JuicdTheme.textPrimary)
-                Text("Tier cutoffs follow a bell curve centered near Platinum, with fewer players in farther tiers.")
-                    .font(.caption)
-                    .foregroundStyle(JuicdTheme.textSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

@@ -35,13 +35,18 @@ final class TourneyViewModel: ObservableObject {
     @Published var showBracket = false
     @Published private(set) var remoteEntrants: [BracketEntrant]?
     @Published private(set) var remoteActuals: [Double?]?
+    @Published private(set) var bracketIndex = 0
+    @Published private(set) var bracketCount = 1
     private var boardCancellable: AnyCancellable?
+    private var lastRemoteFetchKey: String?
 
     init(repository: InMemoryJuicdRepository) {
         self.repository = repository
-        boardCancellable = repository.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
+        boardCancellable = repository.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleRepositoryChange()
+            }
     }
 
     var payload: RemoteTourneyPayload? {
@@ -63,8 +68,9 @@ final class TourneyViewModel: ObservableObject {
     var freezeDate: Date? { payload?.freezeDate }
     var commenceDate: Date? { payload?.commenceDate }
     var isFrozen: Bool {
-        guard let freezeDate else { return false }
-        return Date() >= freezeDate
+        // Freeze at earliest slate commence (aligned with Play: game not started).
+        if let freezeDate, Date() >= freezeDate { return true }
+        return gameStarted
     }
     var gameStarted: Bool {
         guard let commenceDate else { return false }
@@ -80,8 +86,6 @@ final class TourneyViewModel: ObservableObject {
         self.userId = userId
         errorMessage = nil
         refreshFromBoard()
-        loadSubmitted()
-        seedPickPlaceholders()
         logMissingPayloadIfNeeded()
         Task { await refreshRemoteBracket() }
     }
@@ -96,6 +100,7 @@ final class TourneyViewModel: ObservableObject {
         if !hasUpcomingBoard { boardWindow = .current }
         remoteEntrants = nil
         remoteActuals = nil
+        lastRemoteFetchKey = nil
         loadSubmitted()
         seedPickPlaceholders()
         errorMessage = nil
@@ -107,6 +112,7 @@ final class TourneyViewModel: ObservableObject {
         boardWindow = window
         remoteEntrants = nil
         remoteActuals = nil
+        lastRemoteFetchKey = nil
         loadSubmitted()
         seedPickPlaceholders()
         errorMessage = nil
@@ -120,7 +126,7 @@ final class TourneyViewModel: ObservableObject {
             return
         }
         if isFrozen {
-            errorMessage = "Entry froze an hour before start."
+            errorMessage = "Entry locked — a game on this slate has started."
             return
         }
         let needed = payload.roundSpecs.count
@@ -197,16 +203,45 @@ final class TourneyViewModel: ObservableObject {
         return min(4, max(0, Int(elapsed / 600)))
     }
 
+    private func handleRepositoryChange() {
+        refreshFromBoard()
+        let key = remoteFetchKey
+        guard key != lastRemoteFetchKey else { return }
+        Task { await refreshRemoteBracket() }
+    }
+
+    private var remoteFetchKey: String {
+        "\(kind.rawValue)|\(boardWindow.rawValue)|\(payload?.kind ?? "")|\(payload?.periodKey ?? "")"
+    }
+
+    private var fallbackPeriodKey: String {
+        switch (kind, boardWindow) {
+        case (.daily, .current): return SlateDay.slateKey()
+        case (.daily, .upcoming): return SlateDay.nextSlateKey()
+        case (.weekly, .current): return SlateDay.calendarWeekKey()
+        case (.weekly, .upcoming): return SlateDay.nextCalendarWeekKey()
+        }
+    }
+
     private func loadSubmitted() {
-        guard let userId, let payload else {
+        guard let userId else {
             submittedPicks = nil
             return
         }
-        submittedPicks = repository.tourneyPicks(userId: userId, kind: payload.kind, periodKey: payload.periodKey)
+        if let payload {
+            submittedPicks = repository.tourneyPicks(userId: userId, kind: payload.kind, periodKey: payload.periodKey)
+        } else {
+            submittedPicks = repository.tourneyPicks(userId: userId, kind: kind.rawValue, periodKey: fallbackPeriodKey)
+        }
+        if let submitted = submittedPicks, !submitted.isEmpty {
+            pickTexts = submitted.map { String(format: "%.1f", $0) }
+            while pickTexts.count < 4 { pickTexts.append("") }
+        }
     }
 
     func refreshRemoteBracket() async {
         guard let userId, let payload, SupabaseConfig.isConfigured else { return }
+        lastRemoteFetchKey = remoteFetchKey
         guard let remote = await TourneyBracketService.fetch(
             userId: userId,
             kind: payload.kind,
@@ -223,10 +258,30 @@ final class TourneyViewModel: ObservableObject {
             )
         }
         remoteActuals = remote.actuals
+        bracketIndex = remote.bracketIndex ?? 0
+        bracketCount = max(1, remote.bracketCount ?? 1)
         if let mine = remote.entries.first(where: { $0.id.lowercased() == userId.uuidString.lowercased() }),
            !mine.picks.isEmpty {
             submittedPicks = mine.picks
+            pickTexts = mine.picks.map { String(format: "%.1f", $0) }
+            while pickTexts.count < 4 { pickTexts.append("") }
         }
+        maybeAwardTourneyWin()
+    }
+
+    private func maybeAwardTourneyWin() {
+        guard let userId, let payload else { return }
+        let needed = max(1, payload.roundSpecs.count)
+        guard revealedRound() >= needed else { return }
+        let columns = TourneyBracketTree.rounds(
+            entrants: entrants(),
+            actuals: remoteActuals,
+            revealed: revealedRound()
+        )
+        guard let champ = columns.last?.first?.winner,
+              champ.id.lowercased() == userId.uuidString.lowercased()
+        else { return }
+        repository.recordClosestTourneyWin(userId: userId, kind: payload.kind, periodKey: payload.periodKey)
     }
 
     private func seedPickPlaceholders() {
@@ -242,11 +297,11 @@ final class TourneyViewModel: ObservableObject {
         guard payload == nil else { return }
         AppErrorLogger.log(
             severity: .error,
-            message: "Tourney \(kind.rawValue) slate missing after Play board fetch (no local demo fallback).",
+            message: "Tourney \(kind.rawValue) slate missing after Play board fetch.",
             screen: "tourney",
             extra: [
                 "kind": .string(kind.rawValue),
-                "period": .string(kind == .daily ? SlateDay.slateKey() : SlateDay.calendarWeekKey()),
+                "period": .string(fallbackPeriodKey),
             ]
         )
     }

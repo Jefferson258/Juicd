@@ -127,18 +127,12 @@ struct DailyMatchSnapshot: Codable, Equatable {
     var mmrAfter: Double
     var tierBefore: RankTier
     var tierAfter: RankTier
-
-    /// Dev-only sample when the user has no resolved pool yet.
-    static let devPreview = DailyMatchSnapshot(
-        dayISO: "2026-03-20",
-        placement: 4,
-        poolSize: 10,
-        mmrBefore: 1500,
-        mmrDelta: 4,
-        mmrAfter: 1504,
-        tierBefore: .silver,
-        tierAfter: .silver
-    )
+    /// Points actually staked on that slate’s Play slips.
+    var pointsStaked: Int?
+    /// Raw net (payouts minus stakes) before the 100-point stretch.
+    var rawNetPoints: Int?
+    /// Ranked score after stretching ROI to a 100-point baseline.
+    var scaledNetAtHundred: Double?
 }
 
 /// One Play-board single or parlay placed on a slate.
@@ -159,10 +153,12 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
     /// Resolved per-leg outcomes for this slip (Play parlay legs only).
     var playLegWins: Int
     var playLegLosses: Int
+    /// Ungraded at 4am CT — stake ignored for ranked score (push).
+    var pushed: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, userId, slateDayKey, createdAt, stakePoints, legSummaries, combinedOdds, didWin, pending, commenceAt
-        case seasonPointsEarned, playLegWins, playLegLosses
+        case seasonPointsEarned, playLegWins, playLegLosses, pushed
     }
 
     init(
@@ -178,7 +174,8 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         playLegWins: Int,
         playLegLosses: Int,
         pending: Bool = false,
-        commenceAt: Date? = nil
+        commenceAt: Date? = nil,
+        pushed: Bool = false
     ) {
         self.id = id
         self.userId = userId
@@ -193,6 +190,7 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         self.seasonPointsEarned = seasonPointsEarned
         self.playLegWins = playLegWins
         self.playLegLosses = playLegLosses
+        self.pushed = pushed
     }
 
     init(from decoder: Decoder) throws {
@@ -225,6 +223,7 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
                 playLegLosses = n
             }
         }
+        pushed = try c.decodeIfPresent(Bool.self, forKey: .pushed) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -242,6 +241,7 @@ struct PlayBoardEntry: Codable, Identifiable, Equatable {
         try c.encode(seasonPointsEarned, forKey: .seasonPointsEarned)
         try c.encode(playLegWins, forKey: .playLegWins)
         try c.encode(playLegLosses, forKey: .playLegLosses)
+        try c.encode(pushed, forKey: .pushed)
     }
 }
 
@@ -472,8 +472,13 @@ struct RemoteTourneyPayload: Codable, Equatable {
     var freezeAt: String
     var roundSpecs: [RemoteTourneyRound]
 
-    var commenceDate: Date? { ISO8601DateFormatter().date(from: commenceTime) }
-    var freezeDate: Date? { ISO8601DateFormatter().date(from: freezeAt) }
+    var commenceDate: Date? {
+        let dates = roundSpecs.compactMap(\.commenceDate)
+        if let earliest = dates.min() { return earliest }
+        return ISO8601DateFormatter().date(from: commenceTime)
+    }
+    /// Lock / freeze at the earliest game start on the slate (no 1-hour early cutoff).
+    var freezeDate: Date? { commenceDate ?? ISO8601DateFormatter().date(from: freezeAt) }
 
     /// Cached Edge slates from before the no-demo generator. Real Over 44.5 props are not this.
     var containsBannedPlaceholder: Bool {
@@ -737,6 +742,44 @@ struct PlayPropBet: Identifiable, Equatable {
     var homeTeam: String?
     var awayTeam: String?
     var pointLine: Double?
+    /// When both are set, the board shows one line and the user picks Over or Under.
+    var overOdds: Double? = nil
+    var underOdds: Double? = nil
+    /// When set, the board shows one H2H / moneyline card; user picks home or away.
+    var homeOdds: Double? = nil
+    var awayOdds: Double? = nil
+
+    var hasOverUnderChoice: Bool {
+        overOdds != nil || underOdds != nil
+    }
+
+    var hasMoneylineChoice: Bool {
+        homeOdds != nil || awayOdds != nil
+    }
+
+    var isMoneylineStyle: Bool {
+        if hasMoneylineChoice { return true }
+        let desc = propDescription.lowercased()
+        let line = lineText.uppercased()
+        return line == "H2H" || line == "ML"
+            || desc.contains("moneyline") || desc.contains("h2h")
+            || desc.contains("head-to-head") || desc.contains("head to head")
+    }
+
+    /// Stable market/line identity for parlay duplicate rejection (ignores chosen side).
+    var marketLineKey: String {
+        if isMoneylineStyle || hasMoneylineChoice {
+            let event = eventId?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let event, !event.isEmpty {
+                return "h2h|\(event)"
+            }
+            return "h2h|\(matchup)|\(sportKey ?? "")|\(commenceTime?.timeIntervalSince1970 ?? 0)"
+        }
+        if hasOverUnderChoice || pickLabel == "Over" || pickLabel == "Under" || pickLabel == "O/U" {
+            return "ou|\(eventId ?? "")|\(athleteOrTeam)|\(propDescription)|\(lineText)"
+        }
+        return "line|\(eventId ?? "")|\(athleteOrTeam)|\(propDescription)|\(lineText)|\(pickLabel)"
+    }
 
     var juicdEffectiveDecimalOdds: Double {
         oddsDecimal * (juicdMultiplier ?? 1)
@@ -762,7 +805,11 @@ struct PlayPropBet: Identifiable, Equatable {
         sportKey: String? = nil,
         homeTeam: String? = nil,
         awayTeam: String? = nil,
-        pointLine: Double? = nil
+        pointLine: Double? = nil,
+        overOdds: Double? = nil,
+        underOdds: Double? = nil,
+        homeOdds: Double? = nil,
+        awayOdds: Double? = nil
     ) {
         self.id = id
         self.leagueTag = leagueTag
@@ -779,6 +826,32 @@ struct PlayPropBet: Identifiable, Equatable {
         self.homeTeam = homeTeam
         self.awayTeam = awayTeam
         self.pointLine = pointLine
+        self.overOdds = overOdds
+        self.underOdds = underOdds
+        self.homeOdds = homeOdds
+        self.awayOdds = awayOdds
+    }
+
+    func choosingOverUnder(side: String, odds: Double) -> PlayPropBet {
+        var copy = self
+        copy.pickLabel = side
+        copy.oddsDecimal = odds
+        copy.overOdds = nil
+        copy.underOdds = nil
+        copy.id = StableUUID.from("\(id.uuidString)|\(side)")
+        return copy
+    }
+
+    func choosingMoneyline(side: String, odds: Double) -> PlayPropBet {
+        var copy = self
+        copy.pickLabel = side
+        copy.athleteOrTeam = side
+        copy.oddsDecimal = odds
+        copy.homeOdds = nil
+        copy.awayOdds = nil
+        copy.lineText = "H2H"
+        copy.id = StableUUID.from("\(id.uuidString)|\(side)")
+        return copy
     }
 
     /// Snapshot for ledger resolution (one leg per pick).
@@ -874,12 +947,49 @@ struct GroupMembership: Codable, Identifiable {
     var joinedAt: Date
 }
 
+enum TourneyTrophy {
+    static func appearance(kind: String, wins: Int, seasonKey: String) -> (title: String, detail: String, symbol: String, tint: String) {
+        let weekly = kind == "weekly"
+        let label = JuicdSeason.shortLabel(for: seasonKey)
+        let tint: String
+        if wins >= 10 { tint = "platinum" }
+        else if wins >= 5 { tint = "gold" }
+        else if wins >= 3 { tint = "silver" }
+        else { tint = "bronze" }
+        let symbol: String
+        if weekly {
+            switch tint {
+            case "platinum": symbol = "crown.fill"
+            case "gold": symbol = "medal.fill"
+            case "silver": symbol = "medal"
+            default: symbol = "seal.fill"
+            }
+        } else {
+            switch tint {
+            case "platinum": symbol = "sparkles"
+            case "gold": symbol = "trophy.fill"
+            case "silver": symbol = "trophy"
+            default: symbol = "shield.fill"
+            }
+        }
+        let kindTitle = weekly ? "Weekly bracket" : "Daily bracket"
+        return (
+            "\(kindTitle) · \(tint.capitalized)",
+            "\(wins) \(weekly ? "weekly" : "daily") closest-pick \(wins == 1 ? "win" : "wins") in \(label). Color steps at 3, 5, and 10.",
+            symbol,
+            tint
+        )
+    }
+}
+
 struct RewardBadge: Codable, Identifiable, Hashable {
     var id: UUID
     var title: String
     var description: String
     var achievedAt: Date?
     var imageSystemName: String
+    /// Named tint for tourney trophies (`bronze`, `silver`, `gold`, `platinum`).
+    var tintName: String? = nil
 }
 
 struct RewardCatalogEntry: Codable, Identifiable, Hashable {

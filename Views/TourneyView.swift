@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
-    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @State private var showTourneyTips = false
     @State private var adDismissed = false
     @FocusState private var pickFocused: Bool
@@ -52,7 +51,7 @@ struct TourneyView: View {
                         }
                     }
 
-                    if adsEnabled && !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
+                    if !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
                         JuicdInFeedAdSlot(creative: JuicdDevAdCreative.all[1], onDismiss: {
                             adDismissed = true
                         })
@@ -93,7 +92,7 @@ struct TourneyView: View {
                         Text("Tourney guide")
                             .font(.title2.bold())
                         tipRow(icon: "calendar", text: "Daily runs with the 4am CT board. Weekly is Monday through Sunday night. On Sunday you can enter next week early.")
-                        tipRow(icon: "clock.fill", text: "Lock all four closest-number picks before freeze — one hour before the featured game starts.")
+                        tipRow(icon: "clock.fill", text: "Lock all four closest-number picks before any game on the tourney slate starts.")
                         tipRow(icon: "person.crop.circle.badge.questionmark", text: "Empty slots fill with labeled bots (fun names like AmazingTackler54) at freeze.")
                         tipRow(icon: "eye.fill", text: "Everyone’s picks are visible before a round is scored. Rounds reveal after the game.")
                     }
@@ -128,19 +127,24 @@ struct TourneyView: View {
                     .foregroundStyle(JuicdTheme.brand)
                 if let commence = payload.commenceDate {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text("Starts in \(GameCountdown.label(until: commence, now: context.date))")
+                        Text(GameCountdown.phrase(until: commence, now: context.date))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(JuicdTheme.textSecondary)
                     }
                 }
                 if let freeze = payload.freezeDate {
-                    Text(viewModel.isFrozen ? "Entry frozen" : "Entry freezes \(freeze.formatted(date: .omitted, time: .shortened)) CT window")
+                    Text(viewModel.isFrozen ? "Entry frozen — a slate game has started" : "Entry locks at first tip \(freeze.formatted(date: .omitted, time: .shortened))")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(JuicdTheme.textTertiary)
                 }
-                Text("16-person bracket · bots pad empty slots")
+                Text("16-person brackets · extra fields open when more than 16 enter")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(JuicdTheme.textTertiary)
+                if viewModel.bracketCount > 1 {
+                    Text("Your bracket \(viewModel.bracketIndex + 1) of \(viewModel.bracketCount)")
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(JuicdTheme.brand)
+                }
             }
         }
     }
@@ -199,7 +203,7 @@ struct TourneyView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(JuicdTheme.canvasDeep.opacity(0.45)))
     }
 
-    private func bracketCard(_ payload: RemoteTourneyPayload) -> some View {
+    private func bracketCard(_: RemoteTourneyPayload) -> some View {
         let people = viewModel.entrants()
         let revealed = viewModel.revealedRound()
         let columns = TourneyBracketTree.rounds(
@@ -207,35 +211,111 @@ struct TourneyView: View {
             actuals: viewModel.remoteActuals,
             revealed: revealed
         )
-        let titles = ["R16", "QF", "SF", "Final"]
         return Card(title: "Bracket", systemImage: "point.3.connected.trianglepath.dotted", style: .hero) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(viewModel.isFrozen ? "Frozen · R16 → Final" : "Matchups lock 1 hour before start. Bots fill empty slots.")
+                Text(viewModel.isFrozen ? "Frozen · R16 → Final" : "Lock picks before the first game starts. Bots fill empty slots at freeze.")
                     .font(.caption.weight(.heavy))
                     .foregroundStyle(JuicdTheme.textTertiary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(Array(columns.enumerated()), id: \.offset) { idx, matches in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(titles.indices.contains(idx) ? titles[idx] : "R\(idx + 1)")
-                                    .font(.system(size: 11, weight: .black, design: .rounded))
-                                    .foregroundStyle(JuicdTheme.brand)
-                                VStack(spacing: 10) {
-                                    ForEach(matches) { match in
-                                        bracketMatchup(match)
-                                    }
-                                }
-                            }
-                            .frame(width: 148)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
+                TourneyBracketTreeView(columns: columns)
             }
         }
     }
 
-    private func bracketMatchup(_ match: TourneyBracketTree.Match) -> some View {
+    private func compactTopIcon(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(JuicdTheme.brand)
+    }
+
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(JuicdTheme.brand)
+                .frame(width: 22)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(JuicdTheme.textSecondary)
+        }
+    }
+}
+
+struct TourneyBracketTreeView: View {
+    let columns: [[TourneyBracketTree.Match]]
+
+    private let matchH: CGFloat = 56
+    private let stride0: CGFloat = 68
+    private let colW: CGFloat = 142
+    private let colGap: CGFloat = 34
+    private let titles = ["R16", "QF", "SF", "Final"]
+
+    private var treeWidth: CGFloat {
+        let n = max(columns.count, 1)
+        return CGFloat(n) * colW + CGFloat(max(0, n - 1)) * colGap
+    }
+
+    private var treeHeight: CGFloat {
+        let n = max(columns.first?.count ?? 8, 1)
+        return CGFloat(n) * stride0
+    }
+
+    private func y(round: Int, index: Int) -> CGFloat {
+        let stride = stride0 * CGFloat(1 << round)
+        let offset = (stride - matchH) / 2
+        return CGFloat(index) * stride + offset
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: colGap) {
+                    ForEach(Array(titles.prefix(columns.count).enumerated()), id: \.offset) { _, title in
+                        Text(title)
+                            .font(.system(size: 11, weight: .black, design: .rounded))
+                            .foregroundStyle(JuicdTheme.brand)
+                            .frame(width: colW, alignment: .leading)
+                    }
+                }
+                ZStack(alignment: .topLeading) {
+                    Canvas { ctx, _ in
+                        guard columns.count > 1 else { return }
+                        for r in 0..<(columns.count - 1) {
+                            for i in 0..<columns[r].count {
+                                let parentIdx = i / 2
+                                let fromX = CGFloat(r) * (colW + colGap) + colW
+                                let toX = CGFloat(r + 1) * (colW + colGap)
+                                let y1 = y(round: r, index: i) + matchH / 2
+                                let y2 = y(round: r + 1, index: parentIdx) + matchH / 2
+                                let midX = (fromX + toX) / 2
+                                var path = Path()
+                                path.move(to: CGPoint(x: fromX, y: y1))
+                                path.addLine(to: CGPoint(x: midX, y: y1))
+                                path.addLine(to: CGPoint(x: midX, y: y2))
+                                path.addLine(to: CGPoint(x: toX, y: y2))
+                                ctx.stroke(
+                                    path,
+                                    with: .color(JuicdTheme.brand.opacity(0.42)),
+                                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
+                                )
+                            }
+                        }
+                    }
+                    .frame(width: treeWidth, height: treeHeight)
+
+                    ForEach(Array(columns.enumerated()), id: \.offset) { r, matches in
+                        ForEach(Array(matches.enumerated()), id: \.element.id) { i, match in
+                            matchCard(match)
+                                .frame(width: colW, height: matchH, alignment: .top)
+                                .offset(x: CGFloat(r) * (colW + colGap), y: y(round: r, index: i))
+                        }
+                    }
+                }
+                .frame(width: treeWidth, height: treeHeight, alignment: .topLeading)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func matchCard(_ match: TourneyBracketTree.Match) -> some View {
         VStack(spacing: 0) {
             bracketSlot(match.top, winnerId: match.winner?.id)
             Rectangle()
@@ -268,24 +348,8 @@ struct TourneyView: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 7)
+        .padding(.vertical, 6)
+        .frame(maxHeight: .infinity)
         .background(isWinner ? JuicdTheme.brand.opacity(0.16) : Color.clear)
-    }
-
-    private func compactTopIcon(systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(JuicdTheme.brand)
-    }
-
-    private func tipRow(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(JuicdTheme.brand)
-                .frame(width: 22)
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(JuicdTheme.textSecondary)
-        }
     }
 }

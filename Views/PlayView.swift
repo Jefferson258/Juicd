@@ -3,14 +3,13 @@ import SwiftUI
 struct PlayView: View {
     @ObservedObject var viewModel: PlayViewModel
 
-    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
     @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
     /// When set, inserts at most one ad at `insertIndex` (0...n) among ribbons.
     @State private var adInsertion: AdInsertion?
 
-    /// After user taps dismiss on the ad, no new ad until they spawn one from Profile.
+    /// After user taps dismiss on the ad, no new ad until they relaunch (or spawn one from DEBUG Profile).
     @State private var adDismissedForCurrentRibbonFeed = false
     @State private var sessionCreativeId = JuicdDevAdCreative.all[0].id
     @State private var showPlayTips = false
@@ -91,13 +90,6 @@ struct PlayView: View {
             .background(JuicdScreenBackground())
             .task(id: "\(viewModel.displayedRibbons.map(\.id).joined(separator: ","))-\(viewModel.displayedTomorrowRibbons.map(\.id).joined(separator: ","))-\(forceRevision)") {
                 refreshAdInsertion(ribbonCount: viewModel.displayedRibbons.count)
-            }
-            .onChange(of: adsEnabled) { _, on in
-                if on {
-                    refreshAdInsertion(ribbonCount: viewModel.displayedRibbons.count)
-                } else {
-                    adInsertion = nil
-                }
             }
 
             if viewModel.pickingAdditionalLeg {
@@ -462,15 +454,33 @@ struct PlayView: View {
         }
     }
 
+    @ViewBuilder
     private func propBetSquare(_ prop: PlayPropBet, ribbonId: String) -> some View {
         let pillColor = JuicdTheme.leaguePillColor(tag: prop.leagueTag)
         let ribbonAccent = JuicdTheme.ribbonAccent(ribbonId: ribbonId)
         let isJuicdBoost = prop.juicdMultiplier != nil
+        let needsSidePick = prop.hasOverUnderChoice || prop.hasMoneylineChoice
 
-        return Button {
-            viewModel.handlePropTap(prop)
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
+        if needsSidePick {
+            propBetCard(prop, ribbonId: ribbonId, pillColor: pillColor, ribbonAccent: ribbonAccent, isJuicdBoost: isJuicdBoost)
+        } else {
+            Button {
+                viewModel.handlePropTap(prop)
+            } label: {
+                propBetCard(prop, ribbonId: ribbonId, pillColor: pillColor, ribbonAccent: ribbonAccent, isJuicdBoost: isJuicdBoost)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func propBetCard(
+        _ prop: PlayPropBet,
+        ribbonId: String,
+        pillColor: Color,
+        ribbonAccent: Color,
+        isJuicdBoost: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center, spacing: 8) {
                     Text(prop.leagueTag)
                         .font(.system(size: 10, weight: .black, design: .rounded))
@@ -511,12 +521,14 @@ struct PlayView: View {
                 Text(prop.matchup)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(JuicdTheme.textTertiary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
 
                 if let commence = prop.commenceTime {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text("Starts in \(GameCountdown.label(until: commence, now: context.date))")
+                        Text(GameCountdown.phrase(until: commence, now: context.date))
                             .font(.system(size: 11, weight: .heavy, design: .rounded))
                             .foregroundStyle(JuicdTheme.brand)
                             .padding(.top, 4)
@@ -526,47 +538,130 @@ struct PlayView: View {
                 Text(prop.propDescription)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
 
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(prop.lineText)
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(JuicdTheme.textSecondary)
-                    Text(prop.pickLabel)
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !prop.hasOverUnderChoice && !prop.hasMoneylineChoice {
+                        Text(prop.pickLabel)
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(JuicdTheme.textPrimary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.top, 8)
 
-                Spacer(minLength: 10)
+                Spacer(minLength: 6)
 
-                HStack {
-                    Text(isJuicdBoost ? "Juicd odds" : "Odds")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textTertiary)
-                    Spacer()
-                    Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.brand)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                if prop.hasOverUnderChoice {
+                    HStack(spacing: 6) {
+                        if let over = prop.overOdds {
+                            Button {
+                                viewModel.handleOverUnder(prop, side: "Over", odds: over)
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Text("Over")
+                                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Text(String(format: "%.2f", over))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.9)))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(JuicdTheme.brand)
+                        }
+                        if let under = prop.underOdds {
+                            Button {
+                                viewModel.handleOverUnder(prop, side: "Under", odds: under)
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Text("Under")
+                                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Text(String(format: "%.2f", under))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.9)))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(JuicdTheme.brand)
+                        }
+                    }
+                    .padding(.top, 10)
+                } else if prop.hasMoneylineChoice {
+                    HStack(spacing: 6) {
+                        if let home = prop.homeOdds {
+                            moneylineSideButton(
+                                label: moneylineTeamLabel(prop.homeTeam, fallback: "Home"),
+                                odds: home,
+                                prop: prop
+                            )
+                        }
+                        if let away = prop.awayOdds {
+                            moneylineSideButton(
+                                label: moneylineTeamLabel(prop.awayTeam, fallback: "Away"),
+                                odds: away,
+                                prop: prop
+                            )
+                        }
+                    }
+                    .padding(.top, 10)
+                } else {
+                    HStack {
+                        Text(isJuicdBoost ? "Juicd odds" : "Odds")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(JuicdTheme.textTertiary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 4)
+                        Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundStyle(JuicdTheme.brand)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .padding(.top, 10)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(JuicdTheme.canvasDeep.opacity(0.85))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                            )
+                    )
                 }
-                .padding(.top, 10)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(JuicdTheme.canvasDeep.opacity(0.85))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
-                        )
-                )
             }
-            .padding(14)
-            .frame(width: 160, alignment: .leading)
-            .frame(minHeight: 210, alignment: .topLeading)
+            .padding(12)
+            .frame(
+                minWidth: viewModel.sportPill == .forYou ? 168 : nil,
+                idealWidth: viewModel.sportPill == .forYou ? 168 : nil,
+                maxWidth: viewModel.sportPill == .forYou ? 168 : .infinity,
+                alignment: .topLeading
+            )
+            .fixedSize(horizontal: false, vertical: true)
             .background {
                 ZStack {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -598,8 +693,37 @@ struct PlayView: View {
                 }
                 .shadow(color: isJuicdBoost ? juicdBoostStroke.opacity(0.25) : Color.black.opacity(0.35), radius: isJuicdBoost ? 14 : 12, y: 6)
             }
+    }
+
+
+    private func moneylineTeamLabel(_ team: String?, fallback: String) -> String {
+        let trimmed = (team ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    @ViewBuilder
+    private func moneylineSideButton(label: String, odds: Double, prop: PlayPropBet) -> some View {
+        Button {
+            viewModel.handleMoneyline(prop, side: label, odds: odds)
+        } label: {
+            VStack(spacing: 2) {
+                Text(label)
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.center)
+                Text(String(format: "%.2f", odds))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .background(RoundedRectangle(cornerRadius: 10).fill(JuicdTheme.canvasDeep.opacity(0.9)))
         }
         .buttonStyle(.plain)
+        .foregroundStyle(JuicdTheme.brand)
     }
 
     // MARK: - Ad placement (Play feed)
@@ -667,7 +791,7 @@ struct PlayView: View {
             adInsertion = nil
             return
         }
-        guard JuicdAdsDev.shouldShowAd(adsEnabled: adsEnabled) else {
+        guard JuicdAdsDev.shouldShowAd() else {
             adInsertion = nil
             return
         }

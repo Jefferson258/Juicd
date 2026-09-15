@@ -23,6 +23,8 @@ struct SupabasePlayBoardResponse: Decodable {
         var homeTeam: String?
         var awayTeam: String?
         var pointLine: Double?
+        var overOdds: Double?
+        var underOdds: Double?
     }
 
     var mode: String
@@ -363,6 +365,8 @@ enum TourneyBracketService {
         var actuals: [Double?]?
         var entries: [RemoteEntrant]
         var you: String?
+        var bracketIndex: Int?
+        var bracketCount: Int?
     }
 
     static func fetch(userId: UUID, kind: String, periodKey: String) async -> RemoteResponse? {

@@ -385,7 +385,7 @@ private struct FriendDetailSheet: View {
                             Text("Last 7 Play slips: \(viewModel.friendFormWins)–\(viewModel.friendFormLosses) (W–L)")
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(JuicdTheme.textSecondary)
-                            Text("Prototype: only Play-board parlays are listed below. Ranked daily and daily bracket picks stay on their tabs.")
+                            Text("Only Play slips are listed. Tourney picks stay on Tourney.")
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .fixedSize(horizontal: false, vertical: true)

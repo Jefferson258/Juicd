@@ -8,7 +8,6 @@ struct ProfileView: View {
     @AppStorage("juicd_notify_daily_updates") private var notifyDailyUpdates = false
     @AppStorage("juicd_notify_tournament_updates") private var notifyTournamentUpdates = false
     @AppStorage("juicd_notify_seasonal_updates") private var notifySeasonalUpdates = false
-    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @AppStorage(JuicdAdsDev.forceCreativeIdKey) private var forceCreativeId = ""
     @AppStorage(JuicdAdsDev.forceRevisionKey) private var forceRevision = 0
 
@@ -28,13 +27,6 @@ struct ProfileView: View {
 
     private var season: CareerBettingStats { viewModel.seasonStats ?? .zero }
     private var career: CareerBettingStats { viewModel.careerStats ?? .zero }
-
-    private var adsEnabledCopy: String {
-        if JuicdAdsConfig.loadsGoogleTestCreatives {
-            return "Dismissible 300×250 AdMob box on Play and Tourney (Sponsored card with an X). Sticky banners are off. Spawn buttons below force the slot on Play."
-        }
-        return "One dismissible 300×250 ad on Play and Tourney. Tap X to hide it. Dashboard, Friends, and Profile stay ad-free."
-    }
 
     var body: some View {
         ScrollView {
@@ -96,7 +88,7 @@ struct ProfileView: View {
                                     .foregroundStyle(JuicdTheme.textTertiary)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.top, 4)
-                                statRow(label: "MMR (internal)", value: "\(Int((profile.mmr ?? MMRLogic.startingMMR).rounded()))")
+                                statRow(label: "MMR", value: "\(Int((profile.mmr ?? MMRLogic.startingMMR).rounded()))")
                             } label: {
                                 Text("Ranking details (MMR)")
                                     .font(.system(size: 14, weight: .semibold))
@@ -192,7 +184,7 @@ struct ProfileView: View {
                                     VStack(spacing: 10) {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                .fill(JuicdTheme.card)
+                                                .fill(badgeFill(badge.tintName))
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                                                         .stroke(JuicdTheme.brand2.opacity(0.4), lineWidth: 1.2)
@@ -223,7 +215,21 @@ struct ProfileView: View {
                         }
                     }
 
-                    Card(title: "Prototype tools", systemImage: "hammer.fill") {
+                    Card(title: "Settings", systemImage: "gearshape.fill") {
+                        VStack(spacing: 12) {
+                            Button {
+                                NotificationCenter.default.post(name: .juicdReplayTutorial, object: nil)
+                            } label: {
+                                Label("Replay onboarding", systemImage: "rectangle.stack.fill.badge.play")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(JuicdTheme.brand2.opacity(0.85))
+                        }
+                    }
+
+                    #if DEBUG
+                    Card(title: "Developer tools", systemImage: "hammer.fill") {
                         VStack(spacing: 12) {
                             Button("Simulate season-end badge") {
                                 viewModel.simulateSeasonEndAward()
@@ -250,20 +256,6 @@ struct ProfileView: View {
                             .font(.system(size: 15, weight: .semibold))
 
                             Divider().overlay(JuicdTheme.strokeSubtle)
-
-                            Toggle("Show ads", isOn: $adsEnabled)
-                                .font(.system(size: 14, weight: .semibold))
-                                .tint(JuicdTheme.brand)
-                                .onChange(of: adsEnabled) { _, on in
-                                    if !on {
-                                        forceCreativeId = ""
-                                        forceRevision += 1
-                                    }
-                                }
-                            Text(adsEnabledCopy)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(JuicdTheme.textTertiary)
-                                .fixedSize(horizontal: false, vertical: true)
 
                             Text("Spawn ad on Play (immediate)")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -295,19 +287,9 @@ struct ProfileView: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(JuicdTheme.textSecondary)
                             }
-
-                            Divider().overlay(JuicdTheme.strokeSubtle)
-
-                            Button {
-                                NotificationCenter.default.post(name: .juicdReplayTutorial, object: nil)
-                            } label: {
-                                Label("Replay onboarding tutorial", systemImage: "rectangle.stack.fill.badge.play")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(JuicdTheme.brand2.opacity(0.85))
                         }
                     }
+                    #endif
                 } else {
                     Card(title: "Loading…", systemImage: "hourglass") {
                         Text("…")
@@ -441,6 +423,16 @@ struct ProfileView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("About seasons")
             }
+        }
+    }
+
+    private func badgeFill(_ tintName: String?) -> Color {
+        switch tintName {
+        case "bronze": return Color(red: 0.72, green: 0.45, blue: 0.22)
+        case "silver": return Color(red: 0.72, green: 0.75, blue: 0.80)
+        case "gold": return Color(red: 0.92, green: 0.72, blue: 0.18)
+        case "platinum": return Color(red: 0.55, green: 0.78, blue: 0.92)
+        default: return JuicdTheme.card
         }
     }
 
@@ -594,7 +586,7 @@ private struct SeasonInfoSheet: View {
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .padding(.top, 8)
                     Text(
-                        "Season stats roll forward at the start of the next quarter — \(Self.resetDateFormatter.string(from: nextQuarterStart)) local time (first day of the next 3-month window). Your season score on the profile card is separate and can still be reset with the prototype Reset season button for testing."
+                        "Season stats roll forward at the start of the next quarter — \(Self.resetDateFormatter.string(from: nextQuarterStart)) local time (first day of the next 3-month window). Your season score on the profile card is separate from daily Play points."
                     )
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)

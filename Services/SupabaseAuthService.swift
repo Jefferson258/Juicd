@@ -7,6 +7,8 @@ struct SupabaseSession: Codable, Equatable {
     var refreshToken: String
     var userId: UUID
     var expiresAt: Date
+    /// Stable Apple user identifier when SIWA was used on this device (optional; existing sessions decode without it).
+    var appleUserId: String? = nil
 }
 
 enum SupabaseAuthService {
@@ -53,8 +55,14 @@ enum SupabaseAuthService {
     }
 
     /// Create (or reuse Keychain) anonymous Supabase user for multi-device social.
-    static func signInAnonymously(displayName: String) async throws -> SupabaseSession {
-        if let restored = await restoreSession() {
+    /// When a Keychain session already exists, restore it so cold launches auto-login.
+    static func signInAnonymously(displayName: String, appleUserId: String? = nil) async throws -> SupabaseSession {
+        if var restored = await restoreSession() {
+            if let appleUserId, !appleUserId.isEmpty, restored.appleUserId != appleUserId {
+                restored.appleUserId = appleUserId
+                memorySession = restored
+                saveSession(restored)
+            }
             try await upsertProfile(
                 displayName: displayName,
                 userId: restored.userId,
@@ -72,7 +80,10 @@ enum SupabaseAuthService {
             throw NSError(domain: "SupabaseAuth", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: msg])
         }
 
-        let session = try decodeSession(from: data)
+        var session = try decodeSession(from: data)
+        if let appleUserId, !appleUserId.isEmpty {
+            session.appleUserId = appleUserId
+        }
         memorySession = session
         saveSession(session)
         try await upsertProfile(displayName: displayName, userId: session.userId, accessToken: session.accessToken)
@@ -213,8 +224,13 @@ enum SupabaseAuthService {
         SecItemDelete(query as CFDictionary)
         var add = query
         add[kSecValueData as String] = data
+        // AfterFirstUnlock so cold launch can restore before the user unlocks once after reboot.
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        SecItemAdd(add as CFDictionary, nil)
+        let status = SecItemAdd(add as CFDictionary, nil)
+        // Keep memorySession even if Keychain write fails (UITest / simulator quirks).
+        if status != errSecSuccess {
+            memorySession = session
+        }
     }
 
     private static func loadSession() -> SupabaseSession? {

@@ -155,42 +155,34 @@ struct SignInView: View {
                         .padding(.top, 2)
 
                         VStack(spacing: 14) {
-                            SignInWithAppleButton(.signIn) { request in
-                                request.requestedScopes = [.fullName, .email]
-                            } onCompletion: { result in
-                                switch result {
-                                case .success(let authorization):
-                                    guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                                        viewModel.authError = "Could not read Apple ID."
-                                        return
-                                    }
-                                    let fromApple = Self.displayName(from: credential)
-                                    viewModel.completeSignIn(displayName: fromApple)
-                                case .failure(let error):
-                                    viewModel.authError = error.localizedDescription
-                                }
-                            }
-                            .signInWithAppleButtonStyle(.white)
-                            .frame(height: 52)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .disabled(viewModel.isBusy)
-
-                            Button {
-                                viewModel.signInDevBypass()
-                            } label: {
-                                Text("Continue as Player")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(JuicdTheme.textSecondary)
-                            .disabled(viewModel.isBusy)
-                            .accessibilityIdentifier("Skip — local dev account")
-
-                            if viewModel.isBusy {
-                                ProgressView()
+                            if viewModel.isRestoring || viewModel.isBusy {
+                                ProgressView("Signing in…")
                                     .tint(JuicdTheme.brand)
+                                    .foregroundStyle(JuicdTheme.textSecondary)
+                                    .padding(.vertical, 12)
+                            } else {
+                                SignInWithAppleButton(.signIn) { request in
+                                    request.requestedScopes = [.fullName, .email]
+                                } onCompletion: { result in
+                                    switch result {
+                                    case .success(let authorization):
+                                        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                                            viewModel.authError = "Could not read Apple ID."
+                                            return
+                                        }
+                                        let fromApple = Self.displayName(from: credential)
+                                        viewModel.completeSignIn(
+                                            displayName: fromApple,
+                                            appleUserId: credential.user
+                                        )
+                                    case .failure(let error):
+                                        viewModel.authError = error.localizedDescription
+                                    }
+                                }
+                                .signInWithAppleButtonStyle(.white)
+                                .frame(height: 52)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .disabled(viewModel.isBusy || viewModel.isRestoring)
                             }
 
                             Text("Sign-in creates a cloud account so friends, groups, and leaderboards sync across TestFlight devices. Your session is saved on this phone — don’t sign out if you want to keep the same friend code.")

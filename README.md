@@ -10,7 +10,7 @@ iOS prototype: **Play** tab (odds / parlays), **Dashboard** (daily balance + tie
 
 ## Sign-in
 
-Launch shows **Sign in with Apple** (uses your Apple ID name when Apple provides it) and **Skip — local dev account** (prototype: signs in as **Player**, same profile each time). No display-name field on every launch.
+Launch shows **Sign in with Apple** (uses your Apple ID name when Apple provides it). Session restores from Keychain on cold start. UITests can pass `-juicd-dev-signin` for automation; there is no production offline skip button.
 
 ## Repo hygiene
 

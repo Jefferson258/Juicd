@@ -28,6 +28,8 @@ type Prop = {
   homeTeam?: string;
   awayTeam?: string;
   pointLine?: number;
+  overOdds?: number;
+  underOdds?: number;
 };
 
 type Ribbon = {
@@ -279,17 +281,27 @@ function overProps(event: any, sport: BoardSport, slate: string): Prop[] {
   const commenceTime = commenceOf(event);
   const market = event?.bookmakers?.[0]?.markets?.find((m: any) => m.key === sport.propMarket);
   const outcomes = Array.isArray(market?.outcomes) ? market.outcomes : [];
-  const props: Prop[] = [];
-  const seen = new Set<string>();
+  const byPlayer = new Map<string, { Over?: { price: number; point: number }; Under?: { price: number; point: number } }>();
   for (const outcome of outcomes) {
-    if (String(outcome?.name) !== "Over") continue;
+    const side = String(outcome?.name ?? "");
+    if (side !== "Over" && side !== "Under") continue;
     const player = String(outcome?.description ?? "").trim();
-    if (!player || seen.has(player)) continue;
+    if (!player) continue;
     const price = Number(outcome.price);
     if (!Number.isFinite(price) || price <= 1.001) continue;
-    seen.add(player);
     const point = outcome.point != null ? Number(outcome.point) : NaN;
-    const line = Number.isFinite(point) ? String(point) : "O/U";
+    const rec = byPlayer.get(player) ?? {};
+    rec[side as "Over" | "Under"] = { price, point };
+    byPlayer.set(player, rec);
+  }
+  const props: Prop[] = [];
+  for (const [player, sides] of byPlayer) {
+    const over = sides.Over;
+    const under = sides.Under;
+    const primary = over ?? under;
+    if (!primary) continue;
+    const line = Number.isFinite(primary.point) ? String(primary.point) : "O/U";
+    const pickLabel = over && under ? "O/U" : (over ? "Over" : "Under");
     props.push({
       id: makeId(slate, "prop", sport.sport, eventId, player),
       leagueTag: sport.leagueTag,
@@ -297,16 +309,18 @@ function overProps(event: any, sport: BoardSport, slate: string): Prop[] {
       matchup,
       propDescription: sport.propLabel,
       lineText: line,
-      pickLabel: "Over",
-      oddsDecimal: Number(price.toFixed(2)),
+      pickLabel,
+      oddsDecimal: Number(primary.price.toFixed(2)),
       commenceTime,
       eventId,
       sportKey: sport.sport,
       homeTeam: home,
       awayTeam: away,
-      pointLine: Number.isFinite(point) ? point : undefined,
+      pointLine: Number.isFinite(primary.point) ? primary.point : undefined,
+      overOdds: over ? Number(over.price.toFixed(2)) : undefined,
+      underOdds: under ? Number(under.price.toFixed(2)) : undefined,
     });
-    if (props.length >= PROP_MAX_PER_EVENT) break;
+    if (props.length >= PROP_MAX_PER_EVENT) return props;
   }
   return props;
 }
@@ -328,7 +342,8 @@ function numericRoundsFromProps(props: Prop[], take: number): RoundSpec[] {
 
 function oversWithLine(allProps: Prop[]): Prop[] {
   return allProps.filter((p) =>
-    p.pickLabel === "Over" && typeof p.pointLine === "number" && p.eventId && p.commenceTime
+    (p.pickLabel === "Over" || p.pickLabel === "O/U") &&
+    typeof p.pointLine === "number" && p.eventId && p.commenceTime
   );
 }
 
@@ -348,7 +363,7 @@ function combinedScoreRound(p: Prop, round: number): RoundSpec | null {
   return {
     round,
     propLabel: `${p.matchup} — combined score`,
-    statSummary: "Closest to the final combined score (both teams). Enter a number — no suggested line.",
+    statSummary: "Closest to the final combined score (both teams).",
     eventId: p.eventId,
     matchup: p.matchup,
     player: "Combined score",
@@ -514,7 +529,7 @@ function weeklyTourneyFromBoard(
       rounds.push({
         round: rounds.length + 1,
         propLabel: `${away} @ ${home} — combined score`,
-        statSummary: "Closest to the final combined score (both teams). Enter a number — no suggested line.",
+        statSummary: "Closest to the final combined score (both teams).",
         eventId: id,
         matchup: `${away} @ ${home}`,
         player: "Combined score",
@@ -912,8 +927,16 @@ Deno.serve(async (req) => {
 
   let snapshot = await loadSnapshot();
   const stored = snapshot ? parseStoredBoard(snapshot.board) : null;
+  function boardHasUnderSides(stored: SnapshotBoard): boolean {
+    const props = (stored.ribbons ?? []).flatMap((r) => r.props ?? []);
+    if (props.some((p) => typeof p.underOdds === "number" || p.pickLabel === "O/U")) return true;
+    const overs = props.filter((p) => p.pickLabel === "Over").length;
+    if (overs === 0) return true;
+    return props.some((p) => p.pickLabel === "Under");
+  }
+
   const sameSlateFresh = !force && snapshot && snapshot.mode === mode && stored &&
-    snapshot.slate_key === slate && stored.tomorrowRibbons !== undefined;
+    snapshot.slate_key === slate && stored.tomorrowRibbons !== undefined && boardHasUnderSides(stored);
 
   if (sameSlateFresh) {
     return respond(snapshot!.source, stored!, true, snapshot!.updated_at);

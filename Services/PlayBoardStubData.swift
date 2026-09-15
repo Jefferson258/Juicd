@@ -4,29 +4,49 @@ import Foundation
 enum PlayBoardStubData {
     /// Popular home: multiple “Popular …” ribbons by league.
     static let forYouRibbons: [PlayPropRibbon] = [
-        popularNBA,
-        popularNFL,
-        popularCBB,
-        popularMBB,
-        popularWomensSoccer,
-        popularMLB,
-        popularNHL,
-        popularSoccer
+        withBothSides(popularNBA),
+        withBothSides(popularNFL),
+        withBothSides(popularCBB),
+        withBothSides(popularMBB),
+        withBothSides(popularWomensSoccer),
+        withBothSides(popularMLB),
+        withBothSides(popularNHL),
+        withBothSides(popularSoccer)
     ]
 
     /// Single-sport board when a sport pill is selected.
     static func sportRibbon(for pill: PlaySportPill) -> PlayPropRibbon? {
         switch pill {
         case .forYou: return nil
-        case .nba: return nba
-        case .nfl: return nfl
-        case .mlb: return mlb
-        case .nhl: return nhl
-        case .cbb: return cbb
-        case .mbb: return mbb
-        case .womensSoccer: return womensSoccer
-        case .soccer: return soccer
+        case .nba: return withBothSides(nba)
+        case .nfl: return withBothSides(nfl)
+        case .mlb: return withBothSides(mlb)
+        case .nhl: return withBothSides(nhl)
+        case .cbb: return withBothSides(cbb)
+        case .mbb: return withBothSides(mbb)
+        case .womensSoccer: return withBothSides(womensSoccer)
+        case .soccer: return withBothSides(soccer)
         }
+    }
+
+    private static func withBothSides(_ ribbon: PlayPropRibbon) -> PlayPropRibbon {
+        var copy = ribbon
+        var merged = PlayLineGrouping.collapseOverUnder(ribbon.props)
+        merged = merged.map { prop in
+            var p = prop
+            if p.pickLabel == "Over", p.overOdds == nil { p.overOdds = p.oddsDecimal }
+            if p.overOdds != nil, p.underOdds == nil {
+                p.underOdds = (p.overOdds ?? p.oddsDecimal) * 0.98
+                p.pickLabel = "O/U"
+            }
+            if p.underOdds != nil, p.overOdds == nil {
+                p.overOdds = (p.underOdds ?? p.oddsDecimal) * 0.98
+                p.pickLabel = "O/U"
+            }
+            return p
+        }
+        copy.props = merged
+        return copy
     }
 
     private static let nba: PlayPropRibbon = PlayPropRibbon(

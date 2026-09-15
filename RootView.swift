@@ -13,7 +13,9 @@ struct RootView: View {
 
     @ViewBuilder
     var body: some View {
-        if let userId = authVM.profile?.id {
+        if authVM.isRestoring || (authVM.isBusy && authVM.profile == nil) {
+            AuthLoadingView()
+        } else if let userId = authVM.profile?.id {
             LoggedInTabShell(
                 repository: repository,
                 userId: userId,
@@ -21,6 +23,30 @@ struct RootView: View {
             )
         } else {
             SignInView(viewModel: authVM)
+        }
+    }
+}
+
+private struct AuthLoadingView: View {
+    var body: some View {
+        ZStack {
+            JuicdScreenBackground()
+            VStack(spacing: 16) {
+                Text("Juicd")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, JuicdTheme.brand, JuicdTheme.brand2],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                ProgressView()
+                    .tint(JuicdTheme.brand)
+                Text("Loading…")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(JuicdTheme.textSecondary)
+            }
         }
     }
 }
@@ -39,7 +65,6 @@ private struct LoggedInTabShell: View {
     @StateObject private var profileVM: ProfileViewModel
 
     @AppStorage("juicd_tutorial_completed") private var tutorialCompleted = false
-    @AppStorage(JuicdAdsConfig.enabledStorageKey) private var adsEnabled = true
     @State private var showTutorial = false
     @State private var selectedTab = Self.launchSelectedTab()
 
@@ -75,8 +100,7 @@ private struct LoggedInTabShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if adsEnabled
-                && JuicdAdsConfig.presentation == .bottomBanner
+            if JuicdAdsConfig.presentation == .bottomBanner
                 && (selectedTab == 0 || selectedTab == 2) {
                 JuicdAnchoredBannerSlot()
             }
@@ -100,6 +124,10 @@ private struct LoggedInTabShell: View {
             }
             if tab == 0 {
                 playVM.refreshProfile()
+            }
+            if tab == 2 {
+                tourneyVM.refreshFromBoard()
+                Task { await tourneyVM.refreshRemoteBracket() }
             }
         }
         .fullScreenCover(isPresented: $showTutorial) {

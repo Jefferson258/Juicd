@@ -55,6 +55,25 @@ enum MMRLogic {
         return 50 + mmrEdge * 6.5 + pointsEdge * 18 + noise
     }
 
+    /// Sort by MMR, then pack into groups of `poolSize`. The last group may be short (pad with bots at resolve).
+    static func similarPools(participantIds: [UUID], mmrById: [UUID: Double], poolSize: Int = dailyRankGroupSize) -> [[UUID]] {
+        let sorted = participantIds.sorted { a, b in
+            let ma = mmrById[a] ?? startingMMR
+            let mb = mmrById[b] ?? startingMMR
+            if ma != mb { return ma < mb }
+            return a.uuidString < b.uuidString
+        }
+        guard poolSize > 0, !sorted.isEmpty else { return [] }
+        var pools: [[UUID]] = []
+        var i = 0
+        while i < sorted.count {
+            let end = min(i + poolSize, sorted.count)
+            pools.append(Array(sorted[i..<end]))
+            i = end
+        }
+        return pools
+    }
+
     static func opponentName(seed: UInt64, index: Int) -> String {
         let names = ["Jax", "Rio", "Mara", "Chen", "Kai", "Nova", "Zeke", "Ava", "Leo", "Sky", "Ivy", "Owen", "Quinn", "Remy", "Sloane", "Tate"]
         let suffix = Int(seed % 900) + 100

@@ -71,8 +71,6 @@ final class PlayViewModel: ObservableObject {
             }
     }
 
-    nonisolated deinit {}
-
     var maxStakePoints: Int {
         guard let userId else { return 0 }
         let slate = parlaySlateKey ?? SlateDay.slateKey()
@@ -287,7 +285,7 @@ final class PlayViewModel: ObservableObject {
                 repository.objectWillChange.send()
                 if trimmed.isEmpty && tomorrowTrimmed.isEmpty {
                     boardUsesRemoteFeed = false
-                    oddsStatus = "Supabase \(serverBoard.mode) · no priced props — showing local board"
+                    oddsStatus = "No priced props on this slate yet."
                     AnalyticsService.logOddsSync(ok: false, source: "supabase_empty")
                     rebuildRibbons()
                 } else {
@@ -309,7 +307,7 @@ final class PlayViewModel: ObservableObject {
 
         boardUsesRemoteFeed = false
         guard OddsAPIConfig.isConfigured else {
-            oddsStatus = "Local demo odds available"
+            oddsStatus = "Couldn't load the live board."
             liveLine = nil
             rebuildRibbons()
             clampSportPillToAvailableOdds()
@@ -428,9 +426,9 @@ final class PlayViewModel: ObservableObject {
     private func displayed(from source: [PlayPropRibbon]) -> [PlayPropRibbon] {
         source.compactMap { ribbon in
             var r = ribbon
-            r.props = ribbon.props.filter { prop in
+            r.props = PlayLineGrouping.collapseBoardLines(ribbon.props.filter { prop in
                 !prop.hasStarted && propMatchesFilters(prop)
-            }
+            })
             if r.props.isEmpty { return nil }
             return r
         }
@@ -446,34 +444,37 @@ final class PlayViewModel: ObservableObject {
         slateKey: String
     ) -> [PlayPropRibbon] {
         dtos.map { ribbon in
-            PlayPropRibbon(
+            let props = ribbon.props.compactMap { dto -> PlayPropBet? in
+                guard dto.oddsDecimal > 1.001 else { return nil }
+                let fallbackId = StableUUID.from(
+                    "\(slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
+                )
+                let commence = Self.parseISO(dto.commenceTime)
+                if let commence, commence <= .now { return nil }
+                return PlayPropBet(
+                    id: UUID(uuidString: dto.id) ?? fallbackId,
+                    leagueTag: dto.leagueTag,
+                    athleteOrTeam: dto.athleteOrTeam,
+                    matchup: dto.matchup,
+                    propDescription: dto.propDescription,
+                    lineText: dto.lineText,
+                    pickLabel: dto.pickLabel,
+                    oddsDecimal: dto.oddsDecimal,
+                    commenceTime: commence,
+                    eventId: dto.eventId,
+                    sportKey: dto.sportKey,
+                    homeTeam: dto.homeTeam,
+                    awayTeam: dto.awayTeam,
+                    pointLine: dto.pointLine,
+                    overOdds: dto.overOdds,
+                    underOdds: dto.underOdds
+                )
+            }
+            return PlayPropRibbon(
                 id: ribbon.id,
                 title: ribbon.title,
                 subtitle: ribbon.subtitle,
-                props: ribbon.props.compactMap { dto in
-                    guard dto.oddsDecimal > 1.001 else { return nil }
-                    let fallbackId = StableUUID.from(
-                        "\(slateKey)|\(ribbon.id)|\(dto.athleteOrTeam)|\(dto.pickLabel)|\(dto.lineText)"
-                    )
-                    let commence = Self.parseISO(dto.commenceTime)
-                    if let commence, commence <= .now { return nil }
-                    return PlayPropBet(
-                        id: UUID(uuidString: dto.id) ?? fallbackId,
-                        leagueTag: dto.leagueTag,
-                        athleteOrTeam: dto.athleteOrTeam,
-                        matchup: dto.matchup,
-                        propDescription: dto.propDescription,
-                        lineText: dto.lineText,
-                        pickLabel: dto.pickLabel,
-                        oddsDecimal: dto.oddsDecimal,
-                        commenceTime: commence,
-                        eventId: dto.eventId,
-                        sportKey: dto.sportKey,
-                        homeTeam: dto.homeTeam,
-                        awayTeam: dto.awayTeam,
-                        pointLine: dto.pointLine
-                    )
-                }
+                props: PlayLineGrouping.collapseBoardLines(props)
             )
         }
     }
@@ -546,7 +547,21 @@ final class PlayViewModel: ObservableObject {
         if stakePoints < 1 { stakePoints = min(m, 1) }
     }
 
+    func handleOverUnder(_ prop: PlayPropBet, side: String, odds: Double) {
+        handlePropTap(prop.choosingOverUnder(side: side, odds: odds))
+    }
+
+    func handleMoneyline(_ prop: PlayPropBet, side: String, odds: Double) {
+        handlePropTap(prop.choosingMoneyline(side: side, odds: odds))
+    }
+
     func handlePropTap(_ prop: PlayPropBet) {
+        if prop.hasOverUnderChoice, prop.pickLabel == "O/U" {
+            return
+        }
+        if prop.hasMoneylineChoice, prop.pickLabel == "H2H" {
+            return
+        }
         if prop.hasStarted {
             builderToast = "That game already started."
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
@@ -563,8 +578,8 @@ final class PlayViewModel: ObservableObject {
                 }
                 return
             }
-            if let first = parlayLegs.first, !Self.sameKickoff(first, prop) {
-                builderToast = "Parlay legs must share the same start time."
+            if parlayLegs.contains(where: { $0.marketLineKey == prop.marketLineKey }) {
+                builderToast = "That line is already on your slip."
                 pickingAdditionalLeg = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
                     self?.builderToast = nil
@@ -613,7 +628,7 @@ final class PlayViewModel: ObservableObject {
 
     func addParlayLeg(_ prop: PlayPropBet) {
         guard parlayLegs.count < Self.maxParlayLegs else { return }
-        guard !parlayLegs.contains(where: { $0.id == prop.id }) else { return }
+        guard !parlayLegs.contains(where: { $0.id == prop.id || $0.marketLineKey == prop.marketLineKey }) else { return }
         parlayLegs.append(prop)
     }
 
@@ -667,8 +682,9 @@ final class PlayViewModel: ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }
                 return
             }
-            if parlayLegs.dropFirst().contains(where: { !Self.sameKickoff(first, $0) }) {
-                builderToast = "Parlay legs must share the same start time."
+            let keys = parlayLegs.map(\.marketLineKey)
+            if Set(keys).count != keys.count {
+                builderToast = "Duplicate lines are not allowed in one parlay."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in self?.builderToast = nil }
                 return
             }

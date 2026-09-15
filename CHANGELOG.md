@@ -1,3 +1,20 @@
+## Juicd iOS — release fixes (2026-09-14)
+
+### Auth
+- Removed production **Continue as Player** / `signInDevBypass` UI. `-juicd-dev-signin` launch arg remains for UITests only.
+- RootView gates on `isRestoring` / `isBusy` so SIWA no longer races into LoggedInTabShell before Apple credential + profile finish.
+- Cold-start Keychain session restore keeps auto-login; optional Apple user id stored on the session; signOut / deleteAccount clear Keychain.
+
+### Play
+- Odds cards use flexible frames / wrapping so prices and labels are not clipped.
+- Parlay: same Juicd day required; **same kickoff no longer required**. Duplicate market/line rejected.
+- H2H: collapse both-way moneylines into one card per game; pick home or away on the card.
+
+### Tourney
+- Lock / freeze aligned with earliest commence on the slate (not 1 hour before).
+
+---
+
 ## Juicd iOS 1.0.0 (10) — 2026-09-03
 
 ## Changes

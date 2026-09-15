@@ -251,7 +251,7 @@ Quality rules:
 | No odds at all | If Supabase isn’t set up, set **`ODDS_API_KEY`** in target Info for client fallback, or complete §3 |
 | Live mode not working | Verify `juicd_runtime_config.odds_mode='live'` and Edge secret `ODDS_API_KEY` is set |
 | Build errors after clone | Open `.xcodeproj`, clean build folder (⇧⌘K), rebuild |
-| Ads don’t appear | Profile → Prototype tools → **Show ads**. Simulator should show a Google “Test Ad” 300×250 box in the Sponsored card. Release on device uses live fill (may be empty until AdMob payments). |
+| Ads don’t appear | Simulator/DEBUG should show a Google “Test Ad” 320×100 box in the Sponsored card on Play/Tourney. Release on device uses live fill (may be empty until AdMob payments). |
 
 ---
 

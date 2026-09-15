@@ -21,10 +21,8 @@ final class JuicdAdsConfigTests: XCTestCase {
         #endif
     }
 
-    func testInFeedAdFollowsToggleOnly() {
-        XCTAssertFalse(JuicdAdsDev.shouldShowAd(adsEnabled: false))
-        XCTAssertTrue(JuicdAdsDev.shouldShowAd(adsEnabled: true))
-        XCTAssertTrue(JuicdAdsDev.shouldShowAd(adsEnabled: true))
+    func testInFeedAdIsAlwaysEligible() {
+        XCTAssertTrue(JuicdAdsDev.shouldShowAd())
     }
 
     func testDefaultPresentationIsDismissibleCardBanner() {

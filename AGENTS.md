@@ -30,20 +30,25 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 15** on TestFlight (dashboard live-updates today + tomorrow
-  slips and both point banks). Client discards cached Edge
-  tourneys that still carry a combined-score **line** (the old 44.5) and rebuilds
-  from live props. Owner phone (`tjk1002@aol.com`) is on the **Internal Testers**
-  group — post-upload must add new builds there, not only the external “Beta
-  Testers” public-link group.
+- Currently **build 19** on TestFlight (CI-safe deinits, 10-player similar MMR
+  pools with bot pad, ungraded slips push at 4am, multi 16-brackets, tourney
+  trophy colors, Play one-line Over/Under, no Profile ads opt-out). Ranked
+  “similar humans” currently packs **local** participants on this device;
+  one-device testers still see bots in empty seats until cloud matching exists.
+  Owner phone (`tjk1002@aol.com`) is on the **Internal Testers** group —
+  post-upload must add new builds there, not only the external “Beta Testers”
+  public-link group.
 - **Tourney slates:** never fall back to local demo names or a canned line
   (no HOU @ SEA demo, no 44.5). `play-board` builds daily/weekly from real
-  overs, then other sports, then combined-score with **no suggested line**.
+  overs, then other sports, then combined-score (no book line shown). Live
+  player props emit **one line with Over and Under prices**. First GET after
+  that deploy can rebuild the snapshot if the cache was Over-only — **do not
+  casual `?force=1`**.
   Failures insert `juicd_app_errors` (`screen=tourney`, `platform=edge`) plus
   client `AppErrorLogger`. Query those rows if a day has no tourney.
 - Ads: **Option B with X** — dismissible **320×100** AdMob large banner in the
-  sponsored card on Play and Tourney. Sticky banners off. Simulator/DEBUG uses
-  Google test creatives; store builds use the plist unit. Toggle default **on**.
+  sponsored card on Play and Tourney. Sticky banners off. No Profile opt-out.
+  Simulator/DEBUG uses Google test creatives; store builds use the plist unit.
   Payouts still need the LLC bank + AdMob payments.
 - Build/upload: see TestFlight section in `LAUNCH_OUT_OF_CODE.md`.
 

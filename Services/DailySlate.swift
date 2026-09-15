@@ -110,6 +110,13 @@ enum GameCountdown {
         if h > 0 { return String(format: "%d:%02d:%02d", h, m, s % 60) }
         return String(format: "%d:%02d", m, s % 60)
     }
+
+    /// Full phrase for UI: `"Started"` or `"Starts in 1:02:03"`.
+    static func phrase(until commence: Date, now: Date = .now) -> String {
+        let s = Int(remaining(until: commence, now: now).rounded(.down))
+        if s <= 0 { return "Started" }
+        return "Starts in \(label(until: commence, now: now))"
+    }
 }
 
 enum StableUUID {
@@ -213,7 +220,8 @@ enum TourneySlateBuilder {
         preferSameEvent: Bool
     ) -> RemoteTourneyPayload? {
         let overs = props.filter {
-            $0.pickLabel == "Over" && $0.eventId != nil && $0.commenceTime != nil && numericLine(from: $0) != nil
+            ($0.pickLabel == "Over" || $0.pickLabel == "O/U" || $0.hasOverUnderChoice)
+                && $0.eventId != nil && $0.commenceTime != nil && numericLine(from: $0) != nil
         }
         var byEvent: [String: [PlayPropBet]] = [:]
         for p in overs {
@@ -248,7 +256,7 @@ enum TourneySlateBuilder {
                     RemoteTourneyRound(
                         round: rounds.count + 1,
                         propLabel: "\(p.matchup) — combined score",
-                        statSummary: "Closest to the final combined score (both teams). Enter a number — no suggested line.",
+                        statSummary: "Closest to the final combined score (both teams).",
                         line: nil,
                         eventId: id,
                         matchup: p.matchup,
@@ -260,20 +268,30 @@ enum TourneySlateBuilder {
                 if rounds.count >= 4 { break }
             }
         }
-        guard rounds.count >= 2, let first = rounds.first else { return nil }
+        guard rounds.count >= 2 else { return nil }
         let numbered = rounds.prefix(4).enumerated().map { i, r in
             var copy = r
             copy.round = i + 1
             return copy
         }
+        let earliestCommence = numbered
+            .compactMap { ISO8601DateFormatter().date(from: $0.commenceTime) }
+            .min()
+        let commenceISO: String = {
+            if let earliestCommence {
+                return iso.string(from: earliestCommence)
+            }
+            return numbered[0].commenceTime
+        }()
         let same = numbered.allSatisfy { $0.matchup == numbered[0].matchup }
         return RemoteTourneyPayload(
             kind: kind,
             periodKey: periodKey,
             title: title,
             gameLabel: same ? numbered[0].matchup : "\(numbered.count) games",
-            commenceTime: first.commenceTime,
-            freezeAt: freezeISO(from: first.commenceTime),
+            commenceTime: commenceISO,
+            // Freeze when the earliest slate game starts (same discipline as Play).
+            freezeAt: commenceISO,
             roundSpecs: numbered
         )
     }
@@ -302,5 +320,130 @@ enum TourneySlateBuilder {
     private static func freezeISO(from commenceISO: String) -> String {
         guard let commence = ISO8601DateFormatter().date(from: commenceISO) else { return commenceISO }
         return iso.string(from: commence.addingTimeInterval(-3600))
+    }
+}
+
+enum PlayLineGrouping {
+    /// Board transform: collapse O/U pairs and both-way H2H into one card per line/game.
+    static func collapseBoardLines(_ props: [PlayPropBet]) -> [PlayPropBet] {
+        collapseH2H(collapseOverUnder(props))
+    }
+
+    /// Collapse separate Over/Under tiles for the same player+line into one board tile.
+    static func collapseOverUnder(_ props: [PlayPropBet]) -> [PlayPropBet] {
+        var out: [PlayPropBet] = []
+        var index: [String: Int] = [:]
+        for prop in props {
+            let isOU = prop.pickLabel == "Over" || prop.pickLabel == "Under" || prop.hasOverUnderChoice
+            guard isOU else {
+                out.append(prop)
+                continue
+            }
+            let key = "\(prop.eventId ?? "")|\(prop.athleteOrTeam)|\(prop.propDescription)|\(prop.lineText)"
+            if let i = index[key] {
+                var existing = out[i]
+                if prop.pickLabel == "Over" || prop.overOdds != nil {
+                    existing.overOdds = prop.overOdds ?? prop.oddsDecimal
+                }
+                if prop.pickLabel == "Under" || prop.underOdds != nil {
+                    existing.underOdds = prop.underOdds ?? prop.oddsDecimal
+                }
+                if existing.overOdds != nil, existing.underOdds != nil {
+                    existing.pickLabel = "O/U"
+                    existing.oddsDecimal = existing.overOdds ?? existing.oddsDecimal
+                }
+                out[i] = existing
+            } else {
+                var copy = prop
+                if copy.overOdds == nil, copy.pickLabel == "Over" { copy.overOdds = copy.oddsDecimal }
+                if copy.underOdds == nil, copy.pickLabel == "Under" { copy.underOdds = copy.oddsDecimal }
+                if copy.overOdds != nil, copy.underOdds != nil {
+                    copy.pickLabel = "O/U"
+                    copy.oddsDecimal = copy.overOdds ?? copy.oddsDecimal
+                }
+                index[key] = out.count
+                out.append(copy)
+            }
+        }
+        return out
+    }
+
+    /// Collapse home ML + away ML into one card per game; user picks the winner on the card.
+    static func collapseH2H(_ props: [PlayPropBet]) -> [PlayPropBet] {
+        var out: [PlayPropBet] = []
+        var index: [String: Int] = [:]
+        for prop in props {
+            guard prop.isMoneylineStyle else {
+                out.append(prop)
+                continue
+            }
+            let key: String = {
+                if let event = prop.eventId, !event.isEmpty { return "event|\(event)" }
+                return "match|\(prop.matchup)|\(prop.sportKey ?? "")"
+            }()
+            let homeName = prop.homeTeam?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let awayName = prop.awayTeam?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let label = prop.athleteOrTeam.trimmingCharacters(in: .whitespacesAndNewlines)
+            let isHome = {
+                if let homeName, !homeName.isEmpty {
+                    return label.caseInsensitiveCompare(homeName) == .orderedSame
+                }
+                return false
+            }()
+            let isAway = {
+                if let awayName, !awayName.isEmpty {
+                    return label.caseInsensitiveCompare(awayName) == .orderedSame
+                }
+                return false
+            }()
+
+            if let i = index[key] {
+                var existing = out[i]
+                if isHome || (existing.homeOdds == nil && !isAway) {
+                    existing.homeOdds = prop.homeOdds ?? prop.oddsDecimal
+                    if existing.homeTeam == nil { existing.homeTeam = label }
+                }
+                if isAway || (existing.awayOdds == nil && isAway) {
+                    existing.awayOdds = prop.awayOdds ?? prop.oddsDecimal
+                    if existing.awayTeam == nil { existing.awayTeam = label }
+                }
+                // If we couldn't classify, fill whichever slot is empty.
+                if existing.homeOdds == nil {
+                    existing.homeOdds = prop.oddsDecimal
+                    if existing.homeTeam == nil || existing.homeTeam?.isEmpty == true {
+                        existing.homeTeam = label
+                    }
+                } else if existing.awayOdds == nil {
+                    existing.awayOdds = prop.oddsDecimal
+                    if existing.awayTeam == nil || existing.awayTeam?.isEmpty == true {
+                        existing.awayTeam = label
+                    }
+                }
+                existing.pickLabel = "H2H"
+                existing.lineText = "H2H"
+                existing.athleteOrTeam = existing.matchup
+                existing.propDescription = "Moneyline (head-to-head)"
+                existing.oddsDecimal = existing.homeOdds ?? existing.awayOdds ?? existing.oddsDecimal
+                out[i] = existing
+            } else {
+                var copy = prop
+                if copy.homeOdds == nil, isHome { copy.homeOdds = copy.oddsDecimal }
+                if copy.awayOdds == nil, isAway { copy.awayOdds = copy.oddsDecimal }
+                if copy.homeOdds == nil, copy.awayOdds == nil {
+                    // Single side so far — stash as home until the other side arrives.
+                    copy.homeOdds = copy.oddsDecimal
+                    if copy.homeTeam == nil { copy.homeTeam = label }
+                }
+                if copy.homeOdds != nil || copy.awayOdds != nil {
+                    copy.pickLabel = "H2H"
+                    copy.lineText = "H2H"
+                    copy.athleteOrTeam = copy.matchup
+                    copy.propDescription = "Moneyline (head-to-head)"
+                }
+                index[key] = out.count
+                out.append(copy)
+            }
+        }
+        return out
     }
 }

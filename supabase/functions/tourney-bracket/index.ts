@@ -72,7 +72,10 @@ function botName(periodKey: string, slot: number): string {
 function botPicks(periodKey: string, rounds: RoundSpec[], slot: number): number[] {
   return rounds.map((round) => {
     const jitter = ((fnv(periodKey + "|" + slot + "|" + round.round) % 17) - 8) * 0.5;
-    return Math.round(Math.max(0, round.line + jitter) * 10) / 10;
+    const base = typeof round.line === "number" && Number.isFinite(round.line)
+      ? round.line
+      : (40 + (fnv(periodKey + (round.eventId ?? "") + (round.matchup ?? "")) % 41));
+    return Math.round(Math.max(0, base + jitter) * 10) / 10;
   });
 }
 
@@ -217,7 +220,7 @@ Deno.serve(async (req) => {
         .eq("tournament_id", tournamentId);
       const used = new Set((taken ?? []).map((row: { user_slot?: number }) => Number(row.user_slot)));
       slot = 0;
-      while (used.has(slot) && slot < 15) slot += 1;
+      while (used.has(slot)) slot += 1;
     }
     const { error: upsertErr } = await admin.from("juicd_tournament_entries").upsert({
       tournament_id: tournamentId,
@@ -267,44 +270,57 @@ Deno.serve(async (req) => {
     isBot: false,
     slot: Number(r.user_slot ?? i),
     picks: Array.isArray(r.picks) ? r.picks.map(Number) : [],
-  }));
+  })).sort((a: { slot: number }, b: { slot: number }) => a.slot - b.slot);
 
-  const entries = [...humans];
-  if (frozen) {
-    let slot = humans.length;
-    while (entries.length < 16) {
-      entries.push({
-        id: `bot-${periodKey}-${slot}`,
-        displayName: botName(periodKey, slot),
-        isBot: true,
-        slot,
-        picks: botPicks(periodKey, rounds, slot),
-      });
-      slot += 1;
+  const BRACKET = 16;
+  const bracketCount = Math.max(1, Math.ceil(Math.max(humans.length, 1) / BRACKET));
+  const brackets: typeof humans[] = [];
+  for (let b = 0; b < bracketCount; b++) {
+    const slice = humans.slice(b * BRACKET, (b + 1) * BRACKET);
+    const entries = [...slice];
+    const startSlot = b * BRACKET;
+    if (frozen) {
+      let slot = startSlot + entries.length;
+      while (entries.length < BRACKET) {
+        entries.push({
+          id: `bot-${periodKey}-${slot}`,
+          displayName: botName(periodKey, slot),
+          isBot: true,
+          slot,
+          picks: botPicks(periodKey, rounds, slot),
+        });
+        slot += 1;
+      }
+    } else {
+      while (entries.length < BRACKET) {
+        const slot = startSlot + entries.length;
+        entries.push({
+          id: `open-${slot}`,
+          displayName: "Open",
+          isBot: false,
+          slot,
+          picks: [],
+        });
+      }
     }
-  } else {
-    while (entries.length < 16) {
-      const slot = entries.length;
-      entries.push({
-        id: `open-${slot}`,
-        displayName: "Open",
-        isBot: false,
-        slot,
-        picks: [],
-      });
-    }
+    brackets.push(entries);
   }
+  let myIdx = brackets.findIndex((entries) => entries.some((e) => e.id === userId));
+  if (myIdx < 0) myIdx = 0;
+  const entries = brackets[myIdx] ?? [];
 
   const actuals = rounds.length ? await actualsFor(rounds) : [];
-  const elim = closestEliminations(entries.slice(0, 16), actuals);
+  const elim = closestEliminations(entries, actuals);
   return json({
     payload,
     frozen,
     actuals,
-    entries: entries.slice(0, 16).map((e) => ({
+    entries: entries.map((e) => ({
       ...e,
       eliminatedRound: elim.get(e.id) ?? null,
     })),
     you: userId,
+    bracketIndex: myIdx,
+    bracketCount,
   });
 });

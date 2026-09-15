@@ -34,10 +34,20 @@ final class InMemoryJuicdRepository: ObservableObject {
         /// Legs for pending Play slips, keyed by slip id.
         var pendingSlipLegs: [UUID: [BetLeg]]?
 
-        /// Pending friend invites (prototype persistence; mirror `friend_requests` in Supabase).
+        /// Pending friend invites (mirror `friend_requests` in Supabase).
         var friendRequests: [FriendRequest]?
         /// Accepted friendships — canonical `(min UUID, max UUID)` pair per edge.
         var friendships: [Friendship]?
+
+        /// Latest daily/weekly tourney payloads from `play-board`, so picks survive a cold start.
+        var lastDailyTourney: RemoteTourneyPayload?
+        var lastWeeklyTourney: RemoteTourneyPayload?
+        var lastNextDailyTourney: RemoteTourneyPayload?
+        var lastNextWeeklyTourney: RemoteTourneyPayload?
+        /// Key `kind|periodKey` periods already awarded a closest-pick win.
+        var awardedClosestTourneyWins: [String]?
+        /// Key `kind|seasonKey` → win count this season.
+        var closestTourneyWinsBySeason: [String: Int]?
     }
 
     struct DailyProgress: Codable, Hashable {
@@ -62,14 +72,24 @@ final class InMemoryJuicdRepository: ObservableObject {
     private let persistenceEnabled: Bool
 
     @Published private(set) var state: PersistedState
-    /// Latest daily/weekly tourney payloads from `play-board` (not @Published —
+    /// Latest daily/weekly tourney payloads from `play-board` (stored on `state`, not extra @Published fields —
     /// extra Published fields were crashing XCTest deinit of this @MainActor type).
-    var lastDailyTourney: RemoteTourneyPayload?
-    var lastWeeklyTourney: RemoteTourneyPayload?
-    var lastNextDailyTourney: RemoteTourneyPayload?
-    var lastNextWeeklyTourney: RemoteTourneyPayload?
-
-    nonisolated deinit {}
+    var lastDailyTourney: RemoteTourneyPayload? {
+        get { state.lastDailyTourney }
+        set { setPersistedTourney(\.lastDailyTourney, to: newValue) }
+    }
+    var lastWeeklyTourney: RemoteTourneyPayload? {
+        get { state.lastWeeklyTourney }
+        set { setPersistedTourney(\.lastWeeklyTourney, to: newValue) }
+    }
+    var lastNextDailyTourney: RemoteTourneyPayload? {
+        get { state.lastNextDailyTourney }
+        set { setPersistedTourney(\.lastNextDailyTourney, to: newValue) }
+    }
+    var lastNextWeeklyTourney: RemoteTourneyPayload? {
+        get { state.lastNextWeeklyTourney }
+        set { setPersistedTourney(\.lastNextWeeklyTourney, to: newValue) }
+    }
 
     private init() {
         self.persistenceEnabled = true
@@ -221,12 +241,12 @@ final class InMemoryJuicdRepository: ObservableObject {
         persist()
     }
 
-    // MARK: - Auth (prototype)
+    // MARK: - Auth
 
     /// - Parameter preferredId: When set (Supabase `auth.users.id`), create/reuse that UUID so social tables match.
     func signIn(displayName: String, preferredId: UUID? = nil) -> Profile {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let safeName = trimmed.isEmpty ? "Demo Player" : trimmed
+        let safeName = trimmed.isEmpty ? "Player" : trimmed
 
         if let preferredId {
             if var existing = state.profiles[preferredId] {
@@ -380,14 +400,17 @@ final class InMemoryJuicdRepository: ObservableObject {
     }
 
     func recordDailyRankParticipation(userId: UUID, date: Date = .now) {
-        let slateKey = SlateDay.slateKey(for: date)
-        var set = Set(state.dailyRankParticipationByDay[slateKey] ?? [])
+        recordDailyRankParticipation(userId: userId, slateDayKey: SlateDay.slateKey(for: date))
+    }
+
+    func recordDailyRankParticipation(userId: UUID, slateDayKey: String) {
+        var set = Set(state.dailyRankParticipationByDay[slateDayKey] ?? [])
         set.insert(userId)
-        state.dailyRankParticipationByDay[slateKey] = Array(set)
+        state.dailyRankParticipationByDay[slateDayKey] = Array(set)
         persist()
     }
 
-    /// Resolves the **previous local slate** (6am boundary) if the user entered a ranked match and outcomes weren’t applied yet.
+    /// Resolves the **previous local slate** (4am CT boundary) if the user entered a ranked match and outcomes weren’t applied yet.
     func resolveDailyRankOutcomes(userId: UUID, now: Date = .now) {
         guard state.profiles[userId] != nil else { return }
         let prevSlate = SlateDay.previousSlateKey(from: now)
@@ -398,83 +421,152 @@ final class InMemoryJuicdRepository: ObservableObject {
         var resolved = Set(state.dailyRankResolvedByDay[prevSlate] ?? [])
         guard !resolved.contains(userId) else { return }
 
+        let pushed = voidUngradedPlaySlipsAsPush(userId: userId, slateKey: prevSlate)
+        if pushed > 0 {
+            AppErrorLogger.log(
+                severity: .warning,
+                message: "Ungraded Play slips pushed at 4am CT ranked cutoff.",
+                screen: "rank",
+                extra: [
+                    "slate": .string(prevSlate),
+                    "count": .int(pushed),
+                ]
+            )
+        }
+
         guard var profile = state.profiles[userId] else { return }
 
-        let normalizedNetAtHundred = normalizedNetPerformanceAtHundredOnSlate(userId: userId, slateKey: prevSlate)
-        let baseMMR = profile.mmr ?? MMRLogic.startingMMR
-        let tierBefore = profile.currentTier
-
+        let participantIds = (state.dailyRankParticipationByDay[prevSlate] ?? [])
+            .filter { state.profiles[$0] != nil }
+        var mmrById: [UUID: Double] = [:]
+        for id in participantIds {
+            mmrById[id] = state.profiles[id]?.mmr ?? MMRLogic.startingMMR
+        }
+        let pools = MMRLogic.similarPools(participantIds: participantIds, mmrById: mmrById)
+        let myPool = pools.first(where: { $0.contains(userId) }) ?? [userId]
         let poolSize = MMRLogic.dailyRankGroupSize
-        var rng = SeededRNG(seed: "\(userId.uuidString)-\(prevSlate)-pool".hashValueAsUInt64)
 
-        var scores: [(Bool, Double)] = []
-        scores.reserveCapacity(poolSize)
-        for i in 0..<(poolSize - 1) {
-            var r2 = SeededRNG(seed: "\(prevSlate)-bot-\(i)".hashValueAsUInt64)
-            let botMMR = baseMMR + (Double(i % 17) - 8) * 14 + r2.nextDouble() * 6 - 3
-            let botId = UUID()
+        var scores: [(UUID?, Double)] = []
+        for hid in myPool {
+            var rng = SeededRNG(seed: "\(hid.uuidString)-\(prevSlate)-pool".hashValueAsUInt64)
+            let acc = playSlateAccounting(userId: hid, slateKey: prevSlate)
+            let perf = MMRLogic.dailyPerformanceScore(
+                userId: hid,
+                dayISO: prevSlate,
+                baseMMR: mmrById[hid] ?? MMRLogic.startingMMR,
+                normalizedNetAtHundred: acc.scaledNetAtHundred,
+                rng: &rng
+            )
+            scores.append((hid, perf))
+        }
+        let botsNeeded = max(0, poolSize - myPool.count)
+        for i in 0..<botsNeeded {
+            var r2 = SeededRNG(seed: "\(prevSlate)-bot-\(myPool.first?.uuidString ?? "")-\(i)".hashValueAsUInt64)
+            let botMMR = (mmrById[userId] ?? MMRLogic.startingMMR) + (Double(i % 17) - 8) * 14 + r2.nextDouble() * 6 - 3
             let botScaled = (r2.nextDouble() * 120) - 60
             let perf = MMRLogic.dailyPerformanceScore(
-                userId: botId,
+                userId: UUID(),
                 dayISO: prevSlate,
                 baseMMR: botMMR,
                 normalizedNetAtHundred: botScaled,
                 rng: &r2
             )
-            scores.append((false, perf))
+            scores.append((nil, perf))
         }
-        let userPerf = MMRLogic.dailyPerformanceScore(
-            userId: userId,
-            dayISO: prevSlate,
-            baseMMR: baseMMR,
-            normalizedNetAtHundred: normalizedNetAtHundred,
-            rng: &rng
-        )
-        scores.append((true, userPerf))
         scores.sort { $0.1 > $1.1 }
 
-        guard let rankIdx = scores.firstIndex(where: { $0.0 }) else { return }
-        let placement = rankIdx + 1
+        for hid in myPool where !resolved.contains(hid) {
+            guard var mate = state.profiles[hid] else { continue }
+            guard let rankIdx = scores.firstIndex(where: { $0.0 == hid }) else { continue }
+            let placement = rankIdx + 1
+            let baseMMR = mate.mmr ?? MMRLogic.startingMMR
+            let tierBefore = mate.currentTier
+            let rawDelta = MMRLogic.mmrDelta(rank: placement, poolSize: poolSize)
+            let mmrAfter = MMRLogic.smoothedMMR(currentMMR: baseMMR, rawDelta: rawDelta)
+            let appliedDelta = mmrAfter - baseMMR
+            let accounting = playSlateAccounting(userId: hid, slateKey: prevSlate)
+            mate.mmr = mmrAfter
+            mate.currentTier = MMRLogic.tier(for: mmrAfter)
+            mate.lastDailyMatch = DailyMatchSnapshot(
+                dayISO: prevSlate,
+                placement: placement,
+                poolSize: poolSize,
+                mmrBefore: baseMMR,
+                mmrDelta: appliedDelta,
+                mmrAfter: mmrAfter,
+                tierBefore: tierBefore,
+                tierAfter: mate.currentTier,
+                pointsStaked: accounting.pointsStaked,
+                rawNetPoints: accounting.rawNetPoints,
+                scaledNetAtHundred: accounting.scaledNetAtHundred
+            )
+            state.profiles[hid] = mate
+            resolved.insert(hid)
+        }
 
-        let rawDelta = MMRLogic.mmrDelta(rank: placement, poolSize: poolSize)
-        let mmrAfter = MMRLogic.smoothedMMR(currentMMR: baseMMR, rawDelta: rawDelta)
-        let appliedDelta = mmrAfter - baseMMR
-        profile.mmr = mmrAfter
-        profile.currentTier = MMRLogic.tier(for: mmrAfter)
-        profile.lastDailyMatch = DailyMatchSnapshot(
-            dayISO: prevSlate,
-            placement: placement,
-            poolSize: poolSize,
-            mmrBefore: baseMMR,
-            mmrDelta: appliedDelta,
-            mmrAfter: mmrAfter,
-            tierBefore: tierBefore,
-            tierAfter: profile.currentTier
-        )
-        state.profiles[userId] = profile
-
-        resolved.insert(userId)
         state.dailyRankResolvedByDay[prevSlate] = Array(resolved)
         persist()
     }
 
+    /// Pending slips on a closed slate count as a push for ranked score (net 0 / excluded).
+    @discardableResult
+    func voidUngradedPlaySlipsAsPush(userId: UUID, slateKey: String) -> Int {
+        guard var list = state.playBoardEntries else { return 0 }
+        var count = 0
+        for i in list.indices {
+            var entry = list[i]
+            guard entry.userId == userId, entry.slateDayKey == slateKey, entry.pending else { continue }
+            entry.pending = false
+            entry.didWin = false
+            entry.pushed = true
+            entry.seasonPointsEarned = 0
+            list[i] = entry
+            count += 1
+        }
+        guard count > 0 else { return 0 }
+        state.playBoardEntries = list
+        persist()
+        return count
+    }
+
+    private struct PlaySlateAccounting {
+        var pointsStaked: Int
+        var rawNetPoints: Int
+        var scaledNetAtHundred: Double
+    }
+
     /// Scales Play-only daily results to a 100-point baseline so users are ranked by quality, not by spending all points.
     /// Example: spending 10 points for +5 net => +50 at 100.
-    private func normalizedNetPerformanceAtHundredOnSlate(userId: UUID, slateKey: String) -> Double {
+    private func playSlateAccounting(userId: UUID, slateKey: String) -> PlaySlateAccounting {
         var staked = 0
         var net = 0
-        for entry in state.ledger where entry.userId == userId {
-            guard SlateDay.slateKey(for: entry.createdAt) == slateKey else { continue }
-            if entry.reason == "Play parlay stake" {
-                staked += abs(entry.deltaPoints)
-                net += entry.deltaPoints
-            } else if entry.reason == "Play parlay payout" {
-                net += entry.deltaPoints
+        for entry in (state.playBoardEntries ?? []) where entry.userId == userId && entry.slateDayKey == slateKey {
+            if entry.pending || entry.pushed { continue }
+            staked += entry.stakePoints
+            if entry.didWin {
+                net += entry.seasonPointsEarned
+            } else {
+                net -= entry.stakePoints
             }
         }
-        guard staked > 0 else { return 0 }
+        guard staked > 0 else {
+            return PlaySlateAccounting(pointsStaked: 0, rawNetPoints: net, scaledNetAtHundred: 0)
+        }
         let roi = Double(net) / Double(staked)
-        return roi * Double(JuicdBalance.dailyPlayAllowancePoints)
+        return PlaySlateAccounting(
+            pointsStaked: staked,
+            rawNetPoints: net,
+            scaledNetAtHundred: roi * Double(JuicdBalance.dailyPlayAllowancePoints)
+        )
+    }
+
+    private func setPersistedTourney(
+        _ keyPath: WritableKeyPath<PersistedState, RemoteTourneyPayload?>,
+        to value: RemoteTourneyPayload?
+    ) {
+        guard state[keyPath: keyPath] != value else { return }
+        state[keyPath: keyPath] = value
+        persist()
     }
 
     func playBoardEntriesOnSlate(userId: UUID, date: Date = .now) -> [PlayBoardEntry] {
@@ -1144,6 +1236,9 @@ final class InMemoryJuicdRepository: ObservableObject {
     ) -> PlayParlayOutcome? {
         guard stakePoints > 0, !legs.isEmpty else { return nil }
         guard var profile = state.profiles[userId] else { return nil }
+        // Reject the same market/line twice (choiceId/marketId identity).
+        let marketKeys = legs.map { "\($0.marketId.uuidString)|\($0.choiceId.uuidString)" }
+        guard Set(marketKeys).count == marketKeys.count else { return nil }
         guard let slateKey = playSlateKey(for: legs, date: date) else { return nil }
         let today = SlateDay.slateKey(for: date)
         let tomorrow = SlateDay.nextSlateKey(from: date)
@@ -1151,8 +1246,8 @@ final class InMemoryJuicdRepository: ObservableObject {
         let remaining = pointsRemaining(userId: userId, slateDayKey: slateKey, date: date)
         guard stakePoints <= remaining else { return nil }
 
+        recordDailyRankParticipation(userId: userId, slateDayKey: slateKey)
         if slateKey == today {
-            recordDailyRankParticipation(userId: userId, date: date)
             profile.availableDailyPoints -= stakePoints
             state.profiles[userId] = profile
         }
@@ -1633,6 +1728,46 @@ final class InMemoryJuicdRepository: ObservableObject {
 
     func userBadges(userId: UUID) -> [RewardBadge] {
         state.rewards[userId] ?? []
+    }
+
+    /// Closest-pick bracket champion. Idempotent per kind+period. Trophy color upgrades at 3 / 5 / 10 wins this season.
+    func recordClosestTourneyWin(userId: UUID, kind: String, periodKey: String, date: Date = .now) {
+        let awardKey = "\(kind)|\(periodKey)"
+        var awarded = Set(state.awardedClosestTourneyWins ?? [])
+        guard !awarded.contains(awardKey) else { return }
+        awarded.insert(awardKey)
+        state.awardedClosestTourneyWins = Array(awarded)
+
+        let seasonKey = JuicdSeason.currentSeasonKey(at: date)
+        let countKey = "\(kind)|\(seasonKey)"
+        var counts = state.closestTourneyWinsBySeason ?? [:]
+        let wins = (counts[countKey] ?? 0) + 1
+        counts[countKey] = wins
+        state.closestTourneyWinsBySeason = counts
+
+        let style = TourneyTrophy.appearance(kind: kind, wins: wins, seasonKey: seasonKey)
+        let badgeId = StableUUID.from("trophy|\(kind)|\(seasonKey)|\(userId.uuidString)")
+        var badges = state.rewards[userId] ?? []
+        if let i = badges.firstIndex(where: { $0.id == badgeId }) {
+            badges[i].title = style.title
+            badges[i].description = style.detail
+            badges[i].imageSystemName = style.symbol
+            badges[i].tintName = style.tint
+            badges[i].achievedAt = date
+        } else {
+            badges.append(
+                RewardBadge(
+                    id: badgeId,
+                    title: style.title,
+                    description: style.detail,
+                    achievedAt: date,
+                    imageSystemName: style.symbol,
+                    tintName: style.tint
+                )
+            )
+        }
+        state.rewards[userId] = badges
+        persist()
     }
 
     func awardDailyQuarterBadgesIfNeeded(userId: UUID, after stageIndex: Int) {

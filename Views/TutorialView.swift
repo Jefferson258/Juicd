@@ -28,8 +28,8 @@ struct TutorialView: View {
             title: "Your “day” (slate)",
             headline: "Juicd uses a slate, not midnight.",
             bullets: [
-                "A new slate starts at 6:00 local time — so late-night picks stay on the same slate until then.",
-                "Daily Play balance refills on each slate (prototype: up to 100 pts). That refill is wallet-only — it does not add to season score.",
+                "A new slate starts at 4:00am America/Chicago — late-night picks stay on the same slate until then.",
+                "Daily Play balance refills on each slate (up to 100 pts). That refill is wallet-only — it does not add to season score.",
                 "Season score comes from wins and bonuses only (see Dashboard)."
             ],
             icon: "sun.horizon.fill"
@@ -38,11 +38,10 @@ struct TutorialView: View {
             title: "Play",
             headline: "Build singles or parlays from today’s board.",
             bullets: [
-                "For You shows every league ribbon that has priced props; league pills filter to one sport.",
-                "Tap a tile to open the slip sheet — adjust stake, add legs (parlay), then place.",
-                "Juicd boosts (when shown) multiply decimal odds on that tile only.",
-                "Sync pulls the latest shared board when Supabase is configured; otherwise the app uses rich local sample odds.",
-                "Ranked play uses your Play results — spend wisely; low-stake days are normalized so rank stays fair."
+                "Popular shows every league ribbon that has priced props; league pills filter to one sport.",
+                "Tap a tile to open the slip sheet — pick Over or Under, adjust stake, add legs, then place.",
+                "Today and tomorrow have separate 100-point banks. Tomorrow’s line locks when you place.",
+                "Ranked play uses your Play results — spend wisely; low-stake days are stretched to a 100-point line so rank stays fair."
             ],
             icon: "sportscourt.fill"
         ),
@@ -50,11 +49,10 @@ struct TutorialView: View {
             title: "Dashboard",
             headline: "Wallet, slips, and skill rank.",
             bullets: [
-                "Play slips: browse today or tap past slate chips — each row shows single vs parlay, stake, combined odds, win/miss, and season pts.",
-                "Last ranked match: preview of how you placed in yesterday’s 10-player skill pool (sample until your first resolve).",
-                "Daily balance card: spendable points this slate.",
-                "Rank tier & ladder: visual tiers from Bronze → Champion — your checkmark shows where you are today.",
-                "MMR card explains grouping, fair scaling, placement, smoothing, and tier curves — tap ? on Rank ladder for the deep dive."
+                "Play slips: today and tomorrow together — each row shows single vs parlay, stake, combined odds, win/miss, and season pts.",
+                "Last ranked match: how you placed after 4am CT, including what you bet vs what counted at 100.",
+                "Daily balance card: spendable points this slate (today and tomorrow).",
+                "Rank ladder: tiers from Champion down to Bronze — your row shows MMR. Tap ? for how rank-ups work."
             ],
             icon: "rectangle.grid.2x2.fill"
         ),
@@ -62,9 +60,9 @@ struct TutorialView: View {
             title: "Tourney",
             headline: "Closest-pick bracket — different from Play.",
             bullets: [
-                "Pick a daily game variant, preview four rounds, then enter before the lock time.",
-                "Each round you submit one number; whoever is closer to the simulated outcome advances.",
-                "No stake — rewards feed season-style progression and badges.",
+                "Lock four closest-number picks before freeze — one hour before the featured game starts.",
+                "Daily follows the 4am CT board. Weekly runs Monday through Sunday night.",
+                "No stake — this is a 16-person bracket (empty slots fill at freeze).",
                 "Separate from Play ranked pools — great when you want structure without spending daily balance."
             ],
             icon: "trophy.fill"
@@ -86,7 +84,7 @@ struct TutorialView: View {
                 "Season vs career cards: tap for detailed breakdown (legs, slips, ledger totals).",
                 "Tier gradient reflects current ranked tier; expand Ranking details for raw MMR.",
                 "Badges unlock from wins and milestones.",
-                "Prototype tools (season resets, ads dev toggle, replay tutorial) live at the bottom for builds."
+                "Replay onboarding lives at the bottom of Profile if you want this walkthrough again."
             ],
             icon: "person.crop.circle.fill"
         ),
