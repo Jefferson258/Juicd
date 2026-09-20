@@ -13,7 +13,7 @@ final class JuicdUITests: XCTestCase {
 
     func testVisualQAScreenshots() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on"]
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on", "-juicd-dev-signin"]
         app.launch()
 
         // Resolve repo/qa-screenshots from this source file (portable; no Desktop hardcode).
@@ -45,26 +45,23 @@ final class JuicdUITests: XCTestCase {
             btn.tap()
         }
 
-        let skipButton = app.buttons["Skip — local dev account"]
-        XCTAssertTrue(skipButton.waitForExistence(timeout: 12), "Sign-in skip button should appear")
-        skipButton.tap()
-
-        // Legal / tutorial leftovers
-        for label in ["Agree", "I Agree", "Continue", "Skip", "Got it"] {
-            if app.buttons[label].waitForExistence(timeout: 1) {
-                app.buttons[label].tap()
-            }
-        }
-
+        // -juicd-dev-signin auto-loads seeded demo profile (Skip button removed from SignInView).
         let playTab = app.tabBars.buttons["Play"]
         let playBtn = app.buttons["Play"]
+        let playId = app.buttons["tab-play"]
         XCTAssertTrue(
-            playTab.waitForExistence(timeout: 12) || playBtn.waitForExistence(timeout: 2),
-            "Tab bar should appear after dev skip sign-in"
+            playTab.waitForExistence(timeout: 20) || playBtn.waitForExistence(timeout: 2) || playId.waitForExistence(timeout: 2),
+            "Tab bar should appear after -juicd-dev-signin"
         )
 
         sleep(2)
         _ = app.otherElements["ad-sponsored-card"].waitForExistence(timeout: 6)
+        // Dismiss AdMob test banner before marketing/ASC snaps
+        let dismissPlayAd = app.buttons["Dismiss ad"].firstMatch
+        if dismissPlayAd.waitForExistence(timeout: 2) {
+            dismissPlayAd.tap()
+            sleep(1)
+        }
         try snap("01-play")
 
         tapTab("Dashboard")
@@ -74,10 +71,15 @@ final class JuicdUITests: XCTestCase {
         tapTab("Tourney")
         sleep(2)
         _ = app.otherElements["ad-sponsored-card"].waitForExistence(timeout: 6)
+        let dismissTourneyAd = app.buttons["Dismiss ad"].firstMatch
+        if dismissTourneyAd.waitForExistence(timeout: 2) {
+            dismissTourneyAd.tap()
+            sleep(1)
+        }
         let simulate = app.buttons["Simulate full bracket (demo)"]
         if simulate.waitForExistence(timeout: 2) {
             simulate.tap()
-            sleep(2)
+            sleep(4)
         }
         try snap("03-tourney")
 
@@ -88,6 +90,106 @@ final class JuicdUITests: XCTestCase {
         tapTab("Profile")
         sleep(2)
         try snap("06-profile")
+    }
+
+
+
+    func testWebsiteFillInScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        func snap(_ name: String) throws {
+            let data = XCUIScreen.main.screenshot().pngRepresentation
+            try data.write(to: URL(fileURLWithPath: "\(outputDir)/\(name).png"))
+        }
+
+        XCTAssertTrue(
+            app.buttons["tab-dashboard"].waitForExistence(timeout: 20)
+                || app.buttons["Dashboard"].waitForExistence(timeout: 5),
+            "Expected tabs after dev sign-in"
+        )
+
+        let dash = app.buttons["tab-dashboard"]
+        if dash.exists { dash.tap() } else { app.buttons["Dashboard"].tap() }
+        sleep(2)
+
+        // Top of Dashboard = Play slips (bet history) for website `bets` slot.
+        XCTAssertTrue(app.staticTexts["Dashboard"].waitForExistence(timeout: 6) || app.staticTexts["Play slips"].waitForExistence(timeout: 2))
+        sleep(1)
+        try snap("website-bets")
+
+        // Scroll to Rank ladder / MMR for website `mmrInfo` slot.
+        for _ in 0..<4 { app.swipeUp(); sleep(0) }
+        sleep(1)
+        _ = app.staticTexts["Rank ladder"].waitForExistence(timeout: 2)
+            || app.staticTexts["Rank tier"].waitForExistence(timeout: 1)
+            || app.staticTexts["Current tier"].waitForExistence(timeout: 1)
+        try snap("website-mmrInfo")
+    }
+
+    func testParlayScreenshot() throws {
+        let app = XCUIApplication()
+        // -juicd-dev-signin auto-loads seeded demo profile (Skip button removed from SignInView).
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        let playTab = app.tabBars.buttons["Play"]
+        let playBtn = app.buttons["Play"]
+        let playId = app.buttons["tab-play"]
+        XCTAssertTrue(
+            playTab.waitForExistence(timeout: 20) || playBtn.waitForExistence(timeout: 2) || playId.waitForExistence(timeout: 2),
+            "Tab bar should appear after -juicd-dev-signin"
+        )
+        sleep(2)
+
+        // Open slip from first Over control on the seeded stub board.
+        let over = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 0)
+        XCTAssertTrue(over.waitForExistence(timeout: 10), "Expected Over button on Play board")
+        over.tap()
+        sleep(1)
+
+        // Prefer a multi-leg Parlay sheet when possible.
+        let addLeg = app.buttons["Add another pick (parlay)"]
+        if addLeg.waitForExistence(timeout: 4) {
+            addLeg.tap()
+            sleep(1)
+            let over2 = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 1)
+            if over2.waitForExistence(timeout: 6) {
+                over2.tap()
+            } else {
+                let overFallback = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 0)
+                XCTAssertTrue(overFallback.waitForExistence(timeout: 4))
+                overFallback.tap()
+            }
+            sleep(1)
+        }
+
+        // Sheet title is "Parlay" with 2+ legs, else "Place bet".
+        let parlayNav = app.navigationBars["Parlay"]
+        let placeBetNav = app.navigationBars["Place bet"]
+        XCTAssertTrue(
+            parlayNav.waitForExistence(timeout: 6) || placeBetNav.waitForExistence(timeout: 2),
+            "ParlayBuilderSheet should be visible"
+        )
+        sleep(1)
+
+        let data = XCUIScreen.main.screenshot().pngRepresentation
+        try data.write(to: URL(fileURLWithPath: "\(outputDir)/02-parlay.png"))
     }
 
     /// Cloud anonymous sign-in (no `-seedDemoData`) — asserts Friends shows a real friend code.

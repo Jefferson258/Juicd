@@ -238,6 +238,70 @@ final class InMemoryJuicdRepository: ObservableObject {
         me.allTimePointsWon = max(me.allTimePointsWon, me.seasonPointsWon + 900)
         state.profiles[meId] = me
 
+        // Screenshot QA: seed a frozen daily closest-pick board so Tourney isn't empty.
+        // Commence/freeze in the past → bots fill empty slots locally (no remote bracket needed).
+        let iso = ISO8601DateFormatter()
+        let commencePast = iso.string(from: Date().addingTimeInterval(-2 * 3600))
+        let tourneyPeriod = slate
+        let demoRounds: [RemoteTourneyRound] = [
+            RemoteTourneyRound(
+                round: 1,
+                propLabel: "Jokić — PRA",
+                statSummary: "Closest to actual points + rebounds + assists (DEN @ LAL). Line 48.5.",
+                line: 48.5,
+                eventId: "demo-event-1",
+                matchup: "DEN @ LAL",
+                player: "Nikola Jokić",
+                commenceTime: commencePast,
+                sportKey: "basketball_nba"
+            ),
+            RemoteTourneyRound(
+                round: 2,
+                propLabel: "Curry — Points",
+                statSummary: "Closest to actual points scored (GSW @ PHX). Line 27.5.",
+                line: 27.5,
+                eventId: "demo-event-2",
+                matchup: "GSW @ PHX",
+                player: "Stephen Curry",
+                commenceTime: commencePast,
+                sportKey: "basketball_nba"
+            ),
+            RemoteTourneyRound(
+                round: 3,
+                propLabel: "Tatum — Rebounds",
+                statSummary: "Closest to actual rebounds (BOS @ MIL). Line 8.5.",
+                line: 8.5,
+                eventId: "demo-event-3",
+                matchup: "BOS @ MIL",
+                player: "Jayson Tatum",
+                commenceTime: commencePast,
+                sportKey: "basketball_nba"
+            ),
+            RemoteTourneyRound(
+                round: 4,
+                propLabel: "Edwards — Assists",
+                statSummary: "Closest to actual assists (MIN @ OKC). Line 5.5.",
+                line: 5.5,
+                eventId: "demo-event-4",
+                matchup: "MIN @ OKC",
+                player: "Anthony Edwards",
+                commenceTime: commencePast,
+                sportKey: "basketball_nba"
+            ),
+        ]
+        state.lastDailyTourney = RemoteTourneyPayload(
+            kind: "daily",
+            periodKey: tourneyPeriod,
+            title: "NBA Night Closest",
+            gameLabel: "4 games",
+            commenceTime: commencePast,
+            freezeAt: commencePast,
+            roundSpecs: demoRounds
+        )
+        var pickMap = state.tourneyPicksByKey ?? [:]
+        pickMap[tourneyPickKey(userId: meId, kind: "daily", periodKey: tourneyPeriod)] = [48.5, 27.0, 8.5, 5.0]
+        state.tourneyPicksByKey = pickMap
+
         persist()
     }
 
