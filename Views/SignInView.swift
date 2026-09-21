@@ -185,7 +185,7 @@ struct SignInView: View {
                                 .disabled(viewModel.isBusy || viewModel.isRestoring)
                             }
 
-                            Text("Sign-in creates a cloud account so friends, groups, and leaderboards sync across TestFlight devices. Your session is saved on this phone — don’t sign out if you want to keep the same friend code.")
+                            Text("Sign-in creates a cloud account so friends, groups, and leaderboards sync across your devices. Your session is saved on this phone — don’t sign out if you want to keep the same friend code.")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(JuicdTheme.textTertiary)
                                 .multilineTextAlignment(.center)
