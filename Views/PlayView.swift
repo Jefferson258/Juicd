@@ -321,7 +321,7 @@ struct PlayView: View {
                             .foregroundStyle(JuicdTheme.textPrimary)
                             .lineLimit(2)
                         HStack {
-                            Text("\(slip.stakePoints) pts · \(String(format: "%.2f", slip.combinedOdds))")
+                            Text("\(slip.stakePoints) pts · \(String(format: "%.2fx", slip.combinedOdds))")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(JuicdTheme.brand)
                             Spacer()
@@ -508,7 +508,7 @@ struct PlayView: View {
     private func forYouTileWidth(spacing: CGFloat, propCount: Int) -> CGFloat {
         let screenW = UIScreen.main.bounds.width
         let contentW = max(280, screenW - 32) // PlayView horizontal padding
-        let divisor: CGFloat = propCount >= 3 ? 2.28 : 2.0
+        let divisor: CGFloat = propCount >= 3 ? 2.38 : 2.0
         return max(128, floor((contentW - spacing) / divisor))
     }
 
@@ -566,7 +566,7 @@ struct PlayView: View {
                                 )
                         )
                     if isJuicdBoost {
-                        Text("Juicd 1.5×")
+                        Text("Juicd 1.5x")
                             .font(.system(size: 10, weight: .heavy, design: .rounded))
                             .foregroundStyle(juicdBoostStroke)
                             .padding(.horizontal, 8)

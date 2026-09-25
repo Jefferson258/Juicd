@@ -73,10 +73,10 @@ struct ParlayBuilderSheet: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(prop.athleteOrTeam)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                        Text("\(prop.pickLabel) · \(prop.lineText)")
+                        Text(parlayLegDetail(for: prop))
                             .font(.caption.weight(.medium))
                             .foregroundStyle(JuicdTheme.textSecondary)
-                        Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
+                        Text(String(format: "%.2fx", prop.juicdEffectiveDecimalOdds))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(JuicdTheme.brand)
                     }
@@ -143,7 +143,7 @@ struct ParlayBuilderSheet: View {
             HStack {
                 Label("Combined odds", systemImage: "sum")
                 Spacer()
-                Text(String(format: "%.2f", viewModel.impliedParlayDecimal))
+                Text(String(format: "%.2fx", viewModel.impliedParlayDecimal))
                     .fontWeight(.bold)
                     .foregroundStyle(JuicdTheme.brand)
             }
@@ -185,5 +185,17 @@ struct ParlayBuilderSheet: View {
         .buttonStyle(.bordered)
         .tint(JuicdTheme.brand)
         .disabled(viewModel.parlayLegs.count >= 8)
+    }
+
+    /// One clean detail line for a slip leg (avoid "H2H · H2H" / Moneyline stack).
+    private func parlayLegDetail(for prop: PlayPropBet) -> String {
+        if prop.isMoneylineStyle || prop.hasMoneylineChoice {
+            let pick = prop.pickLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            if pick.isEmpty || pick.uppercased() == "H2H" || pick.uppercased() == "ML" {
+                return "Head-to-head"
+            }
+            return "\(pick) · Head-to-head"
+        }
+        return "\(prop.pickLabel) · \(prop.lineText)"
     }
 }

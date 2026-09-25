@@ -274,7 +274,7 @@ final class JuicdUITests: XCTestCase {
         let outputDir = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("qa-screenshots/polish-2026-09-24")
+            .appendingPathComponent("qa-screenshots/polish-2026-09-25")
             .path
         try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
 
@@ -376,7 +376,7 @@ final class JuicdUITests: XCTestCase {
         let outputDir = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("qa-screenshots/polish-2026-09-24")
+            .appendingPathComponent("qa-screenshots/polish-2026-09-25")
             .path
         try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
 
