@@ -37,6 +37,7 @@ enum PlayerHeadshotLookup {
         case "nhl": return "nhl"
         case "wnba": return "wnba"
         case "mens-college-basketball", "womens-college-basketball": return leagueSlug.lowercased()
+        case "college-football": return "college-football"
         default: return nil
         }
     }
@@ -45,6 +46,7 @@ enum PlayerHeadshotLookup {
         switch tag.uppercased() {
         case "NBA": return ["nba"]
         case "NFL": return ["nfl"]
+        case "CFB", "NCAAF": return ["college-football", "ncaaf"]
         case "MLB": return ["mlb"]
         case "NHL": return ["nhl"]
         case "WNBA": return ["wnba"]

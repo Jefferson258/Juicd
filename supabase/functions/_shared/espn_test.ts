@@ -108,4 +108,7 @@ Deno.test("NHL shots map without requiring the word goal", () => {
   );
   assertEquals(espnPath("icehockey_nhl"), "hockey/nhl");
   assertEquals(espnPath("MLB"), "baseball/mlb");
+  assertEquals(espnPath("americanfootball_ncaaf"), "football/college-football");
+  assertEquals(espnPath("americanfootball_nfl"), "football/nfl");
+  assertEquals(espnPath("CFB"), "football/college-football");
 });

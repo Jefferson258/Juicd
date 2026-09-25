@@ -7,6 +7,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
     case forYou
     case nba
     case nfl
+    case cfb
     case mlb
     case nhl
     case cbb
@@ -21,6 +22,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case .forYou: return "Popular"
         case .nba: return "NBA"
         case .nfl: return "NFL"
+        case .cfb: return "CFB"
         case .mlb: return "MLB"
         case .nhl: return "NHL"
         case .cbb: return "CBB"
@@ -32,7 +34,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
 
     /// Primary row: keep WSOC separate from generic soccer.
     static var primaryRow: [PlaySportPill] {
-        [.forYou, .nba, .nfl, .cbb, .mbb, .mlb, .nhl, .womensSoccer, .soccer]
+        [.forYou, .nba, .nfl, .cfb, .cbb, .mbb, .mlb, .nhl, .womensSoccer, .soccer]
     }
 
     /// Ribbon header chevron: jump into this league’s board.
@@ -40,6 +42,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         switch ribbonId {
         case "popular_nba", "nba": return .nba
         case "popular_nfl", "nfl": return .nfl
+        case "popular_cfb", "cfb", "ncaaf": return .cfb
         case "popular_mlb", "mlb": return .mlb
         case "popular_nhl", "nhl": return .nhl
         case "popular_cbb", "cbb": return .cbb
@@ -49,6 +52,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case "live_api": return nil
         default:
             if ribbonId.hasPrefix("live_nfl") || ribbonId.hasPrefix("live_props_nfl") { return .nfl }
+            if ribbonId.hasPrefix("live_cfb") || ribbonId.hasPrefix("live_props_cfb") { return .cfb }
             if ribbonId.hasPrefix("live_nba") || ribbonId.hasPrefix("live_props_nba") { return .nba }
             if ribbonId.hasPrefix("live_mlb") || ribbonId.hasPrefix("live_props_mlb") { return .mlb }
             if ribbonId.hasPrefix("live_nhl") || ribbonId.hasPrefix("live_props_nhl") { return .nhl }
@@ -62,6 +66,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case .forYou: return true
         case .nba: return u == "NBA"
         case .nfl: return u == "NFL"
+        case .cfb: return u == "CFB" || u == "NCAAF"
         case .mlb: return u == "MLB"
         case .nhl: return u == "NHL"
         case .cbb: return u == "CBB"
@@ -87,7 +92,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
                 ("threes", "Threes"),
                 ("blocks", "Blocks")
             ]
-        case .nfl:
+        case .nfl, .cfb:
             return [
                 ("all", "All"),
                 ("popular", "Popular"),
@@ -140,7 +145,7 @@ extension PlayPropBet {
         let t = leagueTag.uppercased()
 
         switch t {
-        case "NFL":
+        case "NFL", "CFB", "NCAAF":
             if p.contains("rush") && p.contains("rec") && p.contains("yard") { return "combo_yards" }
             if p.contains("pass") && p.contains("yard") { return "pass_yards" }
             if p.contains("rush") && p.contains("yard") { return "rush_yards" }

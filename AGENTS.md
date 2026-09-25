@@ -30,7 +30,7 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 21** on TestFlight (CI-safe deinits, 10-player similar MMR
+- Currently **build 22** on TestFlight (CFB/NCAAF on Play board + H2H/props, CI-safe deinits, 10-player similar MMR
   pools with bot pad, ungraded slips push at 4am, multi 16-brackets, tourney
   trophy colors, Play one-line Over/Under, no Profile ads opt-out). Ranked
   “similar humans” currently packs **local** participants on this device;
@@ -75,7 +75,9 @@ settlement changes need owner + counsel sign-off before shipping.
   that SQL or env var to `hwyxtklbffqwcbtuetit`.
 - **Play board (Sep 11 2026):** Juicd day = **4:00am America/Chicago**.
   `play-board` freshness is the CT `slate_key` (not UTC midnight). Sports are
-  NFL/NBA/NHL/MLB only, max **16 Odds credits/day**, started games dropped.
+  NFL → CFB (ncaaf) → NBA → MLB → NHL, max **16 Odds credits/day**, started games dropped.
+  CFB props use `player_pass_yds` (same as NFL). With 5 sports under the 16-credit cap,
+  later-sport props (often NHL) may be truncated when every league has today games.
   Response includes **today + tomorrow** h2h (no extra prop fetches for
   tomorrow). Weekly tourney is **Monday 4am CT through Sunday night**; Sunday
   also exposes next week for early entry. Existing daily/weekly payloads freeze

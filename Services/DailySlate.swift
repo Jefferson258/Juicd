@@ -166,7 +166,7 @@ enum DailySlateBoard {
             guard let r = PlayBoardStubData.sportRibbon(for: sport) else { return [] }
             base = [r]
         }
-        let allowed: Set<String> = ["NFL", "NBA", "NHL", "MLB"]
+        let allowed: Set<String> = ["NFL", "CFB", "NBA", "NHL", "MLB"]
         return base.compactMap { ribbon in
             var r = ribbon
             r.props = ribbon.props.enumerated().compactMap { idx, p in
@@ -189,6 +189,7 @@ enum DailySlateBoard {
     private static func sportKey(for tag: String) -> String {
         switch tag.uppercased() {
         case "NFL": return "americanfootball_nfl"
+        case "CFB", "NCAAF": return "americanfootball_ncaaf"
         case "NBA": return "basketball_nba"
         case "NHL": return "icehockey_nhl"
         case "MLB": return "baseball_mlb"

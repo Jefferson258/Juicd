@@ -29,11 +29,13 @@ enum JuicdTheme {
         case "live_api": return Color(red: 0.2, green: 0.95, blue: 0.75)
         case "popular", "popular_nba", "popular_cbb", "popular_mbb": return Color(red: 1.0, green: 0.55, blue: 0.2)
         case "popular_nfl": return Color(red: 0.35, green: 0.55, blue: 1.0)
+        case "popular_cfb": return Color(red: 0.72, green: 0.38, blue: 0.12)
         case "popular_mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
         case "popular_nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
         case "popular_soccer", "popular_wsoc": return Color(red: 0.25, green: 0.78, blue: 0.45)
         case "nba": return Color(red: 0.9, green: 0.28, blue: 0.22)
         case "nfl": return Color(red: 0.2, green: 0.45, blue: 0.95)
+        case "cfb": return Color(red: 0.72, green: 0.38, blue: 0.12)
         case "mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
         case "nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
         case "soccer": return Color(red: 0.25, green: 0.78, blue: 0.45)
@@ -49,6 +51,9 @@ enum JuicdTheme {
         let t = (title ?? "").lowercased()
         let hay = id + " " + t
         if id == "live_api" { return "antenna.radiowaves.left.and.right" }
+        if hay.contains("cfb") || hay.contains("ncaaf") || hay.contains("college") {
+            return "football.fill"
+        }
         if hay.contains("nfl") || hay.contains("americanfootball") || hay.contains("football") {
             return "football.fill"
         }
@@ -74,6 +79,7 @@ enum JuicdTheme {
         switch tag.uppercased() {
         case "NBA": return Color(red: 0.95, green: 0.35, blue: 0.18)
         case "NFL": return Color(red: 0.25, green: 0.48, blue: 0.98)
+        case "CFB", "NCAAF": return Color(red: 0.78, green: 0.42, blue: 0.12)
         case "MLB": return Color(red: 0.92, green: 0.22, blue: 0.24)
         case "NHL": return Color(red: 0.3, green: 0.72, blue: 0.95)
         case "EPL", "UCL", "MLS", "SOC": return Color(red: 0.28, green: 0.82, blue: 0.48)

@@ -130,6 +130,7 @@ final class PlayViewModel: ObservableObject {
 
     private static func sportPill(fromOddsSportKey key: String) -> PlaySportPill? {
         if key.contains("basketball_nba") { return .nba }
+        if key.contains("americanfootball_ncaaf") || key.contains("ncaaf") { return .cfb }
         if key.contains("americanfootball_nfl") { return .nfl }
         if key.contains("baseball_mlb") { return .mlb }
         if key.contains("icehockey_nhl") { return .nhl }
@@ -753,7 +754,8 @@ final class PlayViewModel: ObservableObject {
 
     private func leagueTag(from sportKey: String) -> String {
         if sportKey.contains("nba") { return "NBA" }
-        if sportKey.contains("nfl") || sportKey.contains("americanfootball") { return "NFL" }
+        if sportKey.contains("ncaaf") { return "CFB" }
+        if sportKey.contains("nfl") { return "NFL" }
         if sportKey.contains("nhl") { return "NHL" }
         if sportKey.contains("mlb") || sportKey.contains("baseball_mlb") { return "MLB" }
         if sportKey.contains("soccer") { return "SOC" }

@@ -2,6 +2,10 @@
 
 export function espnPath(sportKey: string): string | null {
   const k = sportKey.toLowerCase();
+  // CFB / NCAAF before the generic americanfootball → NFL fallback.
+  if (k.includes("ncaaf") || k.includes("college-football") || k.includes("collegefootball") || k === "cfb") {
+    return "football/college-football";
+  }
   if (k.includes("nfl") || k.includes("americanfootball") || k === "football") {
     return "football/nfl";
   }

@@ -6,6 +6,7 @@ enum PlayBoardStubData {
     static let forYouRibbons: [PlayPropRibbon] = [
         withBothSides(popularNBA),
         withBothSides(popularNFL),
+        withBothSides(popularCFB),
         withBothSides(popularCBB),
         withBothSides(popularMBB),
         withBothSides(popularWomensSoccer),
@@ -20,6 +21,7 @@ enum PlayBoardStubData {
         case .forYou: return nil
         case .nba: return withBothSides(nba)
         case .nfl: return withBothSides(nfl)
+        case .cfb: return withBothSides(cfb)
         case .mlb: return withBothSides(mlb)
         case .nhl: return withBothSides(nhl)
         case .cbb: return withBothSides(cbb)
@@ -315,6 +317,93 @@ enum PlayBoardStubData {
                 lineText: "O/U 72.5",
                 pickLabel: "Over",
                 oddsDecimal: 1.89
+            )
+        ]
+    )
+
+
+    private static let cfb: PlayPropRibbon = PlayPropRibbon(
+        id: "cfb",
+        title: "CFB",
+        subtitle: "College football",
+        props: [
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Ohio State Buckeyes @ Michigan Wolverines",
+                matchup: "Ohio State Buckeyes @ Michigan Wolverines",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.95,
+                homeTeam: "Michigan Wolverines",
+                awayTeam: "Ohio State Buckeyes",
+                homeOdds: 2.05,
+                awayOdds: 1.78
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Caleb Downs",
+                matchup: "OSU @ MICH",
+                propDescription: "Pass yards",
+                lineText: "O/U 248.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.90
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Quinn Ewers",
+                matchup: "TEX vs OU",
+                propDescription: "Pass yards",
+                lineText: "O/U 265.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.88
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Alabama Crimson Tide @ Georgia Bulldogs",
+                matchup: "Alabama Crimson Tide @ Georgia Bulldogs",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 2.10,
+                homeTeam: "Georgia Bulldogs",
+                awayTeam: "Alabama Crimson Tide",
+                homeOdds: 1.72,
+                awayOdds: 2.15
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Ashton Jeanty",
+                matchup: "BSU @ ORE",
+                propDescription: "Rush yards",
+                lineText: "O/U 112.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.87
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Cameron Ward",
+                matchup: "MIA @ FSU",
+                propDescription: "Pass TDs",
+                lineText: "O/U 2.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.94
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "CFB",
+                athleteOrTeam: "Tetairoa McMillan",
+                matchup: "ARIZ @ USC",
+                propDescription: "Rec yards",
+                lineText: "O/U 78.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.91
             )
         ]
     )
@@ -823,6 +912,13 @@ enum PlayBoardStubData {
         title: "Popular NFL",
         subtitle: "Trending football props",
         props: Array(nfl.props.prefix(4))
+    )
+
+    private static let popularCFB: PlayPropRibbon = PlayPropRibbon(
+        id: "popular_cfb",
+        title: "Popular CFB",
+        subtitle: "Trending college football",
+        props: Array(cfb.props.prefix(4))
     )
 
     private static let popularCBB: PlayPropRibbon = PlayPropRibbon(

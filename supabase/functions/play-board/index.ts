@@ -112,9 +112,10 @@ const PROP_MAX_PER_EVENT = 8;
 
 const BOARD_SPORTS: BoardSport[] = [
   { sport: "americanfootball_nfl", leagueTag: "NFL", label: "NFL", propMarket: "player_pass_yds", propLabel: "Pass yards" },
+  { sport: "americanfootball_ncaaf", leagueTag: "CFB", label: "CFB", propMarket: "player_pass_yds", propLabel: "Pass yards" },
   { sport: "basketball_nba", leagueTag: "NBA", label: "NBA", propMarket: "player_points", propLabel: "Points" },
-  { sport: "icehockey_nhl", leagueTag: "NHL", label: "NHL", propMarket: "player_shots_on_goal", propLabel: "Shots" },
   { sport: "baseball_mlb", leagueTag: "MLB", label: "MLB", propMarket: "batter_hits", propLabel: "Hits" },
+  { sport: "icehockey_nhl", leagueTag: "NHL", label: "NHL", propMarket: "player_shots_on_goal", propLabel: "Shots" },
 ];
 
 function fnv1a(str: string): number {

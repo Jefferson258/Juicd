@@ -67,11 +67,11 @@ enum TeamAbbreviation {
             }
         }
         if let sportKey {
+            if sportKey.contains("ncaaf") { return "CFB" }
             if sportKey.contains("nfl") { return "NFL" }
             if sportKey.contains("nba") { return "NBA" }
             if sportKey.contains("mlb") { return "MLB" }
             if sportKey.contains("nhl") { return "NHL" }
-            if sportKey.contains("ncaaf") || sportKey.contains("americanfootball_ncaaf") { return "CFB" }
             if sportKey.contains("ncaab") || sportKey.contains("basketball_ncaab") { return "CBB" }
         }
         return nil

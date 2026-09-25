@@ -23,4 +23,13 @@ final class TeamAbbreviationTests: XCTestCase {
         XCTAssertEqual(TeamAbbreviation.abbreviate("Kansas City Chiefs", leagueTag: "NFL"), "KC")
         XCTAssertEqual(TeamAbbreviation.abbreviate("Golden State Warriors", leagueTag: "NBA"), "GSW")
     }
+
+    func testCFBAbbreviations() {
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Ohio State Buckeyes", leagueTag: "CFB"), "OSU")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Michigan Wolverines", leagueTag: "NCAAF"), "MICH")
+        XCTAssertEqual(
+            TeamAbbreviation.abbreviateMatchup("Ohio State Buckeyes @ Michigan Wolverines", leagueTag: "CFB"),
+            "OSU @ MICH"
+        )
+    }
 }
