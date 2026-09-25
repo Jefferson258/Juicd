@@ -185,6 +185,20 @@ enum PlayBoardStubData {
             PlayPropBet(
                 id: UUID(),
                 leagueTag: "NFL",
+                athleteOrTeam: "Kansas City Chiefs @ Buffalo Bills",
+                matchup: "Kansas City Chiefs @ Buffalo Bills",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.95,
+                homeTeam: "Buffalo Bills",
+                awayTeam: "Kansas City Chiefs",
+                homeOdds: 1.88,
+                awayOdds: 1.95
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "NFL",
                 athleteOrTeam: "Lamar Jackson",
                 matchup: "BAL @ PIT",
                 propDescription: "Pass yards",
@@ -310,6 +324,20 @@ enum PlayBoardStubData {
         title: "MLB",
         subtitle: "Player props",
         props: [
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "MLB",
+                athleteOrTeam: "New York Yankees @ Baltimore Orioles",
+                matchup: "New York Yankees @ Baltimore Orioles",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.85,
+                homeTeam: "Baltimore Orioles",
+                awayTeam: "New York Yankees",
+                homeOdds: 1.91,
+                awayOdds: 1.85
+            ),
             PlayPropBet(
                 id: UUID(),
                 leagueTag: "MLB",

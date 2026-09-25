@@ -516,26 +516,54 @@ struct PlayView: View {
         String(format: "%.2fx", value)
     }
 
-    /// Board copy for moneyline: one clean "Head-to-head" label (no Moneyline + H2H stack).
-    private func boardMarketLabel(for prop: PlayPropBet) -> String {
+    /// Fixed tile height so horizontal ribbons and grid rows stay uniform (long names truncate).
+    private static let propCardHeight: CGFloat = 198
+
+    /// PrizePicks-style single row: `"Hits 0.5"` / `"Pass yards 242.5"` / `"Head-to-head"`.
+    private func boardPropAndLineLabel(for prop: PlayPropBet) -> String {
         if prop.isMoneylineStyle { return "Head-to-head" }
-        return prop.propDescription
+        let market = prop.propDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        var line = prop.lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if line.uppercased() == "H2H" || line.uppercased() == "ML" {
+            line = ""
+        }
+        // Strip a leading "O/U " so we can show "Hits 0.5" instead of "Hits O/U 0.5".
+        if line.uppercased().hasPrefix("O/U ") {
+            line = String(line.dropFirst(4)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if line.uppercased() == "O/U", let point = prop.pointLine {
+            line = trimPoint(point)
+        }
+        if line.isEmpty, let point = prop.pointLine {
+            line = trimPoint(point)
+        }
+        if market.isEmpty { return line }
+        if line.isEmpty { return market }
+        if line.caseInsensitiveCompare(market) == .orderedSame { return market }
+        return "\(market) \(line)"
+    }
+
+    private func trimPoint(_ value: Double) -> String {
+        if value.rounded() == value { return String(Int(value)) }
+        return String(format: "%g", value)
+    }
+
+    private func displayAthleteTitle(for prop: PlayPropBet) -> String {
+        let raw = prop.athleteOrTeam.trimmingCharacters(in: .whitespacesAndNewlines)
+        if prop.isMoneylineStyle || prop.hasMoneylineChoice {
+            return TeamAbbreviation.abbreviateMatchup(raw.isEmpty ? prop.matchup : raw, leagueTag: prop.leagueTag, sportKey: prop.sportKey)
+        }
+        return raw
+    }
+
+    private func displayMatchup(for prop: PlayPropBet) -> String {
+        TeamAbbreviation.abbreviateMatchup(prop.matchup, leagueTag: prop.leagueTag, sportKey: prop.sportKey)
     }
 
     private func shouldShowMatchupLine(for prop: PlayPropBet) -> Bool {
-        let a = prop.athleteOrTeam.trimmingCharacters(in: .whitespacesAndNewlines)
-        let m = prop.matchup.trimmingCharacters(in: .whitespacesAndNewlines)
+        let a = displayAthleteTitle(for: prop)
+        let m = displayMatchup(for: prop)
         guard !m.isEmpty else { return false }
         return a.caseInsensitiveCompare(m) != .orderedSame
-    }
-
-    private func shouldShowLineText(for prop: PlayPropBet) -> Bool {
-        if prop.isMoneylineStyle { return false }
-        let line = prop.lineText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if line.isEmpty { return false }
-        if prop.hasOverUnderChoice || prop.hasMoneylineChoice { return true }
-        // Avoid repeating the same string as the market label.
-        return line.caseInsensitiveCompare(boardMarketLabel(for: prop)) != .orderedSame
     }
 
     private func propBetCard(
@@ -579,20 +607,20 @@ struct PlayView: View {
                 }
                 .padding(.bottom, 10)
 
-                Text(prop.athleteOrTeam)
+                Text(displayAthleteTitle(for: prop))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(JuicdTheme.textPrimary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.88)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.78)
 
                 if shouldShowMatchupLine(for: prop) {
-                    Text(prop.matchup)
+                    Text(displayMatchup(for: prop))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(JuicdTheme.textTertiary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.8)
                         .padding(.top, 4)
                 }
 
@@ -605,35 +633,22 @@ struct PlayView: View {
                     }
                 }
 
-                Text(boardMarketLabel(for: prop))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(JuicdTheme.textSecondary)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 6)
-
-                if shouldShowLineText(for: prop) || (!prop.hasOverUnderChoice && !prop.hasMoneylineChoice && !prop.isMoneylineStyle) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        if shouldShowLineText(for: prop) {
-                            Text(prop.lineText)
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.8)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if !prop.hasOverUnderChoice && !prop.hasMoneylineChoice && !prop.isMoneylineStyle {
-                            Text(prop.pickLabel)
-                                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                .foregroundStyle(JuicdTheme.textPrimary)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.8)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(boardPropAndLineLabel(for: prop))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(JuicdTheme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.78)
+                    if !prop.hasOverUnderChoice && !prop.hasMoneylineChoice && !prop.isMoneylineStyle {
+                        Text(prop.pickLabel)
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(JuicdTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
-                    .padding(.top, 8)
                 }
+                .padding(.top, 6)
 
                 Spacer(minLength: 6)
 
@@ -689,7 +704,7 @@ struct PlayView: View {
                     HStack(spacing: 6) {
                         if let home = prop.homeOdds {
                             moneylineSideButton(
-                                label: moneylineTeamLabel(prop.homeTeam, fallback: "Home"),
+                                label: moneylineTeamLabel(prop.homeTeam, fallback: "Home", prop: prop),
                                 odds: home,
                                 prop: prop,
                                 enabled: parlaySelectable
@@ -697,7 +712,7 @@ struct PlayView: View {
                         }
                         if let away = prop.awayOdds {
                             moneylineSideButton(
-                                label: moneylineTeamLabel(prop.awayTeam, fallback: "Away"),
+                                label: moneylineTeamLabel(prop.awayTeam, fallback: "Away", prop: prop),
                                 odds: away,
                                 prop: prop,
                                 enabled: parlaySelectable
@@ -737,9 +752,10 @@ struct PlayView: View {
                 minWidth: tileWidth,
                 idealWidth: tileWidth,
                 maxWidth: tileWidth ?? .infinity,
+                minHeight: Self.propCardHeight,
+                maxHeight: Self.propCardHeight,
                 alignment: .topLeading
             )
-            .fixedSize(horizontal: false, vertical: true)
             .opacity(parlaySelectable ? 1 : 0.42)
             .saturation(parlaySelectable ? 1 : 0.15)
             .overlay(alignment: .topTrailing) {
@@ -785,9 +801,10 @@ struct PlayView: View {
     }
 
 
-    private func moneylineTeamLabel(_ team: String?, fallback: String) -> String {
+    private func moneylineTeamLabel(_ team: String?, fallback: String, prop: PlayPropBet) -> String {
         let trimmed = (team ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? fallback : trimmed
+        if trimmed.isEmpty { return fallback }
+        return TeamAbbreviation.abbreviate(trimmed, leagueTag: prop.leagueTag, sportKey: prop.sportKey)
     }
 
     @ViewBuilder
@@ -798,8 +815,9 @@ struct PlayView: View {
             VStack(spacing: 2) {
                 Text(label)
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .truncationMode(.tail)
                     .multilineTextAlignment(.center)
                 Text(oddsMultiplierLabel(odds))
                     .font(.system(size: 14, weight: .bold, design: .rounded))

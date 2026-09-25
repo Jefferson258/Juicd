@@ -186,11 +186,15 @@ extension PlayPropBet {
 
     /// Prototype: “Popular” keeps most standard player props so dev filters stay populated.
     var isPopularStyleLine: Bool {
+        if isMoneylineStyle || hasMoneylineChoice { return true }
         if statFilterKey != "other" { return true }
         let p = propDescription.lowercased()
         return p.contains("completion")
             || p.contains("anytime")
             || p.contains("rbis")
             || p.contains("both teams")
+            || p.contains("moneyline")
+            || p.contains("head-to-head")
+            || p.contains("h2h")
     }
 }

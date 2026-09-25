@@ -423,4 +423,66 @@ final class JuicdUITests: XCTestCase {
         try snap("15-profile-delete-bottom")
     }
 
+
+    func testCardCompactScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = "/tmp/juicd-card-compact-qa"
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        func snap(_ name: String) throws {
+            let data = XCUIScreen.main.screenshot().pngRepresentation
+            try data.write(to: URL(fileURLWithPath: "\(outputDir)/\(name).png"))
+        }
+
+        XCTAssertTrue(
+            app.tabBars.buttons["Play"].waitForExistence(timeout: 20)
+                || app.buttons["tab-play"].waitForExistence(timeout: 2)
+                || app.buttons["Play"].waitForExistence(timeout: 2),
+            "Expected tabs after -juicd-dev-signin"
+        )
+        sleep(2)
+
+        let dismissPlayAd = app.buttons["Dismiss ad"].firstMatch
+        if dismissPlayAd.waitForExistence(timeout: 3), dismissPlayAd.isHittable {
+            dismissPlayAd.tap()
+            sleep(1)
+        }
+        try snap("10-play-popular")
+
+        let mlb = app.buttons["MLB"]
+        if mlb.waitForExistence(timeout: 4) {
+            mlb.tap()
+            sleep(2)
+            try snap("20-mlb-grid")
+        }
+
+        let allFilter = app.buttons["All"]
+        if allFilter.waitForExistence(timeout: 3) {
+            allFilter.tap()
+            sleep(1)
+            try snap("21-mlb-all-h2h")
+        }
+
+        let nfl = app.buttons["NFL"]
+        if nfl.waitForExistence(timeout: 3) {
+            nfl.tap()
+            sleep(2)
+            if app.buttons["All"].waitForExistence(timeout: 2) {
+                app.buttons["All"].tap()
+                sleep(1)
+            }
+            try snap("30-nfl-grid")
+        }
+
+        let h2h = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "Head-to-head")).element(boundBy: 0)
+        if h2h.waitForExistence(timeout: 3) {
+            try snap("11-play-h2h")
+        }
+
+        try snap("99-left-running")
+    }
+
 }
