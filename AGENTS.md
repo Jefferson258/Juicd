@@ -30,7 +30,7 @@ settlement changes need owner + counsel sign-off before shipping.
   (`juicd.Juicd` was taken; this is the registered one).
 - **Apple Team:** `8H2437SV33` · manual signing.
 - `ITSAppUsesNonExemptEncryption=NO` set in target build settings.
-- Currently **build 20** on TestFlight (CI-safe deinits, 10-player similar MMR
+- Currently **build 21** on TestFlight (CI-safe deinits, 10-player similar MMR
   pools with bot pad, ungraded slips push at 4am, multi 16-brackets, tourney
   trophy colors, Play one-line Over/Under, no Profile ads opt-out). Ranked
   “similar humans” currently packs **local** participants on this device;
