@@ -485,4 +485,31 @@ final class JuicdUITests: XCTestCase {
         try snap("99-left-running")
     }
 
+
+    func testCFBPlayScreenshot() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-ads-on", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots/cfb-2026-09-25")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        let playTab = app.tabBars.buttons["Play"]
+        XCTAssertTrue(playTab.waitForExistence(timeout: 20) || app.buttons["tab-play"].waitForExistence(timeout: 2))
+        sleep(2)
+        let dismiss = app.buttons["Dismiss ad"].firstMatch
+        if dismiss.waitForExistence(timeout: 2) { dismiss.tap(); sleep(1) }
+
+        // CFB sport pill
+        let cfb = app.buttons["CFB"].firstMatch
+        XCTAssertTrue(cfb.waitForExistence(timeout: 8), "CFB pill should appear on Play")
+        cfb.tap()
+        sleep(1)
+        let data = XCUIScreen.main.screenshot().pngRepresentation
+        try data.write(to: URL(fileURLWithPath: "\(outputDir)/12-cfb-selected-uitest.png"))
+    }
 }

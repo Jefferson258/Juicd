@@ -4,9 +4,9 @@ import Foundation
 enum PlayBoardStubData {
     /// Popular home: multiple “Popular …” ribbons by league.
     static let forYouRibbons: [PlayPropRibbon] = [
-        withBothSides(popularNBA),
         withBothSides(popularNFL),
         withBothSides(popularCFB),
+        withBothSides(popularNBA),
         withBothSides(popularCBB),
         withBothSides(popularMBB),
         withBothSides(popularWomensSoccer),
