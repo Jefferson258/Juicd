@@ -29,26 +29,20 @@ struct TourneyView: View {
                         .foregroundStyle(JuicdTheme.brand)
                     }
 
-                    Picker("Kind", selection: $viewModel.kind) {
-                        ForEach(TourneyViewModel.Kind.allCases) { k in
-                            Text(k.title).tag(k)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: viewModel.kind) { _, new in
-                        viewModel.select(new)
-                    }
+                    tourneySegmentedToggle(
+                        options: TourneyViewModel.Kind.allCases.map { ($0, $0.title) },
+                        selection: viewModel.kind,
+                        onSelect: { viewModel.select($0) }
+                    )
 
                     if viewModel.hasUpcomingBoard {
-                        Picker("Board", selection: $viewModel.boardWindow) {
-                            ForEach(TourneyViewModel.BoardWindow.allCases) { window in
-                                Text(window.title(for: viewModel.kind)).tag(window)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: viewModel.boardWindow) { _, new in
-                            viewModel.selectWindow(new)
-                        }
+                        tourneySegmentedToggle(
+                            options: TourneyViewModel.BoardWindow.allCases.map {
+                                ($0, $0.title(for: viewModel.kind))
+                            },
+                            selection: viewModel.boardWindow,
+                            onSelect: { viewModel.selectWindow($0) }
+                        )
                     }
 
                     if !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
@@ -219,6 +213,51 @@ struct TourneyView: View {
                 TourneyBracketTreeView(columns: columns)
             }
         }
+    }
+
+    private func tourneySegmentedToggle<T: Hashable>(
+        options: [(T, String)],
+        selection: T,
+        onSelect: @escaping (T) -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, item in
+                let value = item.0
+                let title = item.1
+                let selected = selection == value
+                Button {
+                    onSelect(value)
+                } label: {
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(selected ? JuicdTheme.textPrimary : JuicdTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(selected ? JuicdTheme.brand.opacity(0.24) : JuicdTheme.card.opacity(0.9))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(
+                                    selected ? Color.white.opacity(0.55) : JuicdTheme.strokeSubtle,
+                                    lineWidth: selected ? 1.5 : 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? AccessibilityTraits.isSelected : AccessibilityTraits())
+            }
+        }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(JuicdTheme.canvasDeep.opacity(0.55))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+                )
+        )
     }
 
     private func compactTopIcon(systemName: String) -> some View {

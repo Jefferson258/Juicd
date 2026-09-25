@@ -43,17 +43,30 @@ enum JuicdTheme {
         }
     }
 
-    static func ribbonIcon(ribbonId: String) -> String {
-        switch ribbonId {
-        case "live_api": return "antenna.radiowaves.left.and.right"
-        case "popular", "popular_nba", "nba", "cbb", "mbb": return "basketball.fill"
-        case "popular_nfl", "nfl": return "football.fill"
-        case "popular_mlb", "mlb": return "baseball.fill"
-        case "popular_nhl", "nhl": return "sportscourt.fill"
-        case "popular_soccer", "soccer": return "soccerball"
-        case "popular_wsoc", "womens_soccer": return "soccerball"
-        default: return "line.3.horizontal.decrease.circle.fill"
+    /// Sport-ball (or puck) SF Symbol for a Play ribbon row.
+    static func ribbonIcon(ribbonId: String, title: String? = nil) -> String {
+        let id = ribbonId.lowercased()
+        let t = (title ?? "").lowercased()
+        let hay = id + " " + t
+        if id == "live_api" { return "antenna.radiowaves.left.and.right" }
+        if hay.contains("nfl") || hay.contains("americanfootball") || hay.contains("football") {
+            return "football.fill"
         }
+        if hay.contains("mlb") || hay.contains("baseball") {
+            return "baseball.fill"
+        }
+        if hay.contains("nhl") || hay.contains("hockey") {
+            return "hockey.puck.fill"
+        }
+        if hay.contains("soccer") || hay.contains("epl") || hay.contains("mls") || hay.contains("nwsl") || hay.contains("wsoc") {
+            return "soccerball"
+        }
+        if hay.contains("nba") || hay.contains("cbb") || hay.contains("mbb")
+            || hay.contains("basketball") || hay.contains("hoops") {
+            return "basketball.fill"
+        }
+        if id == "popular" { return "basketball.fill" }
+        return "sportscourt.fill"
     }
 
     /// League pill on prop tiles (by tag from stub data).
@@ -264,7 +277,7 @@ struct PlayRibbonHeader: View {
                         )
                     )
                     .frame(width: 44, height: 44)
-                Image(systemName: JuicdTheme.ribbonIcon(ribbonId: ribbon.id))
+                Image(systemName: JuicdTheme.ribbonIcon(ribbonId: ribbon.id, title: ribbon.title))
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(accent)
             }
@@ -274,12 +287,6 @@ struct PlayRibbonHeader: View {
                 Text(ribbon.title)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(JuicdTheme.textPrimary)
-                if let sub = ribbon.subtitle {
-                    Text(sub)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(JuicdTheme.textTertiary)
-                        .lineLimit(2)
-                }
             }
             Spacer(minLength: 0)
             if showChevron {

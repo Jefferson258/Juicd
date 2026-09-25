@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlayView: View {
     @ObservedObject var viewModel: PlayViewModel
@@ -432,14 +433,17 @@ struct PlayView: View {
             )
 
             if viewModel.sportPill == .forYou {
+                let spacing: CGFloat = 14
+                // With 3+ tiles, size so ~2.2 fit and the next card peeks; with 1–2, fill width.
+                let tileWidth = forYouTileWidth(spacing: spacing, propCount: ribbon.props.count)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 14) {
+                    LazyHStack(alignment: .top, spacing: spacing) {
                         ForEach(ribbon.props) { prop in
-                            propBetSquare(prop, ribbonId: ribbon.id)
+                            propBetSquare(prop, ribbonId: ribbon.id, fixedWidth: tileWidth)
                         }
                     }
                     .padding(.leading, 2)
-                    .padding(.trailing, 16)
+                    .padding(.trailing, ribbon.props.count >= 3 ? 24 : 2)
                     .padding(.vertical, 4)
                 }
             } else {
@@ -455,22 +459,83 @@ struct PlayView: View {
     }
 
     @ViewBuilder
-    private func propBetSquare(_ prop: PlayPropBet, ribbonId: String) -> some View {
+    private func propBetSquare(_ prop: PlayPropBet, ribbonId: String, fixedWidth: CGFloat? = nil) -> some View {
         let pillColor = JuicdTheme.leaguePillColor(tag: prop.leagueTag)
         let ribbonAccent = JuicdTheme.ribbonAccent(ribbonId: ribbonId)
         let isJuicdBoost = prop.juicdMultiplier != nil
         let needsSidePick = prop.hasOverUnderChoice || prop.hasMoneylineChoice
+        let selectable = viewModel.isSelectableForParlay(prop)
 
         if needsSidePick {
-            propBetCard(prop, ribbonId: ribbonId, pillColor: pillColor, ribbonAccent: ribbonAccent, isJuicdBoost: isJuicdBoost)
-        } else {
+            propBetCard(
+                prop,
+                ribbonId: ribbonId,
+                pillColor: pillColor,
+                ribbonAccent: ribbonAccent,
+                isJuicdBoost: isJuicdBoost,
+                fixedWidth: fixedWidth,
+                parlaySelectable: selectable
+            )
+        } else if selectable {
             Button {
                 viewModel.handlePropTap(prop)
             } label: {
-                propBetCard(prop, ribbonId: ribbonId, pillColor: pillColor, ribbonAccent: ribbonAccent, isJuicdBoost: isJuicdBoost)
+                propBetCard(
+                    prop,
+                    ribbonId: ribbonId,
+                    pillColor: pillColor,
+                    ribbonAccent: ribbonAccent,
+                    isJuicdBoost: isJuicdBoost,
+                    fixedWidth: fixedWidth,
+                    parlaySelectable: true
+                )
             }
             .buttonStyle(.plain)
+        } else {
+            propBetCard(
+                prop,
+                ribbonId: ribbonId,
+                pillColor: pillColor,
+                ribbonAccent: ribbonAccent,
+                isJuicdBoost: isJuicdBoost,
+                fixedWidth: fixedWidth,
+                parlaySelectable: false
+            )
         }
+    }
+
+    /// Width that leaves a clear peek of the next tile when the ribbon has 3+ props.
+    private func forYouTileWidth(spacing: CGFloat, propCount: Int) -> CGFloat {
+        let screenW = UIScreen.main.bounds.width
+        let contentW = max(280, screenW - 32) // PlayView horizontal padding
+        let divisor: CGFloat = propCount >= 3 ? 2.28 : 2.0
+        return max(128, floor((contentW - spacing) / divisor))
+    }
+
+    private func oddsMultiplierLabel(_ value: Double) -> String {
+        String(format: "%.2fx", value)
+    }
+
+    /// Board copy for moneyline: one clean "Head-to-head" label (no Moneyline + H2H stack).
+    private func boardMarketLabel(for prop: PlayPropBet) -> String {
+        if prop.isMoneylineStyle { return "Head-to-head" }
+        return prop.propDescription
+    }
+
+    private func shouldShowMatchupLine(for prop: PlayPropBet) -> Bool {
+        let a = prop.athleteOrTeam.trimmingCharacters(in: .whitespacesAndNewlines)
+        let m = prop.matchup.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !m.isEmpty else { return false }
+        return a.caseInsensitiveCompare(m) != .orderedSame
+    }
+
+    private func shouldShowLineText(for prop: PlayPropBet) -> Bool {
+        if prop.isMoneylineStyle { return false }
+        let line = prop.lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if line.isEmpty { return false }
+        if prop.hasOverUnderChoice || prop.hasMoneylineChoice { return true }
+        // Avoid repeating the same string as the market label.
+        return line.caseInsensitiveCompare(boardMarketLabel(for: prop)) != .orderedSame
     }
 
     private func propBetCard(
@@ -478,9 +543,12 @@ struct PlayView: View {
         ribbonId: String,
         pillColor: Color,
         ribbonAccent: Color,
-        isJuicdBoost: Bool
+        isJuicdBoost: Bool,
+        fixedWidth: CGFloat? = nil,
+        parlaySelectable: Bool = true
     ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let tileWidth = fixedWidth ?? (viewModel.sportPill == .forYou ? 148 : nil)
+        return VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center, spacing: 8) {
                     Text(prop.leagueTag)
                         .font(.system(size: 10, weight: .black, design: .rounded))
@@ -518,13 +586,15 @@ struct PlayView: View {
                     .minimumScaleFactor(0.88)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(prop.matchup)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(JuicdTheme.textTertiary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+                if shouldShowMatchupLine(for: prop) {
+                    Text(prop.matchup)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
 
                 if let commence = prop.commenceTime {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -535,7 +605,7 @@ struct PlayView: View {
                     }
                 }
 
-                Text(prop.propDescription)
+                Text(boardMarketLabel(for: prop))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(JuicdTheme.textSecondary)
                     .lineLimit(3)
@@ -543,23 +613,27 @@ struct PlayView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
 
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(prop.lineText)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !prop.hasOverUnderChoice && !prop.hasMoneylineChoice {
-                        Text(prop.pickLabel)
-                            .font(.system(size: 11, weight: .heavy, design: .rounded))
-                            .foregroundStyle(JuicdTheme.textPrimary)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .fixedSize(horizontal: false, vertical: true)
+                if shouldShowLineText(for: prop) || (!prop.hasOverUnderChoice && !prop.hasMoneylineChoice && !prop.isMoneylineStyle) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if shouldShowLineText(for: prop) {
+                            Text(prop.lineText)
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if !prop.hasOverUnderChoice && !prop.hasMoneylineChoice && !prop.isMoneylineStyle {
+                            Text(prop.pickLabel)
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundStyle(JuicdTheme.textPrimary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
 
                 Spacer(minLength: 6)
 
@@ -574,7 +648,7 @@ struct PlayView: View {
                                         .font(.system(size: 10, weight: .heavy, design: .rounded))
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
-                                    Text(String(format: "%.2f", over))
+                                    Text(oddsMultiplierLabel(over))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.75)
@@ -585,6 +659,7 @@ struct PlayView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(JuicdTheme.brand)
+                            .disabled(!parlaySelectable)
                         }
                         if let under = prop.underOdds {
                             Button {
@@ -595,7 +670,7 @@ struct PlayView: View {
                                         .font(.system(size: 10, weight: .heavy, design: .rounded))
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
-                                    Text(String(format: "%.2f", under))
+                                    Text(oddsMultiplierLabel(under))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.75)
@@ -606,6 +681,7 @@ struct PlayView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(JuicdTheme.brand)
+                            .disabled(!parlaySelectable)
                         }
                     }
                     .padding(.top, 10)
@@ -615,14 +691,16 @@ struct PlayView: View {
                             moneylineSideButton(
                                 label: moneylineTeamLabel(prop.homeTeam, fallback: "Home"),
                                 odds: home,
-                                prop: prop
+                                prop: prop,
+                                enabled: parlaySelectable
                             )
                         }
                         if let away = prop.awayOdds {
                             moneylineSideButton(
                                 label: moneylineTeamLabel(prop.awayTeam, fallback: "Away"),
                                 odds: away,
-                                prop: prop
+                                prop: prop,
+                                enabled: parlaySelectable
                             )
                         }
                     }
@@ -635,7 +713,7 @@ struct PlayView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                         Spacer(minLength: 4)
-                        Text(String(format: "%.2f", prop.juicdEffectiveDecimalOdds))
+                        Text(oddsMultiplierLabel(prop.juicdEffectiveDecimalOdds))
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(JuicdTheme.brand)
                             .lineLimit(1)
@@ -656,12 +734,23 @@ struct PlayView: View {
             }
             .padding(12)
             .frame(
-                minWidth: viewModel.sportPill == .forYou ? 168 : nil,
-                idealWidth: viewModel.sportPill == .forYou ? 168 : nil,
-                maxWidth: viewModel.sportPill == .forYou ? 168 : .infinity,
+                minWidth: tileWidth,
+                idealWidth: tileWidth,
+                maxWidth: tileWidth ?? .infinity,
                 alignment: .topLeading
             )
             .fixedSize(horizontal: false, vertical: true)
+            .opacity(parlaySelectable ? 1 : 0.42)
+            .saturation(parlaySelectable ? 1 : 0.15)
+            .overlay(alignment: .topTrailing) {
+                if !parlaySelectable {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(JuicdTheme.textTertiary)
+                        .padding(10)
+                        .accessibilityLabel("Unavailable for this parlay")
+                }
+            }
             .background {
                 ZStack {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -702,7 +791,7 @@ struct PlayView: View {
     }
 
     @ViewBuilder
-    private func moneylineSideButton(label: String, odds: Double, prop: PlayPropBet) -> some View {
+    private func moneylineSideButton(label: String, odds: Double, prop: PlayPropBet, enabled: Bool = true) -> some View {
         Button {
             viewModel.handleMoneyline(prop, side: label, odds: odds)
         } label: {
@@ -712,7 +801,7 @@ struct PlayView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
                     .multilineTextAlignment(.center)
-                Text(String(format: "%.2f", odds))
+                Text(oddsMultiplierLabel(odds))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -724,6 +813,7 @@ struct PlayView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(JuicdTheme.brand)
+        .disabled(!enabled)
     }
 
     // MARK: - Ad placement (Play feed)

@@ -422,7 +422,7 @@ enum PlayLineGrouping {
                 existing.pickLabel = "H2H"
                 existing.lineText = "H2H"
                 existing.athleteOrTeam = existing.matchup
-                existing.propDescription = "Moneyline (head-to-head)"
+                existing.propDescription = "Head-to-head"
                 existing.oddsDecimal = existing.homeOdds ?? existing.awayOdds ?? existing.oddsDecimal
                 out[i] = existing
             } else {
@@ -438,7 +438,7 @@ enum PlayLineGrouping {
                     copy.pickLabel = "H2H"
                     copy.lineText = "H2H"
                     copy.athleteOrTeam = copy.matchup
-                    copy.propDescription = "Moneyline (head-to-head)"
+                    copy.propDescription = "Head-to-head"
                 }
                 index[key] = out.count
                 out.append(copy)

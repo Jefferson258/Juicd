@@ -265,4 +265,162 @@ final class JuicdUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(byId.label.count, 4, "Friend code should be non-trivial")
         }
     }
+
+    func testPolishUIScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots/polish-2026-09-24")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        func snap(_ name: String) throws {
+            let data = XCUIScreen.main.screenshot().pngRepresentation
+            try data.write(to: URL(fileURLWithPath: "\(outputDir)/\(name).png"))
+        }
+
+        func tapTab(_ title: String) {
+            let identifierTab = app.buttons["tab-\(title.lowercased())"]
+            if identifierTab.waitForExistence(timeout: 3) {
+                identifierTab.tap()
+                return
+            }
+            let tab = app.tabBars.buttons[title]
+            if tab.waitForExistence(timeout: 3) {
+                tab.tap()
+                return
+            }
+            let btn = app.buttons[title]
+            XCTAssertTrue(btn.waitForExistence(timeout: 3), "Missing tab \(title)")
+            btn.tap()
+        }
+
+        XCTAssertTrue(
+            app.tabBars.buttons["Play"].waitForExistence(timeout: 20)
+                || app.buttons["tab-play"].waitForExistence(timeout: 2)
+                || app.buttons["Play"].waitForExistence(timeout: 2),
+            "Expected tabs after -juicd-dev-signin"
+        )
+        sleep(2)
+
+        let dismissPlayAd = app.buttons["Dismiss ad"].firstMatch
+        if dismissPlayAd.waitForExistence(timeout: 3), dismissPlayAd.isHittable {
+            dismissPlayAd.tap()
+            sleep(1)
+        }
+        try snap("10-play-board")
+
+        // Prefer moneyline / H2H if present on board for label QA.
+        let h2h = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "Head-to-head")).element(boundBy: 0)
+        if h2h.waitForExistence(timeout: 2) {
+            try snap("11-play-h2h")
+        }
+
+        let over = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 0)
+        XCTAssertTrue(over.waitForExistence(timeout: 10), "Expected Over on Play board")
+        over.tap()
+        sleep(1)
+
+        let addLeg = app.buttons["Add another pick (parlay)"]
+        XCTAssertTrue(addLeg.waitForExistence(timeout: 6), "Expected Add another pick")
+        addLeg.tap()
+        sleep(1)
+        // Board should show grayed invalid tiles while picking an additional leg.
+        try snap("12-parlay-invalid-gray")
+
+        // Finish a second leg if possible, then leave the sheet.
+        let over2 = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 1)
+        if over2.waitForExistence(timeout: 4) {
+            over2.tap()
+            sleep(1)
+            try snap("13-parlay-sheet")
+            let close = app.navigationBars.buttons["Close"]
+            if close.waitForExistence(timeout: 2) {
+                close.tap()
+                sleep(1)
+            } else if app.buttons["Close"].firstMatch.waitForExistence(timeout: 1) {
+                app.buttons["Close"].firstMatch.tap()
+                sleep(1)
+            }
+        } else {
+            let cancel = app.buttons["Cancel"]
+            if cancel.waitForExistence(timeout: 2) { cancel.tap(); sleep(1) }
+        }
+
+        tapTab("Tourney")
+        sleep(2)
+        let dismissTourneyAd = app.buttons["Dismiss ad"].firstMatch
+        if dismissTourneyAd.waitForExistence(timeout: 3) {
+            dismissTourneyAd.tap()
+            sleep(1)
+        }
+        try snap("14-tourney-toggles")
+
+        tapTab("Profile")
+        sleep(2)
+        for _ in 0..<8 { app.swipeUp(); sleep(0) }
+        sleep(1)
+        try snap("15-profile-delete-bottom")
+    }
+
+
+    func testPolishTourneyProfileScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots/polish-2026-09-24")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        func snap(_ name: String) throws {
+            let data = XCUIScreen.main.screenshot().pngRepresentation
+            try data.write(to: URL(fileURLWithPath: "\(outputDir)/\(name).png"))
+        }
+
+        func tapTab(_ title: String) {
+            let identifierTab = app.buttons["tab-\(title.lowercased())"]
+            if identifierTab.waitForExistence(timeout: 3) { identifierTab.tap(); return }
+            let tab = app.tabBars.buttons[title]
+            if tab.waitForExistence(timeout: 3) { tab.tap(); return }
+            app.buttons[title].tap()
+        }
+
+        XCTAssertTrue(
+            app.tabBars.buttons["Play"].waitForExistence(timeout: 20)
+                || app.buttons["tab-play"].waitForExistence(timeout: 2)
+                || app.buttons["Play"].waitForExistence(timeout: 2)
+        )
+        sleep(2)
+
+        tapTab("Tourney")
+        sleep(2)
+        let dismiss = app.buttons["Dismiss ad"].firstMatch
+        if dismiss.waitForExistence(timeout: 3), dismiss.isHittable {
+            dismiss.tap(); sleep(1)
+        }
+        // Tap Weekly then Daily to exercise polished toggles.
+        if app.buttons["Weekly"].waitForExistence(timeout: 3) {
+            app.buttons["Weekly"].tap(); sleep(1)
+            try snap("14-tourney-weekly")
+            if app.buttons["Daily"].waitForExistence(timeout: 2) {
+                app.buttons["Daily"].tap(); sleep(1)
+            }
+        }
+        try snap("14-tourney-toggles")
+
+        tapTab("Profile")
+        sleep(2)
+        for _ in 0..<10 { app.swipeUp() }
+        sleep(1)
+        try snap("15-profile-delete-bottom")
+    }
+
 }

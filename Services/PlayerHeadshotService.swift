@@ -20,7 +20,7 @@ enum PlayerHeadshotLookup {
 
     static func shouldLookup(name: String, leagueTag: String, propDescription: String) -> Bool {
         let desc = propDescription.lowercased()
-        if desc.contains("moneyline") || desc == "h2h" { return false }
+        if desc.contains("moneyline") || desc.contains("head-to-head") || desc.contains("head to head") || desc == "h2h" { return false }
         let n = foldedName(name)
         if n.isEmpty { return false }
         if n.range(of: #"^nba player \d+$"#, options: .regularExpression) != nil { return false }

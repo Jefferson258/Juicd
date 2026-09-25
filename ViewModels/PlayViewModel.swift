@@ -547,6 +547,16 @@ final class PlayViewModel: ObservableObject {
         if stakePoints < 1 { stakePoints = min(m, 1) }
     }
 
+
+    /// When adding a parlay leg, false if this market conflicts with the slip (duplicate line / wrong slate / full).
+    func isSelectableForParlay(_ prop: PlayPropBet) -> Bool {
+        guard pickingAdditionalLeg else { return true }
+        if parlayLegs.count >= Self.maxParlayLegs { return false }
+        if let first = parlayLegs.first, !Self.sameSlate(first, prop) { return false }
+        if parlayLegs.contains(where: { $0.marketLineKey == prop.marketLineKey }) { return false }
+        return true
+    }
+
     func handleOverUnder(_ prop: PlayPropBet, side: String, odds: Double) {
         handlePropTap(prop.choosingOverUnder(side: side, odds: odds))
     }
@@ -733,7 +743,7 @@ final class PlayViewModel: ObservableObject {
             leagueTag: tag,
             athleteOrTeam: line.pickLabel,
             matchup: line.eventTitle,
-            propDescription: "Moneyline (head-to-head)",
+            propDescription: "Head-to-head",
             lineText: "H2H",
             pickLabel: line.pickLabel,
             oddsDecimal: line.oddsDecimal,

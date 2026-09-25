@@ -142,35 +142,6 @@ struct ProfileView: View {
                         }
                     }
 
-                    Card(title: "Account & data", systemImage: "person.crop.circle.badge.minus") {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Delete your Juicd account and account-linked game data through the authenticated server flow. Some shared or operational records may be retained without your account link as described in the Privacy Policy.")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(JuicdTheme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Button {
-                                showDeleteAccountConfirmation = true
-                            } label: {
-                                HStack {
-                                    Text("Delete account")
-                                    Spacer()
-                                    if isDeletingAccount {
-                                        ProgressView()
-                                            .tint(JuicdTheme.brand)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.red)
-                            .disabled(isDeletingAccount)
-
-                            Link("Read the Privacy Policy", destination: URL(string: "https://juicd.app/privacy")!)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(JuicdTheme.brand)
-                        }
-                    }
 
                     Card(title: "Badges", systemImage: "rosette") {
                         if viewModel.badges.isEmpty {
@@ -290,6 +261,36 @@ struct ProfileView: View {
                         }
                     }
                     #endif
+
+                    Card(title: "Account & data", systemImage: "person.crop.circle.badge.minus") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Delete your Juicd account and account-linked game data through the authenticated server flow. Some shared or operational records may be retained without your account link as described in the Privacy Policy.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(JuicdTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                showDeleteAccountConfirmation = true
+                            } label: {
+                                HStack {
+                                    Text("Delete account")
+                                    Spacer()
+                                    if isDeletingAccount {
+                                        ProgressView()
+                                            .tint(JuicdTheme.brand)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            .disabled(isDeletingAccount)
+
+                            Link("Read the Privacy Policy", destination: URL(string: "https://juicd.app/privacy")!)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(JuicdTheme.brand)
+                        }
+                    }
                 } else {
                     Card(title: "Loading…", systemImage: "hourglass") {
                         Text("…")

@@ -13,7 +13,7 @@ final class TourneyViewModel: ObservableObject {
         var title: String { self == .daily ? "Daily" : "Weekly" }
     }
 
-    enum BoardWindow: String, CaseIterable, Identifiable {
+    enum BoardWindow: String, CaseIterable, Identifiable, Hashable {
         case current
         case upcoming
         var id: String { rawValue }
