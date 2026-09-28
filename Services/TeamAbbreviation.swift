@@ -28,7 +28,8 @@ enum TeamAbbreviation {
         return fallbackToken(trimmed, league: league)
     }
 
-    /// Abbreviate both sides of `"Away @ Home"` / `"Away vs Home"` matchup strings.
+    /// Abbreviate both sides of a matchup.
+    /// UFC/MMA always displays `"Fighter vs Fighter"`. Other sports keep the incoming separator (`" @ "` or `" vs "`).
     static func abbreviateMatchup(_ matchup: String, leagueTag: String? = nil, sportKey: String? = nil) -> String {
         let trimmed = matchup.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return trimmed }
@@ -38,7 +39,9 @@ enum TeamAbbreviation {
             if let range = trimmed.range(of: sep) {
                 let away = String(trimmed[..<range.lowerBound])
                 let home = String(trimmed[range.upperBound...])
-                let displaySep = sep.lowercased().contains("vs") || sep.lowercased().contains(" v ")
+                let lowered = sep.lowercased()
+                let inputUsesVs = lowered.contains("vs") || lowered.contains(" v ")
+                let displaySep = resolvedLeague(tag: leagueTag, sportKey: sportKey) == "UFC" || inputUsesVs
                     ? " vs "
                     : " @ "
                 return "\(abbreviate(away, leagueTag: leagueTag, sportKey: sportKey))\(displaySep)\(abbreviate(home, leagueTag: leagueTag, sportKey: sportKey))"

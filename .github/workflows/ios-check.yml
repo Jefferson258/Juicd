@@ -98,10 +98,19 @@ jobs:
         if: steps.simulator.outputs.available == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_analytics_ui != true)
         run: echo "::notice::Skipping simulator-hosted analytics UI test in ordinary CI; run workflow_dispatch with run_analytics_ui=true for manual verification."
 
+      - name: Report screenshot capture policy
+        if: steps.simulator.outputs.available == 'true'
+        run: echo "::notice::Skipping visual QA, polish, and marketing screenshot UITests in ordinary CI. They are local capture scripts (scripts/capture-qa-screenshots.sh) and were consuming the 900s test alarm (exit 142 on testVisualQAScreenshots)."
+
       - name: Test remaining iOS targets
         if: steps.simulator.outputs.available == 'true'
         run: |
           set -o pipefail
+          # Screenshot UITests are local capture scripts, not a CI gate. On the
+          # PR #2 runner they filled the 900s alarm before unit tests started
+          # (perl alarm exit 142 during testVisualQAScreenshots) and also fail
+          # for non-product reasons (off-screen pill hittability, a hardcoded
+          # Desktop output path). Launch smoke and JuicdCoreTests stay here.
           perl -e 'alarm 900; exec @ARGV' -- \
             xcodebuild \
               -project Juicd.xcodeproj \
@@ -114,7 +123,8 @@ jobs:
               CODE_SIGNING_REQUIRED=NO \
               -parallel-testing-enabled NO \
               -skip-testing:JuicdUITests/JuicdAnalyticsLogicTests \
-              -skip-testing:JuicdUITests/JuicdUITests/testAnonymousCloudFriendCodeScreenshot \
+              -skip-testing:JuicdUITests/JuicdUITests \
+              -skip-testing:JuicdUITests/MarketingCaptureTests \
               test 2>&1 | tee "$RUNNER_TEMP/juicd-tests.log"
 
       - name: Report unsupported targets

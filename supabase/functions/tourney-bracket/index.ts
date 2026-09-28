@@ -7,6 +7,7 @@ import {
   fetchSummary,
   matchEvent,
   parseBoxPlayers,
+  parseMatchup,
   parseScoreboardEvents,
 } from "../_shared/espn.ts";
 
@@ -97,9 +98,9 @@ async function actualsFor(rounds: RoundSpec[]): Promise<(number | null)[]> {
       continue;
     }
     const events = parseScoreboardEvents(body);
-    const parts = (round.matchup || "").split("@").map((s) => s.trim());
-    const away = parts[0] ?? "";
-    const home = parts[1] ?? "";
+    const parsed = parseMatchup(round.matchup || "");
+    const away = parsed?.away ?? "";
+    const home = parsed?.home ?? "";
     const event = matchEvent(events, home, away) ??
       events.find((e) => e.id && e.id === String(round.eventId ?? ""));
     if (!event?.isFinal) {
