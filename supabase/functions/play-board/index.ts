@@ -12,6 +12,7 @@ import {
   previousSlateKey,
   slateKey as juicdSlateKey,
 } from "../_shared/slate.ts";
+import { h2hMatchup } from "../_shared/matchup_label.ts";
 
 type Prop = {
   id: string;
@@ -251,7 +252,7 @@ function h2hProps(event: any, sport: BoardSport, slate: string): Prop[] {
   const outcomes = Array.isArray(market?.outcomes) ? market.outcomes : [];
   const home = String(event?.home_team ?? "Home");
   const away = String(event?.away_team ?? "Away");
-  const matchup = `${away} @ ${home}`;
+  const matchup = h2hMatchup(away, home, sport.sport, sport.leagueTag);
   const eventId = String(event?.id ?? matchup);
   const commenceTime = commenceOf(event);
   const props: Prop[] = [];
@@ -281,7 +282,7 @@ function h2hProps(event: any, sport: BoardSport, slate: string): Prop[] {
 function overProps(event: any, sport: BoardSport, slate: string): Prop[] {
   const home = String(event?.home_team ?? "Home");
   const away = String(event?.away_team ?? "Away");
-  const matchup = `${away} @ ${home}`;
+  const matchup = h2hMatchup(away, home, sport.sport, sport.leagueTag);
   const eventId = String(event?.id ?? matchup);
   const commenceTime = commenceOf(event);
   if (!sport.propMarket) return [];

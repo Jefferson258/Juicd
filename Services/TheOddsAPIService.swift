@@ -93,7 +93,7 @@ enum TheOddsAPIService {
                 )
                 return loadDiskCache()?.line
             }
-            let title = "\(first.away_team) @ \(first.home_team)"
+            let title = h2hEventTitle(away: first.away_team, home: first.home_team, sportKey: sportKey)
             guard
                 let book = first.bookmakers?.first,
                 let market = book.markets?.first(where: { $0.key == "h2h" }),
@@ -125,6 +125,13 @@ enum TheOddsAPIService {
             )
             return loadDiskCache()?.line
         }
+    }
+
+    /// H2H title. UFC/MMA uses `" vs "`; every other sport uses `" @ "`.
+    static func h2hEventTitle(away: String, home: String, sportKey: String) -> String {
+        let key = sportKey.lowercased()
+        let sep = (key.contains("mma") || key.contains("ufc")) ? " vs " : " @ "
+        return "\(away)\(sep)\(home)"
     }
 
     private static func loadDiskCache() -> (savedAt: Date, line: LiveOddsLine)? {

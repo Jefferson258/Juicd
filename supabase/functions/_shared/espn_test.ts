@@ -56,6 +56,14 @@ Deno.test("over/under uses the line", () => {
   assertEquals(gradeOverUnder(27, 27.5, "Under"), "won");
 });
 
+Deno.test("matchup parser accepts @ and vs", () => {
+  assertEquals(parseMatchup("HOU @ SEA"), { away: "HOU", home: "SEA" });
+  assertEquals(parseMatchup("Islam Makhachev vs Arman Tsarukyan"), {
+    away: "Islam Makhachev",
+    home: "Arman Tsarukyan",
+  });
+});
+
 Deno.test("HOU @ SEA matches ESPN abbreviations", () => {
   const parsed = parseMatchup("HOU @ SEA");
   assertEquals(parsed?.away, "HOU");

@@ -751,7 +751,8 @@ final class PlayViewModel: ObservableObject {
             lineText: "H2H",
             pickLabel: line.pickLabel,
             oddsDecimal: line.oddsDecimal,
-            juicdMultiplier: nil
+            juicdMultiplier: nil,
+            sportKey: line.sportKey
         )
     }
 
@@ -761,6 +762,7 @@ final class PlayViewModel: ObservableObject {
         if sportKey.contains("nfl") { return "NFL" }
         if sportKey.contains("nhl") { return "NHL" }
         if sportKey.contains("mlb") || sportKey.contains("baseball_mlb") { return "MLB" }
+        if sportKey.contains("mma") || sportKey.contains("ufc") { return "UFC" }
         if sportKey.contains("soccer") { return "SOC" }
         return "LIVE"
     }
