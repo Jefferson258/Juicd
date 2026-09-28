@@ -93,7 +93,8 @@ type BoardSport = {
   sport: string;
   leagueTag: string;
   label: string;
-  propMarket: string;
+  /** Null = H2H only (no prop market configured for this sport). */
+  propMarket: string | null;
   propLabel: string;
 };
 
@@ -107,15 +108,18 @@ const REFRESH_LOCK_MS = 15_000;
 const STAMPEDE_WAIT_MS = 12_000;
 const STAMPEDE_POLL_MS = 400;
 const ODDS_MIN_REMAINING = 40;
-const PROP_GAMES_PER_SPORT = 3;
 const PROP_MAX_PER_EVENT = 8;
 
+/** Fetch order: Pass 1 H2H per sport with today games, then Pass 2 round-robin props until credit cap. */
 const BOARD_SPORTS: BoardSport[] = [
   { sport: "americanfootball_nfl", leagueTag: "NFL", label: "NFL", propMarket: "player_pass_yds", propLabel: "Pass yards" },
   { sport: "americanfootball_ncaaf", leagueTag: "CFB", label: "CFB", propMarket: "player_pass_yds", propLabel: "Pass yards" },
   { sport: "basketball_nba", leagueTag: "NBA", label: "NBA", propMarket: "player_points", propLabel: "Points" },
   { sport: "baseball_mlb", leagueTag: "MLB", label: "MLB", propMarket: "batter_hits", propLabel: "Hits" },
   { sport: "icehockey_nhl", leagueTag: "NHL", label: "NHL", propMarket: "player_shots_on_goal", propLabel: "Shots" },
+  { sport: "mma_mixed_martial_arts", leagueTag: "UFC", label: "UFC", propMarket: null, propLabel: "" },
+  { sport: "soccer_usa_mls", leagueTag: "MLS", label: "MLS", propMarket: "player_shots", propLabel: "Shots" },
+  { sport: "basketball_wnba", leagueTag: "WNBA", label: "WNBA", propMarket: "player_points", propLabel: "Points" },
 ];
 
 function fnv1a(str: string): number {
@@ -280,6 +284,7 @@ function overProps(event: any, sport: BoardSport, slate: string): Prop[] {
   const matchup = `${away} @ ${home}`;
   const eventId = String(event?.id ?? matchup);
   const commenceTime = commenceOf(event);
+  if (!sport.propMarket) return [];
   const market = event?.bookmakers?.[0]?.markets?.find((m: any) => m.key === sport.propMarket);
   const outcomes = Array.isArray(market?.outcomes) ? market.outcomes : [];
   const byPlayer = new Map<string, { Over?: { price: number; point: number }; Under?: { price: number; point: number } }>();
@@ -684,16 +689,36 @@ async function liveBoardFromOddsApi(
     }
   }
 
-  for (const sport of sportsWithToday) {
-    if (spent >= MAX_ODDS_CREDITS_PER_DAY) break;
+  // Pass 2: round-robin one prop market/event fetch at a time across sports that
+  // have today games AND a configured prop market, until the daily credit cap.
+  // Example: only NFL + MLB live → 2 moneylines + alternate props (~7 each) = 16.
+  const propSports = sportsWithToday.filter((s) => s.propMarket);
+  const eventQueues = new Map<string, any[]>();
+  for (const sport of propSports) {
+    if (remaining != null && remaining < ODDS_MIN_REMAINING) break;
     const today = todayEventsBySport.get(sport.sport) ?? [];
-    const take = today.slice(0, PROP_GAMES_PER_SPORT);
+    // /events is free (no Odds credit). Prefer it for a fuller prop pool.
     const freeEvents = filterUpcomingOnSlate(await fetchEventIds(apiKey, sport.sport), slate, now);
-    const pool = (freeEvents.length > 0 ? freeEvents : take).slice(0, PROP_GAMES_PER_SPORT);
-    for (const ev of pool) {
+    const pool = freeEvents.length > 0 ? freeEvents : today;
+    eventQueues.set(sport.sport, [...pool]);
+  }
+
+  let madeProgress = true;
+  while (spent < MAX_ODDS_CREDITS_PER_DAY && madeProgress) {
+    madeProgress = false;
+    if (remaining != null && remaining < ODDS_MIN_REMAINING) break;
+    for (const sport of propSports) {
       if (spent >= MAX_ODDS_CREDITS_PER_DAY) break;
+      if (remaining != null && remaining < ODDS_MIN_REMAINING) break;
+      if (!sport.propMarket) continue;
+      const queue = eventQueues.get(sport.sport) ?? [];
+      if (queue.length === 0) continue;
+      const ev = queue.shift()!;
       const id = ev?.id;
-      if (!id) continue;
+      if (!id) {
+        madeProgress = true;
+        continue;
+      }
       const { event, billed, remaining: nextRemaining } = await fetchEventProps(
         apiKey,
         sport.sport,
@@ -702,6 +727,7 @@ async function liveBoardFromOddsApi(
       );
       if (nextRemaining != null) remaining = nextRemaining;
       spent += billed;
+      madeProgress = true;
       if (remaining != null && remaining < ODDS_MIN_REMAINING) break;
       if (!event) continue;
       const props = overProps(event, sport, slate);

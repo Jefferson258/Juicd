@@ -30,22 +30,6 @@ struct FriendsView: View {
                         .foregroundStyle(JuicdTheme.brand)
                     }
 
-                    if let code = viewModel.friendCode, !code.isEmpty {
-                        Card(title: "Your friend code", systemImage: "qrcode") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(code)
-                                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(JuicdTheme.brand)
-                                    .textSelection(.enabled)
-                                    .accessibilityLabel(code)
-                                    .accessibilityIdentifier("friend-code")
-                                Text("Share this code or your display name. Friends search either.")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(JuicdTheme.textTertiary)
-                            }
-                        }
-                    }
-
                     Card(title: "Groups", systemImage: "person.3.fill") {
                         VStack(alignment: .leading, spacing: 12) {
                             if viewModel.groups.isEmpty {
@@ -269,6 +253,25 @@ struct FriendsView: View {
                                     .padding(.vertical, 4)
                                 }
                             }
+                        }
+                    }
+
+                    if let code = viewModel.friendCode, !code.isEmpty {
+                        Card(title: "Friend code", systemImage: "qrcode") {
+                            HStack(spacing: 10) {
+                                Text(code)
+                                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(JuicdTheme.brand)
+                                    .textSelection(.enabled)
+                                    .accessibilityLabel(code)
+                                    .accessibilityIdentifier("friend-code")
+                                Spacer(minLength: 0)
+                                Text("Share code or name")
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(JuicdTheme.textTertiary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.vertical, 2)
                         }
                     }
 

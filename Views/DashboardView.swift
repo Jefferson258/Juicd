@@ -266,40 +266,64 @@ struct DashboardView: View {
     }
 
     private var playSlipRows: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(viewModel.playSlipsForSelectedSlate.enumerated()), id: \.element.id) { index, entry in
-                if index > 0 {
-                    Divider().overlay(JuicdTheme.strokeSubtle).padding(.vertical, 8)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
-                            .font(.caption.weight(.heavy))
-                            .foregroundStyle(JuicdTheme.textTertiary)
-                        Text(slateTag(for: entry.slateDayKey))
-                            .font(.caption.weight(.heavy))
-                            .foregroundStyle(JuicdTheme.brand)
-                        Spacer()
-                        Text(slipOutcomeLabel(entry))
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(slipOutcomeColor(entry))
-                    }
-                    Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(JuicdTheme.textPrimary)
-                    Text(entry.legSummaries.joined(separator: " · "))
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(JuicdTheme.textSecondary)
-                        .lineLimit(3)
-                    if entry.didWin {
-                        Text("+\(entry.seasonPointsEarned) season pts")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(JuicdTheme.brand)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 12) {
+            ForEach(viewModel.playSlipsForSelectedSlate) { entry in
+                dashboardSlipCard(entry)
             }
         }
+    }
+
+    /// Dashboard-only slip tile — clearer grouping than a flat divider list.
+    private func dashboardSlipCard(_ entry: PlayBoardEntry) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(entry.legSummaries.count <= 1 ? "Single" : "Parlay ×\(entry.legSummaries.count)")
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(JuicdTheme.textPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(JuicdTheme.brand.opacity(0.22)))
+                Text(slateTag(for: entry.slateDayKey))
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(JuicdTheme.brand)
+                Spacer()
+                Text(slipOutcomeLabel(entry))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(slipOutcomeColor(entry))
+            }
+            Text("Stake \(entry.stakePoints) pts · Combined \(String(format: "%.2f", entry.combinedOdds))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(JuicdTheme.textPrimary)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(entry.legSummaries.enumerated()), id: \.offset) { _, leg in
+                    HStack(alignment: .top, spacing: 6) {
+                        Circle()
+                            .fill(JuicdTheme.brand.opacity(0.7))
+                            .frame(width: 5, height: 5)
+                            .padding(.top, 5)
+                        Text(leg)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(JuicdTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if entry.didWin {
+                Text("+\(entry.seasonPointsEarned) season pts")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(JuicdTheme.brand)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(JuicdTheme.cardElevated)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(JuicdTheme.strokeSubtle, lineWidth: 1)
+        )
     }
 
     private func slateChipLabel(_ slateKey: String) -> String {

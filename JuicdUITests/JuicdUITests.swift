@@ -512,4 +512,163 @@ final class JuicdUITests: XCTestCase {
         let data = XCUIScreen.main.screenshot().pngRepresentation
         try data.write(to: URL(fileURLWithPath: "\(outputDir)/12-cfb-selected-uitest.png"))
     }
+
+
+    func testPolish20260927Screenshots() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-dev-signin"]
+        app.launch()
+
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots/polish-2026-09-27")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+
+        func snap(_ name: String) throws {
+            let data = XCUIScreen.main.screenshot().pngRepresentation
+            try data.write(to: URL(fileURLWithPath: "\(outputDir)/\(name).png"))
+        }
+
+        func tapTab(_ title: String) {
+            let identifierTab = app.buttons["tab-\(title.lowercased())"]
+            if identifierTab.waitForExistence(timeout: 3) {
+                identifierTab.tap()
+                return
+            }
+            let tab = app.tabBars.buttons[title]
+            if tab.waitForExistence(timeout: 3) {
+                tab.tap()
+                return
+            }
+            let btn = app.buttons[title]
+            XCTAssertTrue(btn.waitForExistence(timeout: 3), "Missing tab \(title)")
+            btn.tap()
+        }
+
+        XCTAssertTrue(
+            app.tabBars.buttons["Play"].waitForExistence(timeout: 20)
+                || app.buttons["tab-play"].waitForExistence(timeout: 2)
+                || app.buttons["Play"].waitForExistence(timeout: 2),
+            "Expected tabs after -juicd-dev-signin"
+        )
+        sleep(2)
+        let dismiss = app.buttons["Dismiss ad"].firstMatch
+        if dismiss.waitForExistence(timeout: 3), dismiss.isHittable {
+            dismiss.tap()
+            sleep(1)
+        }
+
+        // Sport pills row (new UFC/MLS/WNBA may appear when stubs/live props exist)
+        try snap("10-play-pills")
+
+        let cfb = app.buttons["CFB"].firstMatch
+        XCTAssertTrue(cfb.waitForExistence(timeout: 8), "CFB pill")
+        cfb.tap()
+        sleep(1)
+        try snap("20-cfb-board-midnames")
+
+        // Scroll a bit for prop cards if present
+        app.swipeUp()
+        sleep(1)
+        try snap("21-cfb-props-midnames")
+
+        // Place two slips so Dashboard has multiple pending entries
+        let over = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 0)
+        if over.waitForExistence(timeout: 6) {
+            over.tap()
+            sleep(1)
+            let lock = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Lock")).element(boundBy: 0)
+            let place = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Place")).element(boundBy: 0)
+            if lock.waitForExistence(timeout: 3) {
+                lock.tap()
+            } else if place.waitForExistence(timeout: 2) {
+                place.tap()
+            }
+            sleep(1)
+            // Second leg / second slip
+            let over2 = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "Over")).element(boundBy: 1)
+            if over2.waitForExistence(timeout: 4) {
+                over2.tap()
+                sleep(1)
+                if lock.waitForExistence(timeout: 2) {
+                    lock.tap()
+                } else if place.waitForExistence(timeout: 2) {
+                    place.tap()
+                }
+                sleep(1)
+            }
+        }
+
+        tapTab("Friends")
+        sleep(1)
+        // Scroll to bottom where compact friend code lives
+        app.swipeUp()
+        sleep(1)
+        app.swipeUp()
+        sleep(1)
+        try snap("30-friends-code-bottom")
+
+        tapTab("Dashboard")
+        sleep(2)
+        try snap("40-dashboard-pending-slips")
+
+        tapTab("Play")
+        sleep(1)
+        // Scroll pills horizontally if needed for UFC/WNBA
+        for label in ["UFC", "WNBA", "MLS", "NHL"] {
+            let pill = app.buttons[label].firstMatch
+            if pill.waitForExistence(timeout: 2), pill.isHittable {
+                pill.tap()
+                sleep(1)
+                try snap("50-pill-\(label.lowercased())")
+            }
+        }
+        try snap("99-left-running")
+    }
+
+    func testFriendsCodeBottomOnly() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-skipTutorial", "-acceptLegalTerms", "-seedDemoData", "-juicd-dev-signin"]
+        app.launch()
+        let outputDir = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("qa-screenshots/polish-2026-09-27")
+            .path
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+        XCTAssertTrue(app.tabBars.buttons["Friends"].waitForExistence(timeout: 20) || app.buttons["tab-friends"].waitForExistence(timeout: 3))
+        let friends = app.buttons["tab-friends"].exists ? app.buttons["tab-friends"] : app.tabBars.buttons["Friends"]
+        friends.tap()
+        sleep(1)
+        for _ in 0..<8 { app.swipeUp(); Thread.sleep(forTimeInterval: 0.35) }
+        let data = XCUIScreen.main.screenshot().pngRepresentation
+        try data.write(to: URL(fileURLWithPath: "\(outputDir)/31-friends-code-bottom.png"))
+        // Also capture pills scrolled
+        let play = app.buttons["tab-play"].exists ? app.buttons["tab-play"] : app.tabBars.buttons["Play"]
+        play.tap()
+        sleep(1)
+        let dismiss = app.buttons["Dismiss ad"].firstMatch
+        if dismiss.waitForExistence(timeout: 2), dismiss.isHittable { dismiss.tap(); Thread.sleep(forTimeInterval: 0.5) }
+        // Drag sport pills row to the left to reveal UFC/MLS/WNBA
+        let pills = app.scrollViews.firstMatch
+        if pills.waitForExistence(timeout: 3) {
+            pills.swipeLeft()
+            Thread.sleep(forTimeInterval: 0.45)
+            pills.swipeLeft()
+            Thread.sleep(forTimeInterval: 0.45)
+        }
+        let data2 = XCUIScreen.main.screenshot().pngRepresentation
+        try data2.write(to: URL(fileURLWithPath: "\(outputDir)/11-play-pills-scrolled.png"))
+        for label in ["UFC", "WNBA", "MLS"] {
+            let pill = app.buttons[label].firstMatch
+            if pill.waitForExistence(timeout: 2), pill.isHittable {
+                pill.tap(); sleep(1)
+                let d = XCUIScreen.main.screenshot().pngRepresentation
+                try d.write(to: URL(fileURLWithPath: "\(outputDir)/50-pill-\(label.lowercased()).png"))
+            }
+        }
+    }
+
 }

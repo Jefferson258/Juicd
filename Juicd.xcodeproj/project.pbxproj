@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		22MKT0022F700001002955B9 /* MarketingCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22MKT0012F700001002955B9 /* MarketingCaptureTests.swift */; };
 		225E4B662F6F2CED002955B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 225E4B672F6F2CED002955B9 /* Assets.xcassets */; };
 		225E4B172F6F2CED002955B9 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B002F6F2CED002955B9 /* AppTheme.swift */; };
 		225E4B182F6F2CED002955B9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E4B102F6F2CED002955B9 /* DashboardView.swift */; };
@@ -116,6 +117,7 @@
 		225E4B602F6F2CED002955B9 /* Juicd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Juicd.entitlements; sourceTree = "<group>"; };
 		22E1FDBE2F6F2A85004D740F /* Juicd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Juicd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		22QA00012F700001002955B9 /* JuicdUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITests.swift; sourceTree = "<group>"; };
+		22MKT0012F700001002955B9 /* MarketingCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureTests.swift; sourceTree = "<group>"; };
 		22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JuicdUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		22QA00062F700001002955B9 /* JuicdUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JuicdUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		22SOC0012F700100002955B9 /* SupabaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthService.swift; sourceTree = "<group>"; };
@@ -306,6 +308,7 @@
 			isa = PBXGroup;
 			children = (
 				22QA00012F700001002955B9 /* JuicdUITests.swift */,
+				22MKT0012F700001002955B9 /* MarketingCaptureTests.swift */,
 				22ANLT010F700200002955B9 /* JuicdAnalyticsLogicTests.swift */,
 				22QA00022F700001002955B9 /* JuicdUITestsLaunchTests.swift */,
 			);
@@ -527,6 +530,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				22QA00032F700001002955B9 /* JuicdUITests.swift in Sources */,
+				22MKT0022F700001002955B9 /* MarketingCaptureTests.swift in Sources */,
 				22QA00042F700001002955B9 /* JuicdUITestsLaunchTests.swift in Sources */,
 				22ANLT020F700200002955B9 /* JuicdAnalyticsLogicTests.swift in Sources */,
 			);

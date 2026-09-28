@@ -32,13 +32,17 @@ enum JuicdTheme {
         case "popular_cfb": return Color(red: 0.72, green: 0.38, blue: 0.12)
         case "popular_mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
         case "popular_nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
-        case "popular_soccer", "popular_wsoc": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "popular_soccer", "popular_wsoc", "popular_mls": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "popular_ufc": return Color(red: 0.85, green: 0.15, blue: 0.35)
+        case "popular_wnba": return Color(red: 1.0, green: 0.45, blue: 0.75)
         case "nba": return Color(red: 0.9, green: 0.28, blue: 0.22)
         case "nfl": return Color(red: 0.2, green: 0.45, blue: 0.95)
         case "cfb": return Color(red: 0.72, green: 0.38, blue: 0.12)
         case "mlb": return Color(red: 0.85, green: 0.2, blue: 0.22)
         case "nhl": return Color(red: 0.35, green: 0.75, blue: 0.95)
-        case "soccer": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "soccer", "mls": return Color(red: 0.25, green: 0.78, blue: 0.45)
+        case "ufc": return Color(red: 0.85, green: 0.15, blue: 0.35)
+        case "wnba": return Color(red: 1.0, green: 0.45, blue: 0.75)
         case "cbb", "mbb": return Color(red: 0.95, green: 0.4, blue: 0.18)
         case "womens_soccer": return Color(red: 0.45, green: 0.85, blue: 0.4)
         default: return brand
@@ -51,6 +55,9 @@ enum JuicdTheme {
         let t = (title ?? "").lowercased()
         let hay = id + " " + t
         if id == "live_api" { return "antenna.radiowaves.left.and.right" }
+        if hay.contains("ufc") || hay.contains("mma") {
+            return "figure.boxing"
+        }
         if hay.contains("cfb") || hay.contains("ncaaf") || hay.contains("college") {
             return "football.fill"
         }
@@ -65,6 +72,9 @@ enum JuicdTheme {
         }
         if hay.contains("soccer") || hay.contains("epl") || hay.contains("mls") || hay.contains("nwsl") || hay.contains("wsoc") {
             return "soccerball"
+        }
+        if hay.contains("wnba") {
+            return "basketball.fill"
         }
         if hay.contains("nba") || hay.contains("cbb") || hay.contains("mbb")
             || hay.contains("basketball") || hay.contains("hoops") {
@@ -83,6 +93,8 @@ enum JuicdTheme {
         case "MLB": return Color(red: 0.92, green: 0.22, blue: 0.24)
         case "NHL": return Color(red: 0.3, green: 0.72, blue: 0.95)
         case "EPL", "UCL", "MLS", "SOC": return Color(red: 0.28, green: 0.82, blue: 0.48)
+        case "UFC", "MMA": return Color(red: 0.88, green: 0.18, blue: 0.38)
+        case "WNBA": return Color(red: 1.0, green: 0.48, blue: 0.72)
         case "CBB", "MBB": return Color(red: 0.92, green: 0.42, blue: 0.2)
         case "NWSL", "WSL": return Color(red: 0.5, green: 0.88, blue: 0.45)
         case "LIVE": return Color(red: 0.25, green: 0.95, blue: 0.75)

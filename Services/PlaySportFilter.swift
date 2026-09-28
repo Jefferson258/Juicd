@@ -14,6 +14,9 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
     case mbb
     case womensSoccer
     case soccer
+    case ufc
+    case mls
+    case wnba
 
     var id: String { rawValue }
 
@@ -29,12 +32,15 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case .mbb: return "MBB"
         case .womensSoccer: return "WSOC"
         case .soccer: return "SOC"
+        case .ufc: return "UFC"
+        case .mls: return "MLS"
+        case .wnba: return "WNBA"
         }
     }
 
-    /// Primary row: keep WSOC separate from generic soccer.
+    /// Primary row: board order first, then remaining leagues.
     static var primaryRow: [PlaySportPill] {
-        [.forYou, .nba, .nfl, .cfb, .cbb, .mbb, .mlb, .nhl, .womensSoccer, .soccer]
+        [.forYou, .nfl, .cfb, .nba, .mlb, .nhl, .ufc, .mls, .wnba, .cbb, .mbb, .womensSoccer, .soccer]
     }
 
     /// Ribbon header chevron: jump into this league’s board.
@@ -49,6 +55,9 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case "popular_mbb", "mbb": return .mbb
         case "popular_wsoc", "womens_soccer": return .womensSoccer
         case "popular_soccer", "soccer": return .soccer
+        case "popular_ufc", "ufc", "mma": return .ufc
+        case "popular_mls", "mls": return .mls
+        case "popular_wnba", "wnba": return .wnba
         case "live_api": return nil
         default:
             if ribbonId.hasPrefix("live_nfl") || ribbonId.hasPrefix("live_props_nfl") { return .nfl }
@@ -56,6 +65,9 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
             if ribbonId.hasPrefix("live_nba") || ribbonId.hasPrefix("live_props_nba") { return .nba }
             if ribbonId.hasPrefix("live_mlb") || ribbonId.hasPrefix("live_props_mlb") { return .mlb }
             if ribbonId.hasPrefix("live_nhl") || ribbonId.hasPrefix("live_props_nhl") { return .nhl }
+            if ribbonId.hasPrefix("live_ufc") || ribbonId.hasPrefix("live_props_ufc") { return .ufc }
+            if ribbonId.hasPrefix("live_mls") || ribbonId.hasPrefix("live_props_mls") { return .mls }
+            if ribbonId.hasPrefix("live_wnba") || ribbonId.hasPrefix("live_props_wnba") { return .wnba }
             return nil
         }
     }
@@ -72,7 +84,10 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
         case .cbb: return u == "CBB"
         case .mbb: return u == "MBB"
         case .womensSoccer: return u == "NWSL" || u == "WSL"
-        case .soccer: return ["EPL", "UCL", "MLS", "SOC"].contains(u)
+        case .soccer: return ["EPL", "UCL", "SOC"].contains(u)
+        case .ufc: return u == "UFC" || u == "MMA"
+        case .mls: return u == "MLS"
+        case .wnba: return u == "WNBA"
         }
     }
 
@@ -122,7 +137,7 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
                 ("shots", "Shots"),
                 ("saves", "Saves")
             ]
-        case .womensSoccer, .soccer:
+        case .womensSoccer, .soccer, .mls:
             return [
                 ("all", "All"),
                 ("popular", "Popular"),
@@ -131,6 +146,23 @@ enum PlaySportPill: String, CaseIterable, Identifiable {
                 ("totals", "Totals"),
                 ("corners", "Corners"),
                 ("cards", "Cards")
+            ]
+        case .ufc:
+            return [
+                ("all", "All"),
+                ("popular", "Popular"),
+                ("moneyline", "Moneyline")
+            ]
+        case .wnba:
+            return [
+                ("all", "All"),
+                ("popular", "Popular"),
+                ("points", "Points"),
+                ("rebounds", "Rebounds"),
+                ("assists", "Assists"),
+                ("combo", "Pts+Rebs+Asts"),
+                ("threes", "Threes"),
+                ("blocks", "Blocks")
             ]
         }
     }
@@ -176,7 +208,10 @@ extension PlayPropBet {
             if p.contains("shot") { return "shots" }
             if p.contains("goal") || p.contains("anytime") { return "goals" }
             return "other"
-        case "NBA", "CBB", "MBB":
+        case "UFC", "MMA":
+            if p.contains("moneyline") || p.contains("h2h") || p.contains("head-to-head") { return "moneyline" }
+            return "other"
+        case "NBA", "CBB", "MBB", "WNBA":
             if p.contains("point") && (p.contains("+") || p.contains("pra")) { return "combo" }
             if p.contains("rebound") { return "rebounds" }
             if p.contains("assist") { return "assists" }

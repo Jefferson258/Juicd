@@ -73,18 +73,22 @@ settlement changes need owner + counsel sign-off before shipping.
   `JUICD_AUTHORITATIVE_SETTLEMENT=1` **and**
   `staging_authoritative_settlement=on` on a disposable project. Never apply
   that SQL or env var to `hwyxtklbffqwcbtuetit`.
-- **Play board (Sep 11 2026):** Juicd day = **4:00am America/Chicago**.
-  `play-board` freshness is the CT `slate_key` (not UTC midnight). Sports are
-  NFL → CFB (ncaaf) → NBA → MLB → NHL, max **16 Odds credits/day**, started games dropped.
-  CFB props use `player_pass_yds` (same as NFL). With 5 sports under the 16-credit cap,
-  later-sport props (often NHL) may be truncated when every league has today games.
-  Response includes **today + tomorrow** h2h (no extra prop fetches for
-  tomorrow). Weekly tourney is **Monday 4am CT through Sunday night**; Sunday
-  also exposes next week for early entry. Existing daily/weekly payloads freeze
-  for the period — do not regenerate. First GET of a new slate (or the one-time
-  upgrade that adds `tomorrowRibbons`) can spend those credits — **do not casual
-  `?force=1`**. Tomorrow bets use tomorrow’s 100-pt bank; the line locks at
-  place time.
+- **Play board (Sep 27 2026):** Juicd day = **4:00am America/Chicago**.
+  `play-board` freshness is the CT `slate_key` (not UTC midnight). Sports order:
+  NFL → CFB (ncaaf) → NBA → MLB → NHL → UFC (mma) → MLS → WNBA.
+  Max **16 Odds credits/day**, started games dropped.
+  Pass 1: one H2H fetch per sport with today games. Pass 2: round-robin **one
+  prop/event fetch at a time** across sports that have today games + a configured
+  prop market until the daily cap (replaces fixed `PROP_GAMES_PER_SPORT=3`).
+  UFC is H2H-only (no Odds player props). MLS uses `player_shots`; WNBA
+  `player_points`; NFL/CFB `player_pass_yds`. Still respects `ODDS_MIN_REMAINING`
+  and monthly remaining. Response includes **today + tomorrow** h2h (no extra
+  prop fetches for tomorrow). Weekly tourney is **Monday 4am CT through Sunday
+  night**; Sunday also exposes next week for early entry. Existing daily/weekly
+  payloads freeze for the period — do not regenerate. First GET of a new slate
+  (or the one-time upgrade that adds `tomorrowRibbons`) can spend those credits
+  — **do not casual `?force=1`**. Tomorrow bets use tomorrow’s 100-pt bank; the
+  line locks at place time.
   Client Play slips stay **pending** until `settle-play-slips` grades a final
   (moneylines + ESPN boxscore player props / closest-number actuals).
   Closest-pick tourney entries persist on `juicd_tournament_entries` via

@@ -9,9 +9,13 @@ export function espnPath(sportKey: string): string | null {
   if (k.includes("nfl") || k.includes("americanfootball") || k === "football") {
     return "football/nfl";
   }
-  if (k.includes("nba") || k.includes("basketball")) return "basketball/nba";
+  // WNBA before generic basketball → NBA.
+  if (k.includes("wnba")) return "basketball/wnba";
+  if (k.includes("nba") || k.includes("ncaab") || k.includes("basketball")) return "basketball/nba";
   if (k.includes("mlb") || k.includes("baseball")) return "baseball/mlb";
   if (k.includes("nhl") || k.includes("hockey")) return "hockey/nhl";
+  if (k.includes("mma") || k.includes("ufc")) return "mma/ufc";
+  if (k.includes("soccer_usa_mls") || k === "mls" || k.endsWith("_mls")) return "soccer/usa.1";
   return null;
 }
 

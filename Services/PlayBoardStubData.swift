@@ -7,11 +7,14 @@ enum PlayBoardStubData {
         withBothSides(popularNFL),
         withBothSides(popularCFB),
         withBothSides(popularNBA),
+        withBothSides(popularMLB),
+        withBothSides(popularNHL),
+        withBothSides(popularUFC),
+        withBothSides(popularMLS),
+        withBothSides(popularWNBA),
         withBothSides(popularCBB),
         withBothSides(popularMBB),
         withBothSides(popularWomensSoccer),
-        withBothSides(popularMLB),
-        withBothSides(popularNHL),
         withBothSides(popularSoccer)
     ]
 
@@ -28,6 +31,9 @@ enum PlayBoardStubData {
         case .mbb: return withBothSides(mbb)
         case .womensSoccer: return withBothSides(womensSoccer)
         case .soccer: return withBothSides(soccer)
+        case .ufc: return withBothSides(ufc)
+        case .mls: return withBothSides(mlsBoard)
+        case .wnba: return withBothSides(wnba)
         }
     }
 
@@ -345,7 +351,7 @@ enum PlayBoardStubData {
                 id: UUID(),
                 leagueTag: "CFB",
                 athleteOrTeam: "Caleb Downs",
-                matchup: "OSU @ MICH",
+                matchup: "Ohio State Buckeyes @ Michigan Wolverines",
                 propDescription: "Pass yards",
                 lineText: "O/U 248.5",
                 pickLabel: "Over",
@@ -355,7 +361,7 @@ enum PlayBoardStubData {
                 id: UUID(),
                 leagueTag: "CFB",
                 athleteOrTeam: "Quinn Ewers",
-                matchup: "TEX vs OU",
+                matchup: "Texas Longhorns vs Oklahoma Sooners",
                 propDescription: "Pass yards",
                 lineText: "O/U 265.5",
                 pickLabel: "Over",
@@ -379,7 +385,7 @@ enum PlayBoardStubData {
                 id: UUID(),
                 leagueTag: "CFB",
                 athleteOrTeam: "Ashton Jeanty",
-                matchup: "BSU @ ORE",
+                matchup: "Boise State Broncos @ Oregon Ducks",
                 propDescription: "Rush yards",
                 lineText: "O/U 112.5",
                 pickLabel: "Over",
@@ -389,7 +395,7 @@ enum PlayBoardStubData {
                 id: UUID(),
                 leagueTag: "CFB",
                 athleteOrTeam: "Cameron Ward",
-                matchup: "MIA @ FSU",
+                matchup: "Miami Hurricanes @ Florida State Seminoles",
                 propDescription: "Pass TDs",
                 lineText: "O/U 2.5",
                 pickLabel: "Over",
@@ -399,7 +405,7 @@ enum PlayBoardStubData {
                 id: UUID(),
                 leagueTag: "CFB",
                 athleteOrTeam: "Tetairoa McMillan",
-                matchup: "ARIZ @ USC",
+                matchup: "Arizona Wildcats @ USC Trojans",
                 propDescription: "Rec yards",
                 lineText: "O/U 78.5",
                 pickLabel: "Over",
@@ -900,6 +906,165 @@ enum PlayBoardStubData {
         ]
     )
 
+
+    private static let ufc: PlayPropRibbon = PlayPropRibbon(
+        id: "ufc",
+        title: "UFC",
+        subtitle: "Fight night moneylines",
+        props: [
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "UFC",
+                athleteOrTeam: "Islam Makhachev vs Arman Tsarukyan",
+                matchup: "Islam Makhachev vs Arman Tsarukyan",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.72,
+                homeTeam: "Arman Tsarukyan",
+                awayTeam: "Islam Makhachev",
+                homeOdds: 2.20,
+                awayOdds: 1.72
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "UFC",
+                athleteOrTeam: "Alex Pereira vs Khalil Rountree Jr",
+                matchup: "Alex Pereira vs Khalil Rountree Jr",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.55,
+                homeTeam: "Khalil Rountree Jr",
+                awayTeam: "Alex Pereira",
+                homeOdds: 2.55,
+                awayOdds: 1.55
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "UFC",
+                athleteOrTeam: "Zhang Weili vs Virna Jandiroba",
+                matchup: "Zhang Weili vs Virna Jandiroba",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.40,
+                homeTeam: "Virna Jandiroba",
+                awayTeam: "Zhang Weili",
+                homeOdds: 3.10,
+                awayOdds: 1.40
+            )
+        ]
+    )
+
+    private static let mlsBoard: PlayPropRibbon = PlayPropRibbon(
+        id: "mls",
+        title: "MLS",
+        subtitle: "Match + player props",
+        props: [
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "MLS",
+                athleteOrTeam: "Inter Miami CF @ LA Galaxy",
+                matchup: "Inter Miami CF @ LA Galaxy",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.85,
+                homeTeam: "LA Galaxy",
+                awayTeam: "Inter Miami CF",
+                homeOdds: 2.40,
+                awayOdds: 1.85
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "MLS",
+                athleteOrTeam: "Lionel Messi",
+                matchup: "Inter Miami CF @ LA Galaxy",
+                propDescription: "Shots",
+                lineText: "O/U 2.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.90
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "MLS",
+                athleteOrTeam: "Seattle Sounders FC @ Atlanta United FC",
+                matchup: "Seattle Sounders FC @ Atlanta United FC",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 2.05,
+                homeTeam: "Atlanta United FC",
+                awayTeam: "Seattle Sounders FC",
+                homeOdds: 1.95,
+                awayOdds: 2.05
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "MLS",
+                athleteOrTeam: "Jordan Morris",
+                matchup: "Seattle Sounders FC @ Atlanta United FC",
+                propDescription: "Shots",
+                lineText: "O/U 1.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.88
+            )
+        ]
+    )
+
+    private static let wnba: PlayPropRibbon = PlayPropRibbon(
+        id: "wnba",
+        title: "WNBA",
+        subtitle: "Player props",
+        props: [
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "WNBA",
+                athleteOrTeam: "Las Vegas Aces @ New York Liberty",
+                matchup: "Las Vegas Aces @ New York Liberty",
+                propDescription: "Moneyline",
+                lineText: "H2H",
+                pickLabel: "H2H",
+                oddsDecimal: 1.95,
+                homeTeam: "New York Liberty",
+                awayTeam: "Las Vegas Aces",
+                homeOdds: 1.85,
+                awayOdds: 1.95
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "WNBA",
+                athleteOrTeam: "A'ja Wilson",
+                matchup: "Las Vegas Aces @ New York Liberty",
+                propDescription: "Points",
+                lineText: "O/U 24.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.91
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "WNBA",
+                athleteOrTeam: "Breanna Stewart",
+                matchup: "Las Vegas Aces @ New York Liberty",
+                propDescription: "Points",
+                lineText: "O/U 21.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.89
+            ),
+            PlayPropBet(
+                id: UUID(),
+                leagueTag: "WNBA",
+                athleteOrTeam: "Caitlin Clark",
+                matchup: "Indiana Fever @ Connecticut Sun",
+                propDescription: "Assists",
+                lineText: "O/U 8.5",
+                pickLabel: "Over",
+                oddsDecimal: 1.87
+            )
+        ]
+    )
+
     private static let popularNBA: PlayPropRibbon = PlayPropRibbon(
         id: "popular_nba",
         title: "Popular NBA",
@@ -961,5 +1126,26 @@ enum PlayBoardStubData {
         title: "Popular soccer",
         subtitle: "Trending match & player props",
         props: Array(soccer.props.prefix(4))
+    )
+
+    private static let popularUFC: PlayPropRibbon = PlayPropRibbon(
+        id: "popular_ufc",
+        title: "Popular UFC",
+        subtitle: "Trending fight moneylines",
+        props: Array(ufc.props.prefix(3))
+    )
+
+    private static let popularMLS: PlayPropRibbon = PlayPropRibbon(
+        id: "popular_mls",
+        title: "Popular MLS",
+        subtitle: "Trending MLS lines",
+        props: Array(mlsBoard.props.prefix(4))
+    )
+
+    private static let popularWNBA: PlayPropRibbon = PlayPropRibbon(
+        id: "popular_wnba",
+        title: "Popular WNBA",
+        subtitle: "Trending WNBA props",
+        props: Array(wnba.props.prefix(4))
     )
 }

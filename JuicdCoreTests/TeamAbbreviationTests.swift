@@ -24,12 +24,26 @@ final class TeamAbbreviationTests: XCTestCase {
         XCTAssertEqual(TeamAbbreviation.abbreviate("Golden State Warriors", leagueTag: "NBA"), "GSW")
     }
 
-    func testCFBAbbreviations() {
-        XCTAssertEqual(TeamAbbreviation.abbreviate("Ohio State Buckeyes", leagueTag: "CFB"), "OSU")
-        XCTAssertEqual(TeamAbbreviation.abbreviate("Michigan Wolverines", leagueTag: "NCAAF"), "MICH")
+    func testCFBMidLengthNames() {
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Ohio State Buckeyes", leagueTag: "CFB"), "Ohio State")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Michigan Wolverines", leagueTag: "NCAAF"), "Michigan")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Alabama Crimson Tide", leagueTag: "CFB"), "Alabama")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("University of Alabama", leagueTag: "CFB"), "Alabama")
         XCTAssertEqual(
             TeamAbbreviation.abbreviateMatchup("Ohio State Buckeyes @ Michigan Wolverines", leagueTag: "CFB"),
-            "OSU @ MICH"
+            "Ohio State @ Michigan"
         )
+        // Short codes from stubs expand to mid names for CFB.
+        XCTAssertEqual(TeamAbbreviation.abbreviate("OSU", leagueTag: "CFB"), "Ohio State")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("UA", leagueTag: "CFB"), "Alabama")
+        XCTAssertEqual(
+            TeamAbbreviation.abbreviateMatchup("OSU @ MICH", leagueTag: "CFB"),
+            "Ohio State @ Michigan"
+        )
+    }
+
+    func testWNBAAndMLS() {
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Las Vegas Aces", leagueTag: "WNBA"), "Aces")
+        XCTAssertEqual(TeamAbbreviation.abbreviate("Inter Miami CF", leagueTag: "MLS"), "Inter Miami")
     }
 }
