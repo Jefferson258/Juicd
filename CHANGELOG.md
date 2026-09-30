@@ -1,3 +1,9 @@
+## Juicd iOS 1.0.1 (26) — 2026-09-30
+
+- Play shows the sponsored banner under the title even when the board is empty.
+- Tourney does not request an ad while that tab is hidden.
+- Failed banner loads retry up to 4 times. G rating and non-personalized ads are unchanged.
+
 ## Juicd iOS — release fixes (2026-09-14)
 
 ### Auth

@@ -82,13 +82,13 @@ private struct LoggedInTabShell: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                PlayView(viewModel: playVM)
+                PlayView(viewModel: playVM, showsAd: selectedTab == 0)
                     .opacity(selectedTab == 0 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 0)
                 DashboardView(viewModel: dashboardVM)
                     .opacity(selectedTab == 1 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 1)
-                TourneyView(viewModel: tourneyVM)
+                TourneyView(viewModel: tourneyVM, showsAd: selectedTab == 2)
                     .opacity(selectedTab == 2 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 2)
                 FriendsView(viewModel: friendsVM)

@@ -23,6 +23,9 @@ final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate 
     private let onPaidImpression: () -> Void
     private var didRecord = false
     private var refreshTimer: Timer?
+    /// Failures so far. Each one schedules another load, up to 4 retries.
+    private var failureCount = 0
+    private var retryWork: DispatchWorkItem?
 
     init(
         adUnitID: String = JuicdAdsConfig.creativeBannerUnitID,
@@ -56,6 +59,7 @@ final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate 
 
     deinit {
         refreshTimer?.invalidate()
+        retryWork?.cancel()
     }
 
     static func bannerWidth(for placement: JuicdBannerPlacement) -> CGFloat {
@@ -71,6 +75,8 @@ final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate 
     }
 
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+        retryWork?.cancel()
+        failureCount = 0
         isLoaded = true
         guard !didRecord else { return }
         didRecord = true
@@ -80,9 +86,19 @@ final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate 
     func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         // Collapse (or stay collapsed) — never leave an empty ad box on screen.
         isLoaded = false
+        failureCount += 1
         #if DEBUG
-        print("[Juicd ads] banner failed: \(error.localizedDescription)")
+        print("[Juicd ads] banner failed (\(failureCount)): \(error.localizedDescription)")
         #endif
+        guard failureCount <= 4 else { return }
+        retryWork?.cancel()
+        let attempt = failureCount
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.bannerView.load(JuicdMobileAds.nonPersonalizedRequest())
+        }
+        retryWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 2, execute: work)
     }
 }
 
