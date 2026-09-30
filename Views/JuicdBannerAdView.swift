@@ -1,3 +1,4 @@
+import Combine
 import GoogleMobileAds
 import SwiftUI
 import UIKit
@@ -11,47 +12,53 @@ enum JuicdBannerPlacement {
     case largeBanner
 }
 
-/// Adaptive AdMob banner. Simulator/DEBUG loads Google Test Ad creatives.
-struct JuicdBannerAdView: UIViewRepresentable {
-    var adUnitID: String = JuicdAdsConfig.creativeBannerUnitID
-    var placement: JuicdBannerPlacement = .inlineFeed
-    /// Google’s minimum refresh is 30s. `nil` loads once (in-feed).
-    var refreshInterval: TimeInterval? = nil
-    var onPaidImpression: () -> Void = {}
+/// Owns one AdMob `BannerView` and loads it as soon as the slot is created,
+/// *before* anything is drawn. Slots render nothing until `isLoaded` flips on
+/// `bannerViewDidReceiveAd`, so a no-fill / failed request collapses to zero
+/// height (no blank box, no stack spacing).
+final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate {
+    @Published private(set) var isLoaded = false
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onPaidImpression: onPaidImpression)
-    }
+    let bannerView: BannerView
+    private let onPaidImpression: () -> Void
+    private var didRecord = false
+    private var refreshTimer: Timer?
 
-    func makeUIView(context: Context) -> BannerView {
+    init(
+        adUnitID: String = JuicdAdsConfig.creativeBannerUnitID,
+        placement: JuicdBannerPlacement,
+        refreshInterval: TimeInterval? = nil,
+        onPaidImpression: @escaping () -> Void = {}
+    ) {
+        // Must run before the first request: applies maxAdContentRating = .general.
         JuicdMobileAds.start()
-        let banner: BannerView
+        let adSize: AdSize
         switch placement {
         case .largeBanner:
-            banner = BannerView(adSize: AdSizeLargeBanner)
+            adSize = AdSizeLargeBanner
         case .inlineFeed, .anchoredBottom:
-            let adSize = currentOrientationAnchoredAdaptiveBanner(width: bannerWidth)
-            banner = BannerView(adSize: adSize)
+            adSize = currentOrientationAnchoredAdaptiveBanner(width: Self.bannerWidth(for: placement))
         }
-        banner.adUnitID = adUnitID
-        banner.delegate = context.coordinator
-        banner.rootViewController = Self.keyRootViewController()
-        banner.load(JuicdMobileAds.nonPersonalizedRequest())
+        bannerView = BannerView(adSize: adSize)
+        self.onPaidImpression = onPaidImpression
+        super.init()
+        bannerView.adUnitID = adUnitID
+        bannerView.delegate = self
+        bannerView.rootViewController = JuicdBannerAdView.keyRootViewController()
+        bannerView.load(JuicdMobileAds.nonPersonalizedRequest())
         if let refreshInterval, refreshInterval >= 30 {
-            context.coordinator.startRefresh(banner, interval: refreshInterval)
+            refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                self.bannerView.load(JuicdMobileAds.nonPersonalizedRequest())
+            }
         }
-        return banner
     }
 
-    func updateUIView(_ uiView: BannerView, context: Context) {
-        uiView.rootViewController = Self.keyRootViewController()
+    deinit {
+        refreshTimer?.invalidate()
     }
 
-    static func dismantleUIView(_ uiView: BannerView, coordinator: Coordinator) {
-        coordinator.stopRefresh()
-    }
-
-    private var bannerWidth: CGFloat {
+    static func bannerWidth(for placement: JuicdBannerPlacement) -> CGFloat {
         let screen = UIScreen.main.bounds.width
         switch placement {
         case .inlineFeed:
@@ -63,6 +70,36 @@ struct JuicdBannerAdView: UIViewRepresentable {
         }
     }
 
+    func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+        isLoaded = true
+        guard !didRecord else { return }
+        didRecord = true
+        onPaidImpression()
+    }
+
+    func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+        // Collapse (or stay collapsed) — never leave an empty ad box on screen.
+        isLoaded = false
+        #if DEBUG
+        print("[Juicd ads] banner failed: \(error.localizedDescription)")
+        #endif
+    }
+}
+
+/// Hosts the loader's `BannerView`. Only inserted once an ad has loaded.
+/// Simulator/DEBUG loads Google Test Ad creatives.
+struct JuicdBannerAdView: UIViewRepresentable {
+    @ObservedObject var loader: JuicdBannerAdLoader
+
+    func makeUIView(context: Context) -> BannerView {
+        loader.bannerView.rootViewController = Self.keyRootViewController()
+        return loader.bannerView
+    }
+
+    func updateUIView(_ uiView: BannerView, context: Context) {
+        uiView.rootViewController = Self.keyRootViewController()
+    }
+
     static func keyRootViewController() -> UIViewController? {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -70,72 +107,55 @@ struct JuicdBannerAdView: UIViewRepresentable {
             .first(where: \.isKeyWindow)?
             .rootViewController
     }
-
-    final class Coordinator: NSObject, BannerViewDelegate {
-        let onPaidImpression: () -> Void
-        private var didRecord = false
-        private var refreshTimer: Timer?
-        private weak var banner: BannerView?
-
-        init(onPaidImpression: @escaping () -> Void) {
-            self.onPaidImpression = onPaidImpression
-        }
-
-        func startRefresh(_ banner: BannerView, interval: TimeInterval) {
-            stopRefresh()
-            self.banner = banner
-            refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-                guard let banner = self?.banner else { return }
-                banner.load(JuicdMobileAds.nonPersonalizedRequest())
-            }
-        }
-
-        func stopRefresh() {
-            refreshTimer?.invalidate()
-            refreshTimer = nil
-        }
-
-        func bannerViewDidReceiveAd(_ bannerView: BannerView) {
-            guard !didRecord else { return }
-            didRecord = true
-            onPaidImpression()
-        }
-
-        func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
-            #if DEBUG
-            print("[Juicd ads] banner failed: \(error.localizedDescription)")
-            #endif
-        }
-    }
 }
 
 /// Full-width strip above the custom tab bar. Height matches AdMob’s anchored adaptive size.
+/// Renders nothing (zero height) until an ad has loaded.
 struct JuicdAnchoredBannerSlot: View {
+    @StateObject private var loader = JuicdBannerAdLoader(placement: .anchoredBottom, refreshInterval: 60)
+
     private var bannerHeight: CGFloat {
-        let width = max(UIScreen.main.bounds.width, 320)
-        return currentOrientationAnchoredAdaptiveBanner(width: width).size.height
+        loader.bannerView.adSize.size.height
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(JuicdTheme.strokeSubtle)
-                .frame(height: 1)
-            JuicdBannerAdView(placement: .anchoredBottom, refreshInterval: 60)
-                .frame(maxWidth: .infinity)
-                .frame(height: bannerHeight)
-                .accessibilityIdentifier("ad-banner-anchored")
+        if loader.isLoaded {
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(JuicdTheme.strokeSubtle)
+                    .frame(height: 1)
+                JuicdBannerAdView(loader: loader)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: bannerHeight)
+                    .accessibilityIdentifier("ad-banner-anchored")
+            }
+            .background(JuicdTheme.canvasDeep)
         }
-        .background(JuicdTheme.canvasDeep)
     }
 }
 
 /// 320×100 AdMob large banner inside the sponsored-card chrome (includes X).
+/// Collapses to nothing (zero height, no stack spacing) until AdMob returns an ad;
+/// a no-fill or failed request never shows the empty "Sponsored" chrome.
 struct JuicdSponsoredBannerCard: View {
-    var onPaidImpression: () -> Void = {}
     var onDismiss: () -> Void = {}
+    @StateObject private var loader: JuicdBannerAdLoader
+
+    init(onPaidImpression: @escaping () -> Void = {}, onDismiss: @escaping () -> Void = {}) {
+        self.onDismiss = onDismiss
+        _loader = StateObject(wrappedValue: JuicdBannerAdLoader(
+            placement: .largeBanner,
+            onPaidImpression: onPaidImpression
+        ))
+    }
 
     var body: some View {
+        if loader.isLoaded {
+            card
+        }
+    }
+
+    private var card: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Sponsored")
@@ -144,7 +164,7 @@ struct JuicdSponsoredBannerCard: View {
                     .textCase(.uppercase)
                     .tracking(0.6)
 
-                JuicdBannerAdView(placement: .largeBanner, onPaidImpression: onPaidImpression)
+                JuicdBannerAdView(loader: loader)
                     .frame(width: 320, height: 100)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
