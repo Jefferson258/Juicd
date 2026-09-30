@@ -88,7 +88,7 @@ private struct LoggedInTabShell: View {
                 DashboardView(viewModel: dashboardVM)
                     .opacity(selectedTab == 1 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 1)
-                TourneyView(viewModel: tourneyVM, showsAd: selectedTab == 2)
+                TourneyView(viewModel: tourneyVM)
                     .opacity(selectedTab == 2 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 2)
                 FriendsView(viewModel: friendsVM)

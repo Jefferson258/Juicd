@@ -1,3 +1,8 @@
+## Juicd iOS 1.0.1 (27) — 2026-09-30
+
+- Tourney sponsored card is under the title again and loads with the screen.
+- Ad requests send juicdsports.com as the brand-safety content URL.
+
 ## Juicd iOS 1.0.1 (26) — 2026-09-30
 
 - Play shows the sponsored banner under the title even when the board is empty.

@@ -2,8 +2,6 @@ import SwiftUI
 
 struct TourneyView: View {
     @ObservedObject var viewModel: TourneyViewModel
-    /// False while another tab is selected, so a hidden Tourney screen does not request an ad.
-    var showsAd: Bool = true
     @State private var showTourneyTips = false
     @State private var adDismissed = false
     @FocusState private var pickFocused: Bool
@@ -19,6 +17,11 @@ struct TourneyView: View {
                         centered: true,
                         kicker: viewModel.kind.title
                     )
+                    if !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
+                        JuicdInFeedAdSlot(creative: JuicdDevAdCreative.all[1], onDismiss: {
+                            adDismissed = true
+                        })
+                    }
                     HStack(spacing: 10) {
                         compactTopIcon(systemName: "trophy.fill")
                         compactTopIcon(systemName: "person.3.fill")
@@ -45,12 +48,6 @@ struct TourneyView: View {
                             selection: viewModel.boardWindow,
                             onSelect: { viewModel.selectWindow($0) }
                         )
-                    }
-
-                    if showsAd && !adDismissed && JuicdAdsConfig.presentation != .bottomBanner {
-                        JuicdInFeedAdSlot(creative: JuicdDevAdCreative.all[1], onDismiss: {
-                            adDismissed = true
-                        })
                     }
 
                     if let payload = viewModel.payload {

@@ -14,8 +14,8 @@ the banner unit in `Juicd/Info.plist` requested as a 320×100 large banner.
 - **Play:** one 320×100 box under the Play title, including when the board
   is empty. Tap **X** and it stays gone until relaunch (DEBUG can spawn
   another from Profile). The slot is not created while another tab is showing.
-- **Tourney:** the same card under the header, only while Tourney is the
-  selected tab. **X** hides it for that visit.
+- **Tourney:** the same card under the title. It loads with the screen so it
+  is already there when that tab is opened. **X** hides it for that visit.
 - A failed load retries up to 4 times, then the slot stays collapsed.
 - **Dashboard / Friends / Profile:** no ads.
 - No interstitials, no full-screen ads, no 4% roll, no bottom strip.
