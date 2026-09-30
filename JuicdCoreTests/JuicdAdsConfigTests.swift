@@ -25,6 +25,12 @@ final class JuicdAdsConfigTests: XCTestCase {
         XCTAssertTrue(JuicdAdsDev.shouldShowAd())
     }
 
+    func testLiveAdsRequireAnAppStoreReceipt() {
+        XCTAssertTrue(JuicdAdsConfig.isProductionAppStoreReceipt(filename: "receipt"))
+        XCTAssertFalse(JuicdAdsConfig.isProductionAppStoreReceipt(filename: "sandboxReceipt"))
+        XCTAssertFalse(JuicdAdsConfig.isProductionAppStoreReceipt(filename: nil))
+    }
+
     func testDefaultPresentationIsDismissibleCardBanner() {
         XCTAssertEqual(JuicdAdsConfig.presentation, .cardBanner)
     }

@@ -4,8 +4,8 @@
 **320×100 AdMob large banner** inside the dark “Sponsored” card on Play and
 Tourney. No sticky banner above the tab bar. No rewarded video.
 
-Simulator/DEBUG loads Google **Test Ad** creatives. Release on device uses
-the banner unit in `Juicd/Info.plist` requested as a 320×100 large banner.
+Simulator/DEBUG loads Google **Test Ad** creatives. TestFlight shows no
+ads. The App Store build uses the banner unit in `Juicd/Info.plist`.
 
 ---
 

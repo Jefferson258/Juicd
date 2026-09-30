@@ -1,3 +1,7 @@
+## Juicd iOS 1.0.1 (28) — 2026-09-30
+
+- TestFlight builds do not request ads. Live ads stay on the App Store build.
+
 ## Juicd iOS 1.0.1 (27) — 2026-09-30
 
 - Tourney sponsored card is under the title again and loads with the screen.

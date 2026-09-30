@@ -48,6 +48,7 @@ final class JuicdBannerAdLoader: NSObject, ObservableObject, BannerViewDelegate 
         bannerView.adUnitID = adUnitID
         bannerView.delegate = self
         bannerView.rootViewController = JuicdBannerAdView.keyRootViewController()
+        guard JuicdAdsConfig.showsAds else { return }
         bannerView.load(JuicdMobileAds.nonPersonalizedRequest())
         if let refreshInterval, refreshInterval >= 30 {
             refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
@@ -218,6 +219,13 @@ struct JuicdInFeedAdSlot: View {
     var onDismiss: () -> Void
 
     var body: some View {
+        if JuicdAdsConfig.showsAds {
+            slot
+        }
+    }
+
+    @ViewBuilder
+    private var slot: some View {
         switch JuicdAdsConfig.presentation {
         case .nativeCard:
             JuicdNativeAdPlaceholder(creative: creative, onFirstView: {

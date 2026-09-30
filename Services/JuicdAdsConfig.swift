@@ -48,6 +48,23 @@ enum JuicdAdsConfig {
         loadsGoogleTestCreatives ? testBannerUnitID : bannerUnitID
     }
 
+    /// App Store installs use `receipt`. TestFlight uses `sandboxReceipt`.
+    static func isProductionAppStoreReceipt(filename: String?) -> Bool {
+        filename == "receipt"
+    }
+
+    static var isProductionAppStoreInstall: Bool {
+        isProductionAppStoreReceipt(filename: Bundle.main.appStoreReceiptURL?.lastPathComponent)
+    }
+
+    /// Live ads only on the App Store build. TestFlight is Release, so without
+    /// this check it would request real ads. Simulator and DEBUG keep Google’s
+    /// test creatives, which are safe to tap.
+    static var showsAds: Bool {
+        if loadsGoogleTestCreatives { return true }
+        return isProductionAppStoreInstall
+    }
+
     /// Locked layout: dismissible 320×100 AdMob large banner in the sponsored card.
     /// Launch with `-juicd-ad-style native|card|bottom` only to compare.
     enum Presentation: String {
